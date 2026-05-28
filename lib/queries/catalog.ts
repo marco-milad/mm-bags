@@ -5,6 +5,8 @@ import type { Collection } from "@/lib/supabase/types";
 import type { CatalogSort, ProductWithVariants } from "@/lib/catalog-shared";
 import { effectivePrice } from "@/lib/catalog-shared";
 
+export type ProductDetail = ProductWithVariants & { collection: Collection | null };
+
 export async function getCollections(): Promise<Collection[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -67,4 +69,39 @@ export async function getProducts(opts: {
   }
 
   return products;
+}
+
+export async function getProductBySlug(slug: string): Promise<ProductDetail | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("*, product_variants(*), collection:collections(*)")
+    .eq("slug", slug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) throw new Error(`getProductBySlug(${slug}) failed: ${error.message}`);
+  return data as ProductDetail | null;
+}
+
+export async function getRelatedProducts(opts: {
+  excludeProductId: string;
+  collectionId: string | null;
+  limit?: number;
+}): Promise<ProductWithVariants[]> {
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("products")
+    .select("*, product_variants(*)")
+    .eq("is_active", true)
+    .neq("id", opts.excludeProductId)
+    .limit(opts.limit ?? 4);
+
+  if (opts.collectionId) {
+    query = query.eq("collection_id", opts.collectionId);
+  }
+
+  const { data, error } = await query.order("sort_order", { ascending: true });
+  if (error) throw new Error(`getRelatedProducts failed: ${error.message}`);
+  return (data ?? []) as ProductWithVariants[];
 }

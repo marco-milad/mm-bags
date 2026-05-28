@@ -1,0 +1,129 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { hasLocale } from "@/lib/i18n-config";
+import { getProductBySlug, getRelatedProducts } from "@/lib/queries/catalog";
+import { ProductGallery } from "@/components/product/ProductGallery";
+import { ProductActions } from "@/components/product/ProductActions";
+import { ProductAccordion } from "@/components/product/ProductAccordion";
+import { ProductCard } from "@/components/product/ProductCard";
+
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: PageProps<"/[locale]/products/[slug]">) {
+  const { locale, slug } = await params;
+  if (!hasLocale(locale)) return {};
+  const product = await getProductBySlug(slug);
+  if (!product) return {};
+  const name = locale === "ar" ? product.name_ar : product.name_en;
+  const description =
+    (locale === "ar" ? product.description_ar : product.description_en) ??
+    undefined;
+  return {
+    title: name,
+    description: description?.slice(0, 155),
+    openGraph: {
+      title: name,
+      description: description?.slice(0, 155),
+      images: product.images?.[0]
+        ? [{ url: product.images[0], width: 1200, height: 1200 }]
+        : undefined,
+    },
+  };
+}
+
+export default async function ProductDetailPage({
+  params,
+}: PageProps<"/[locale]/products/[slug]">) {
+  const { locale, slug } = await params;
+  if (!hasLocale(locale)) notFound();
+
+  const product = await getProductBySlug(slug);
+  if (!product) notFound();
+
+  const related = await getRelatedProducts({
+    excludeProductId: product.id,
+    collectionId: product.collection?.id ?? null,
+    limit: 4,
+  });
+
+  const name = locale === "ar" ? product.name_ar : product.name_en;
+  const collectionName =
+    product.collection &&
+    (locale === "ar"
+      ? product.collection.name_ar
+      : product.collection.name_en);
+  const whatsappNumber =
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201000000000";
+
+  return (
+    <article className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-12">
+      {/* Breadcrumb */}
+      <nav
+        className="mb-6 flex items-center gap-2 text-xs text-[var(--color-text-secondary)]"
+        aria-label={locale === "ar" ? "مسار التنقل" : "Breadcrumb"}
+      >
+        <Link href={`/${locale}/catalog`} className="hover:text-[var(--color-text)]">
+          {locale === "ar" ? "المنتجات" : "Shop"}
+        </Link>
+        {product.collection && (
+          <>
+            <span>/</span>
+            <Link
+              href={`/${locale}/catalog/${product.collection.slug}`}
+              className="hover:text-[var(--color-text)]"
+            >
+              {collectionName}
+            </Link>
+          </>
+        )}
+      </nav>
+
+      {/* Main grid */}
+      <div className="grid gap-8 md:grid-cols-2 md:gap-12">
+        <ProductGallery images={product.images} name={name} locale={locale} />
+
+        <div className="flex flex-col gap-6">
+          <header className="flex flex-col gap-2">
+            {collectionName && (
+              <p className="font-mono text-xs uppercase tracking-[0.25em] text-[var(--color-accent-dark)]">
+                {collectionName}
+              </p>
+            )}
+            <h1 className="font-display text-3xl leading-tight md:text-4xl">{name}</h1>
+            {locale === "ar" && product.name_en && (
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                {product.name_en}
+              </p>
+            )}
+          </header>
+
+          <ProductActions
+            product={product}
+            locale={locale}
+            whatsappNumber={whatsappNumber}
+          />
+
+          <ProductAccordion product={product} locale={locale} />
+        </div>
+      </div>
+
+      {/* Related products */}
+      {related.length > 0 && (
+        <section className="mt-16">
+          <h2 className="mb-6 font-display text-2xl md:text-3xl">
+            {locale === "ar" ? "ممكن يعجبك كمان" : "You may also like"}
+          </h2>
+          <ul className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {related.map((p) => (
+              <li key={p.id}>
+                <ProductCard product={p} locale={locale} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </article>
+  );
+}
