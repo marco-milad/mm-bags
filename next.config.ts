@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
             },
           ]
         : []),
+      // Placeholder images for seed data — remove once real product photos are uploaded.
+      { protocol: "https" as const, hostname: "picsum.photos" },
     ],
   },
   async redirects() {
