@@ -1,0 +1,60 @@
+{
+  "brand": {
+    "name": "M.M Bags",
+    "tagline": "سافر بذكاء. سافر بأناقة.",
+    "founder": "ماركو ميلاد"
+  },
+  "nav": {
+    "home": "الرئيسية",
+    "catalog": "المنتجات",
+    "about": "القصة",
+    "cart": "الكارت",
+    "account": "حسابي",
+    "login": "تسجيل دخول",
+    "search": "بحث"
+  },
+  "home": {
+    "hero": {
+      "cta_shop": "تسوق الآن",
+      "cta_story": "اكتشف القصة"
+    },
+    "founder_quote": "اخترت كل شنطة بإيدي عشان تسافر معاك راحل البال",
+    "collections_title": "تشكيلاتنا",
+    "featured_title": "الأكثر مبيعاً",
+    "promise_title": "وعد M.M Bags",
+    "promise": {
+      "quality": "جودة حقيقية",
+      "price": "سعر عادل",
+      "warranty": "ضمان 14 يوم",
+      "support": "دعم 24/7"
+    },
+    "reviews_title": "قالوا عننا إيه؟",
+    "instagram_title": "تابعنا على @mmbags.eg",
+    "newsletter": {
+      "title": "اشترك واحصل على خصم 10%",
+      "note": "هنبعتلك أحدث العروض والوصولات الجديدة فقط",
+      "placeholder": "بريدك الإلكتروني",
+      "cta": "اشترك"
+    }
+  },
+  "product": {
+    "add_to_cart": "أضف للكارت",
+    "buy_now": "اشتري دلوقتي",
+    "notify_me": "نبّهني لما يرجع",
+    "ask_about": "اسأل عن المنتج",
+    "size_guide": "دليل المقاسات",
+    "in_stock_low": "باقي {count} قطع فقط!",
+    "out_of_stock": "غير متوفر حالياً"
+  },
+  "footer": {
+    "tagline": "علامة شخصية. شغف حقيقي. شنط سفر بتستحق ثقتك.",
+    "rights": "كل الحقوق محفوظة لـ M.M Bags",
+    "shop": "تسوق",
+    "help": "مساعدة",
+    "company": "الشركة"
+  },
+  "lang": {
+    "switch": "English",
+    "current": "العربية"
+  }
+}

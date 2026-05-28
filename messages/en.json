@@ -1,0 +1,60 @@
+{
+  "brand": {
+    "name": "M.M Bags",
+    "tagline": "Travel Smart. Travel in Style.",
+    "founder": "Marco Milad"
+  },
+  "nav": {
+    "home": "Home",
+    "catalog": "Shop",
+    "about": "Story",
+    "cart": "Cart",
+    "account": "Account",
+    "login": "Sign in",
+    "search": "Search"
+  },
+  "home": {
+    "hero": {
+      "cta_shop": "Shop now",
+      "cta_story": "Our story"
+    },
+    "founder_quote": "I picked every bag myself so you can travel with peace of mind.",
+    "collections_title": "Collections",
+    "featured_title": "Best sellers",
+    "promise_title": "The M.M Promise",
+    "promise": {
+      "quality": "Real quality",
+      "price": "Fair pricing",
+      "warranty": "14-day warranty",
+      "support": "24/7 support"
+    },
+    "reviews_title": "What travelers say",
+    "instagram_title": "Follow @mmbags.eg",
+    "newsletter": {
+      "title": "Subscribe and get 10% off",
+      "note": "We'll only send you new arrivals and the best offers.",
+      "placeholder": "Your email",
+      "cta": "Subscribe"
+    }
+  },
+  "product": {
+    "add_to_cart": "Add to cart",
+    "buy_now": "Buy now",
+    "notify_me": "Notify me when back",
+    "ask_about": "Ask about this product",
+    "size_guide": "Size guide",
+    "in_stock_low": "Only {count} left!",
+    "out_of_stock": "Out of stock"
+  },
+  "footer": {
+    "tagline": "A personal brand. Real passion. Luggage you can trust.",
+    "rights": "All rights reserved · M.M Bags",
+    "shop": "Shop",
+    "help": "Help",
+    "company": "Company"
+  },
+  "lang": {
+    "switch": "العربية",
+    "current": "English"
+  }
+}
