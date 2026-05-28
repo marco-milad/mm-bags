@@ -27,11 +27,13 @@ export type NotificationChannel = "email" | "whatsapp";
 export interface ShippingAddress {
   name: string;
   phone: string;
+  email?: string | null;
   governorate: string;
+  governorate_code?: string;
   city: string;
   street: string;
-  building?: string;
-  notes?: string;
+  building?: string | null;
+  notes?: string | null;
 }
 
 export interface TrackingEvent {
