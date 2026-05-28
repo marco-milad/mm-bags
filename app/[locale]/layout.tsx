@@ -5,6 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { WhatsAppFAB } from "@/components/shared/WhatsAppFAB";
+import { CartDrawer } from "@/components/cart/CartDrawer";
 import { direction, hasLocale, locales } from "@/lib/i18n-config";
 import { getDictionary } from "@/lib/i18n";
 import "../globals.css";
@@ -75,6 +76,7 @@ export default async function RootLayout({
         <Footer locale={locale} t={t.footer} brand={t.brand} />
         <MobileBottomNav locale={locale} t={t.nav} />
         <WhatsAppFAB locale={locale} />
+        <CartDrawer locale={locale} />
       </body>
     </html>
   );

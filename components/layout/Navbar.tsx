@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Heart, Search, ShoppingBag, User } from "lucide-react";
+import { Heart, Search, User } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
+import { CartIconButton } from "@/components/cart/CartIconButton";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 
 type NavStrings = {
@@ -65,13 +66,7 @@ export function Navbar({
           >
             <User className="h-5 w-5" />
           </Link>
-          <Link
-            href={`${base}/cart`}
-            aria-label={t.cart}
-            className="relative rounded-full p-2 text-[var(--color-text)] transition hover:bg-[var(--color-surface)]"
-          >
-            <ShoppingBag className="h-5 w-5" />
-          </Link>
+          <CartIconButton label={t.cart} />
           <LocaleSwitcher locale={locale} />
         </div>
       </div>

@@ -6,6 +6,7 @@ import type { Locale } from "@/lib/i18n-config";
 import type { ProductWithVariants } from "@/lib/catalog-shared";
 import type { ProductVariant } from "@/lib/supabase/types";
 import { cn, formatPriceEGP } from "@/lib/utils";
+import { useCartStore } from "@/store/cart";
 
 type Color = { hex: string; ar: string; en: string };
 
@@ -42,8 +43,10 @@ export function ProductActions({
   const [selectedSize, setSelectedSize] = useState<number | null>(
     initial?.size_inches ?? null,
   );
-  const [added, setAdded] = useState(false);
   const [notifyRequested, setNotifyRequested] = useState(false);
+
+  const addItem = useCartStore((s) => s.addItem);
+  const openDrawer = useCartStore((s) => s.openDrawer);
 
   const colors: Color[] = useMemo(() => {
     const map = new Map<string, Color>();
@@ -94,9 +97,20 @@ export function ProductActions({
 
   const onAdd = () => {
     if (!selectedVariant || isOOS) return;
-    // Phase 2 step 3 wires this to Zustand + drawer. For now, brief success state.
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1800);
+    addItem({
+      variantId: selectedVariant.id,
+      productId: product.id,
+      productSlug: product.slug,
+      name_ar: product.name_ar,
+      name_en: product.name_en,
+      image: product.images?.[0] ?? null,
+      color_hex: selectedVariant.color_hex,
+      color_ar: selectedVariant.color_ar,
+      color_en: selectedVariant.color_en,
+      size_inches: selectedVariant.size_inches,
+      unitPrice: price,
+    });
+    openDrawer();
   };
 
   const onNotify = () => {
@@ -169,7 +183,7 @@ export function ProductActions({
                   type="button"
                   onClick={() => setSelectedColor(c.hex)}
                   aria-label={colorLabel(c)}
-                  aria-pressed={isActive}
+                  aria-pressed={isActive ? "true" : "false"}
                   className={cn(
                     "relative h-10 w-10 rounded-full ring-offset-2 ring-offset-[var(--color-bg)] transition",
                     isActive
@@ -208,7 +222,7 @@ export function ProductActions({
                   key={s}
                   type="button"
                   onClick={() => setSelectedSize(s)}
-                  aria-pressed={isActive}
+                  aria-pressed={isActive ? "true" : "false"}
                   className={cn(
                     "rounded-lg border px-4 py-2 text-sm font-mono transition",
                     isActive
@@ -268,24 +282,10 @@ export function ProductActions({
         <button
           type="button"
           onClick={onAdd}
-          className={cn(
-            "flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition",
-            added
-              ? "bg-[var(--color-success)] text-white"
-              : "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-light)]",
-          )}
+          className="flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
         >
-          {added ? (
-            <>
-              <Check className="h-4 w-4" />
-              {locale === "ar" ? "تمت الإضافة للكارت" : "Added to cart"}
-            </>
-          ) : (
-            <>
-              <ShoppingBag className="h-4 w-4" />
-              {locale === "ar" ? "أضف للكارت" : "Add to cart"}
-            </>
-          )}
+          <ShoppingBag className="h-4 w-4" />
+          {locale === "ar" ? "أضف للكارت" : "Add to cart"}
         </button>
       )}
 
