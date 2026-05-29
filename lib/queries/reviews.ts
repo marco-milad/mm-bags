@@ -3,6 +3,18 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Review } from "@/lib/supabase/types";
 
+export type FeaturedReview = {
+  id: string;
+  rating: number;
+  body: string | null;
+  title: string | null;
+  guestName: string | null;
+  governorate: string | null;
+  productNameAr: string;
+  productNameEn: string;
+  productSlug: string;
+};
+
 export type ReviewSummary = {
   total: number;
   average: number; // 0..5, single decimal
@@ -30,6 +42,36 @@ export async function getApprovedReviews(
 
   if (error) return [];
   return (data ?? []) as Review[];
+}
+
+export async function getFeaturedReviews(limit = 3): Promise<FeaturedReview[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("reviews")
+    .select(
+      "id, rating, body, title, guest_name, governorate, product:products!inner(name_ar, name_en, slug)",
+    )
+    .eq("is_approved", true)
+    .eq("verified_purchase", true)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+  return data.map((r) => {
+    // The PostgREST join can return either an object or an array depending on the FK type.
+    const product = Array.isArray(r.product) ? r.product[0] : r.product;
+    return {
+      id: r.id,
+      rating: r.rating,
+      body: r.body,
+      title: r.title,
+      guestName: r.guest_name,
+      governorate: r.governorate,
+      productNameAr: product?.name_ar ?? "",
+      productNameEn: product?.name_en ?? "",
+      productSlug: product?.slug ?? "",
+    };
+  });
 }
 
 export function summarize(reviews: Review[]): ReviewSummary {

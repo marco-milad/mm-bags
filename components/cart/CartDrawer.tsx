@@ -31,7 +31,6 @@ export function CartDrawer({ locale }: { locale: Locale }) {
   // In RTL the cart icon sits on the LEFT of the navbar, so the drawer
   // slides in from the left. LTR is mirrored.
   const side = locale === "ar" ? "left" : "right";
-  const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
 
   return (
     <Sheet open={isOpen} onOpenChange={setOpen}>
@@ -66,13 +65,12 @@ export function CartDrawer({ locale }: { locale: Locale }) {
             </ul>
 
             <footer className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4">
-              {remaining > 0 && (
-                <p className="mb-3 rounded-lg bg-[var(--color-bg)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
-                  {locale === "ar"
-                    ? `ضيف ${formatPriceEGP(remaining, locale)} كمان عشان الشحن يبقى مجاناً 🚚`
-                    : `Add ${formatPriceEGP(remaining, locale)} more for free shipping 🚚`}
-                </p>
-              )}
+              <FreeShippingBar
+                subtotal={subtotal}
+                threshold={FREE_SHIPPING_THRESHOLD}
+                locale={locale}
+              />
+
 
               <dl className="mb-4 space-y-1.5 text-sm">
                 <div className="flex justify-between">
@@ -109,6 +107,46 @@ export function CartDrawer({ locale }: { locale: Locale }) {
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function FreeShippingBar({
+  subtotal,
+  threshold,
+  locale,
+}: {
+  subtotal: number;
+  threshold: number;
+  locale: Locale;
+}) {
+  const reached = subtotal >= threshold;
+  const pct = Math.min(100, (subtotal / threshold) * 100);
+  const remaining = Math.max(0, threshold - subtotal);
+
+  return (
+    <div className="mb-4 flex flex-col gap-2 rounded-lg bg-[var(--color-bg)] px-3 py-2.5">
+      <p className="text-xs font-medium text-[var(--color-text)]">
+        {reached
+          ? locale === "ar"
+            ? "🎉 وصلت للشحن المجاني!"
+            : "🎉 You qualified for free shipping!"
+          : locale === "ar"
+            ? `ضيف ${formatPriceEGP(remaining, locale)} كمان عشان الشحن يبقى مجاناً 🚚`
+            : `Add ${formatPriceEGP(remaining, locale)} more for free shipping 🚚`}
+      </p>
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={threshold}
+        aria-valuenow={Math.min(subtotal, threshold)}
+      >
+        <div
+          className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-500 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
   );
 }
 

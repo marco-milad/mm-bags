@@ -4,10 +4,23 @@ import { hasLocale } from "@/lib/i18n-config";
 import { getDictionary } from "@/lib/i18n";
 import { FounderQuote } from "@/components/shared/FounderQuote";
 import { SizeGuideBanner } from "@/components/size-guide/SizeGuideBanner";
+import { ProductCard } from "@/components/product/ProductCard";
+import { ReviewStars } from "@/components/reviews/ReviewStars";
+import {
+  getCollectionsWithCounts,
+  getProducts,
+} from "@/lib/queries/catalog";
+import { getFeaturedReviews } from "@/lib/queries/reviews";
 
 export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
+
+  const [collections, bestSellers, homeReviews] = await Promise.all([
+    getCollectionsWithCounts(),
+    getProducts({ tag: "best-seller", limit: 4 }),
+    getFeaturedReviews(3),
+  ]);
 
   const t = await getDictionary(locale);
 
@@ -63,7 +76,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         name={t.brand.founder}
       />
 
-      {/* Collections placeholder */}
+      {/* Collections — upgraded cards */}
       <section className="mx-auto max-w-6xl px-6 py-20 md:px-12">
         <header className="mb-10 flex items-baseline justify-between">
           <h2 className="font-display text-3xl md:text-4xl">{t.home.collections_title}</h2>
@@ -75,32 +88,119 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
           </Link>
         </header>
         <div className="grid gap-6 md:grid-cols-3">
-          {[
-            { slug: "milano-series", name_ar: "Milano Series", name_en: "Milano Series" },
-            { slug: "calvin-klein", name_ar: "Calvin Klein", name_en: "Calvin Klein" },
-            { slug: "travel-accessories", name_ar: "إكسسوارات السفر", name_en: "Travel Accessories" },
-          ].map((collection) => (
+          {collections.map((collection) => (
             <Link
               key={collection.slug}
               href={`/${locale}/catalog/${collection.slug}`}
-              className="group relative aspect-[4/5] overflow-hidden rounded-xl bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] transition hover:shadow-lg"
+              className="group relative flex aspect-[3/4] flex-col overflow-hidden rounded-2xl bg-[var(--color-primary)] ring-1 ring-[var(--color-border)] transition hover:shadow-2xl hover:ring-[var(--color-accent)]"
             >
               <div
-                className="absolute inset-0 bg-gradient-to-br from-[var(--color-surface-2)] to-[var(--color-surface)]"
                 aria-hidden
+                className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-primary-light)] to-[var(--color-primary)] transition duration-500 group-hover:scale-105"
               />
-              <div className="relative flex h-full flex-col justify-end p-6">
-                <h3 className="font-display text-2xl text-[var(--color-primary)]">
+              <div
+                aria-hidden
+                className="absolute inset-0 opacity-25 mix-blend-overlay transition-opacity duration-500 group-hover:opacity-40"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(circle at 30% 25%, rgba(212,180,131,0.5), transparent 55%)",
+                }}
+              />
+              <div className="relative flex h-full flex-col justify-end gap-2 p-7 text-white">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--color-accent-light)]">
+                  {collection.productCount}{" "}
+                  {locale === "ar"
+                    ? collection.productCount === 1
+                      ? "منتج"
+                      : "منتج"
+                    : collection.productCount === 1
+                      ? "product"
+                      : "products"}
+                </p>
+                <h3 className="font-display text-3xl leading-tight md:text-4xl">
                   {locale === "ar" ? collection.name_ar : collection.name_en}
                 </h3>
-                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                  {locale === "ar" ? "تصفح المجموعة" : "Browse collection"} →
+                <p className="text-xs text-white/70">
+                  {locale === "ar" ? collection.name_en : collection.name_ar}
+                </p>
+                <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-accent)] transition group-hover:gap-2.5">
+                  {locale === "ar" ? "تصفح المجموعة" : "Browse collection"}
+                  <span aria-hidden>{locale === "ar" ? "←" : "→"}</span>
                 </p>
               </div>
             </Link>
           ))}
         </div>
       </section>
+
+      {/* Best Sellers */}
+      {bestSellers.length > 0 && (
+        <section className="bg-[var(--color-surface)] py-16">
+          <div className="mx-auto max-w-6xl px-6 md:px-12">
+            <header className="mb-8 flex flex-col gap-2">
+              <p className="font-mono text-xs uppercase tracking-[0.3em] text-[var(--color-accent-dark)]">
+                {locale === "ar" ? "اختيار العملاء" : "Customer favorites"}
+              </p>
+              <h2 className="font-display text-3xl md:text-4xl">
+                {locale === "ar" ? "الأكثر مبيعاً" : "Best sellers"}
+              </h2>
+            </header>
+            <ul className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {bestSellers.map((p) => (
+                <li key={p.id}>
+                  <ProductCard product={p} locale={locale} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* Customer reviews */}
+      {homeReviews.length > 0 && (
+        <section className="mx-auto max-w-6xl px-6 py-20 md:px-12">
+          <header className="mb-10 flex flex-col gap-2 text-center">
+            <p className="font-mono text-xs uppercase tracking-[0.3em] text-[var(--color-accent-dark)]">
+              {locale === "ar" ? "آراء عملائنا" : "Customer voices"}
+            </p>
+            <h2 className="font-display text-3xl md:text-4xl">
+              {locale === "ar" ? "قالوا عننا إيه؟" : "What they say"}
+            </h2>
+          </header>
+          <ul className="grid gap-6 md:grid-cols-3">
+            {homeReviews.map((r) => (
+              <li
+                key={r.id}
+                className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6"
+              >
+                <ReviewStars value={r.rating} size="md" />
+                {r.body && (
+                  <p className="text-sm leading-relaxed text-[var(--color-text)]">
+                    &ldquo;{r.body}&rdquo;
+                  </p>
+                )}
+                <footer className="mt-auto flex flex-col gap-1 border-t border-[var(--color-border)] pt-3 text-xs">
+                  <p className="font-semibold text-[var(--color-text)]">
+                    {r.guestName ?? (locale === "ar" ? "عميل" : "Customer")}
+                    {r.governorate && (
+                      <span className="font-normal text-[var(--color-text-secondary)]">
+                        {" · "}
+                        {r.governorate}
+                      </span>
+                    )}
+                  </p>
+                  <Link
+                    href={`/${locale}/products/${r.productSlug}`}
+                    className="text-[var(--color-accent-dark)] underline-offset-4 hover:underline"
+                  >
+                    {locale === "ar" ? r.productNameAr : r.productNameEn}
+                  </Link>
+                </footer>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Size guide banner */}
       <SizeGuideBanner locale={locale} />

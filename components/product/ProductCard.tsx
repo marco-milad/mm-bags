@@ -47,7 +47,7 @@ export function ProductCard({
             alt={name}
             fill
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 90vw"
-            className="object-cover transition duration-500 group-hover:scale-[1.03]"
+            className="object-cover transition duration-300 group-hover:scale-[1.03]"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-[var(--color-text-secondary)]">
@@ -61,7 +61,7 @@ export function ProductCard({
             aria-hidden
             fill
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 90vw"
-            className="object-cover opacity-0 transition duration-500 group-hover:opacity-100"
+            className="object-cover opacity-0 transition duration-300 group-hover:opacity-100"
           />
         )}
         {hasSale && !isOOS && (

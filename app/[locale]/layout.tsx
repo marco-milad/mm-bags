@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Cormorant_Garamond, Jost, Tajawal, JetBrains_Mono } from "next/font/google";
 import { Navbar } from "@/components/layout/Navbar";
+import { UrgencyBanner } from "@/components/layout/UrgencyBanner";
 import { Footer } from "@/components/layout/Footer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { WhatsAppFAB } from "@/components/shared/WhatsAppFAB";
@@ -72,6 +73,7 @@ export default async function RootLayout({
       className={`${cormorant.variable} ${jost.variable} ${tajawal.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
+        <UrgencyBanner locale={locale} />
         <Navbar locale={locale} t={t.nav} brandName={t.brand.name} />
         <main className="flex-1 pb-20 md:pb-0">{children}</main>
         <Footer locale={locale} t={t.footer} brand={t.brand} />

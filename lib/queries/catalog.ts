@@ -7,6 +7,39 @@ import { effectivePrice } from "@/lib/catalog-shared";
 
 export type ProductDetail = ProductWithVariants & { collection: Collection | null };
 
+export type CollectionWithCount = Collection & { productCount: number };
+
+export async function getCollectionsWithCounts(): Promise<CollectionWithCount[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("collections")
+    .select("*, products!inner(id, is_active)")
+    .eq("is_active", true)
+    .eq("products.is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error || !data) return [];
+
+  // The above join only returns collections that have at least one active product.
+  // Fetch ALL active collections separately so empty collections still appear.
+  const { data: allCollections } = await supabase
+    .from("collections")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  const countsBySlug = new Map<string, number>();
+  for (const row of data) {
+    const products = Array.isArray(row.products) ? row.products : [];
+    countsBySlug.set(row.slug, products.length);
+  }
+
+  return (allCollections ?? []).map((c) => ({
+    ...c,
+    productCount: countsBySlug.get(c.slug) ?? 0,
+  }));
+}
+
 export async function getCollections(): Promise<Collection[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -37,6 +70,8 @@ export async function getProducts(opts: {
   sort?: CatalogSort;
   sizeInches?: number;
   setOnly?: boolean;
+  tag?: string;
+  limit?: number;
 } = {}): Promise<ProductWithVariants[]> {
   const supabase = await createSupabaseServerClient();
   let query = supabase
@@ -46,6 +81,9 @@ export async function getProducts(opts: {
 
   if (opts.collectionId) {
     query = query.eq("collection_id", opts.collectionId);
+  }
+  if (opts.tag) {
+    query = query.contains("tags", [opts.tag]);
   }
 
   const sort = opts.sort ?? "featured";
@@ -81,6 +119,9 @@ export async function getProducts(opts: {
     products.sort((a, b) => effectivePrice(b) - effectivePrice(a));
   }
 
+  if (opts.limit) {
+    return products.slice(0, opts.limit);
+  }
   return products;
 }
 

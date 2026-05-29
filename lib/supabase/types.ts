@@ -438,6 +438,7 @@ export type Database = {
           product_id: string | null;
           user_id: string | null;
           guest_name: string | null;
+          governorate: string | null;
           rating: number;
           title: string | null;
           body: string | null;
@@ -451,6 +452,7 @@ export type Database = {
           product_id?: string | null;
           user_id?: string | null;
           guest_name?: string | null;
+          governorate?: string | null;
           rating: number;
           title?: string | null;
           body?: string | null;
@@ -464,6 +466,7 @@ export type Database = {
           product_id?: string | null;
           user_id?: string | null;
           guest_name?: string | null;
+          governorate?: string | null;
           rating?: number;
           title?: string | null;
           body?: string | null;

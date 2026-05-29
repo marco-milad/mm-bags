@@ -53,41 +53,43 @@ export function SizeGuideFAB({ locale }: { locale: Locale }) {
   const tooltipVisible = showPulse && !tooltipDismissed;
 
   return (
-    <SizeGuideModal locale={locale}>
-      <button
-        type="button"
-        onClick={() => {
-          setShowPulse(false);
-          setTooltipDismissed(true);
-        }}
-        aria-label={locale === "ar" ? "دليل المقاسات" : "Size guide"}
-        // Always pinned bottom-left regardless of locale, per spec.
-        // bottom-24 keeps it above the mobile bottom tab bar (h-16 + padding).
-        className="group fixed bottom-24 left-4 z-40 inline-flex items-center gap-2 rounded-full bg-[var(--color-accent)] px-3 py-3 text-sm font-semibold text-[var(--color-primary)] shadow-lg shadow-black/20 transition hover:scale-105 hover:bg-[var(--color-accent-light)] md:bottom-6 md:left-6 md:px-5"
-      >
-        {showPulse && (
-          <span
-            aria-hidden
-            className="absolute inset-0 -z-10 animate-ping rounded-full bg-[var(--color-accent)]/60"
-          />
-        )}
-        <Ruler className="h-5 w-5" />
-        <span className="hidden md:inline">
-          {locale === "ar" ? "دليل المقاسات" : "Size guide"}
-        </span>
+    // Wrapper owns positioning + becomes the anchor for the tooltip.
+    // The tooltip must NOT be a child of the trigger <button> (nested <button>
+    // is invalid HTML), so it lives as a sibling inside this relative container.
+    <div className="group fixed bottom-24 left-4 z-40 md:bottom-6 md:left-6">
+      <SizeGuideModal locale={locale}>
+        <button
+          type="button"
+          onClick={() => {
+            setShowPulse(false);
+            setTooltipDismissed(true);
+          }}
+          aria-label={locale === "ar" ? "دليل المقاسات" : "Size guide"}
+          className="relative inline-flex items-center gap-2 rounded-full bg-[var(--color-accent)] px-3 py-3 text-sm font-semibold text-[var(--color-primary)] shadow-lg shadow-black/20 transition hover:scale-105 hover:bg-[var(--color-accent-light)] md:px-5"
+        >
+          {showPulse && (
+            <span
+              aria-hidden
+              className="absolute inset-0 -z-10 animate-ping rounded-full bg-[var(--color-accent)]/60"
+            />
+          )}
+          <Ruler className="h-5 w-5" />
+          <span className="hidden md:inline">
+            {locale === "ar" ? "دليل المقاسات" : "Size guide"}
+          </span>
+        </button>
+      </SizeGuideModal>
 
-        {tooltipVisible && (
-          <Tooltip
-            locale={locale}
-            onDismiss={(e) => {
-              e.stopPropagation();
-              setTooltipDismissed(true);
-              setShowPulse(false);
-            }}
-          />
-        )}
-      </button>
-    </SizeGuideModal>
+      {tooltipVisible && (
+        <Tooltip
+          locale={locale}
+          onDismiss={() => {
+            setTooltipDismissed(true);
+            setShowPulse(false);
+          }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -96,13 +98,13 @@ function Tooltip({
   onDismiss,
 }: {
   locale: Locale;
-  onDismiss: (e: React.MouseEvent) => void;
+  onDismiss: () => void;
 }) {
   return (
-    <span
+    <div
       role="tooltip"
-      // Floats above the button, anchored to its left edge so it never goes off-screen.
-      className="pointer-events-auto absolute bottom-full left-0 mb-3 flex w-max max-w-[78vw] cursor-default items-start gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-xs font-medium text-white shadow-xl shadow-black/30 sm:max-w-xs"
+      // Floats above the button, anchored to the wrapper's left edge.
+      className="pointer-events-auto absolute bottom-full left-0 mb-3 flex w-max max-w-[78vw] items-start gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-xs font-medium text-white shadow-xl shadow-black/30 sm:max-w-xs"
     >
       <span className="leading-snug">
         {locale === "ar"
@@ -122,6 +124,6 @@ function Tooltip({
         aria-hidden
         className="absolute left-4 top-full -mt-px h-2 w-2 rotate-45 bg-[var(--color-primary)]"
       />
-    </span>
+    </div>
   );
 }
