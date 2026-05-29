@@ -142,7 +142,7 @@ export default async function OrderConfirmationPage({
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
           {order.payment_method === "cod" && (
             <Link
-              href={`/${locale}/track/${order.id}${phoneDigits ? `?p=${phoneDigits.slice(-4)}` : ""}`}
+              href={`/${locale}/track/${order.order_number}${phoneDigits ? `?p=${phoneDigits.slice(-4)}` : ""}`}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
             >
               <Package className="h-4 w-4" />
