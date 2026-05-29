@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { getDictionary } from "@/lib/i18n";
 import { FounderQuote } from "@/components/shared/FounderQuote";
+import { SizeGuideBanner } from "@/components/size-guide/SizeGuideBanner";
 
 export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
@@ -100,6 +101,9 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
           ))}
         </div>
       </section>
+
+      {/* Size guide banner */}
+      <SizeGuideBanner locale={locale} />
 
       {/* Promise */}
       <section className="bg-[var(--color-surface)] py-16">

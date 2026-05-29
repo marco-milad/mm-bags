@@ -6,6 +6,9 @@ import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductActions } from "@/components/product/ProductActions";
 import { ProductAccordion } from "@/components/product/ProductAccordion";
 import { ProductCard } from "@/components/product/ProductCard";
+import { ReviewsSection } from "@/components/reviews/ReviewsSection";
+import { ReviewStars } from "@/components/reviews/ReviewStars";
+import { getApprovedReviews, summarize } from "@/lib/queries/reviews";
 
 export const dynamic = "force-dynamic";
 
@@ -42,11 +45,15 @@ export default async function ProductDetailPage({
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const related = await getRelatedProducts({
-    excludeProductId: product.id,
-    collectionId: product.collection?.id ?? null,
-    limit: 4,
-  });
+  const [related, reviewsForSummary] = await Promise.all([
+    getRelatedProducts({
+      excludeProductId: product.id,
+      collectionId: product.collection?.id ?? null,
+      limit: 4,
+    }),
+    getApprovedReviews(product.id, 200),
+  ]);
+  const summary = summarize(reviewsForSummary);
 
   const name = locale === "ar" ? product.name_ar : product.name_en;
   const collectionName =
@@ -97,6 +104,20 @@ export default async function ProductDetailPage({
                 {product.name_en}
               </p>
             )}
+            {summary.total > 0 && (
+              <a
+                href="#reviews"
+                className="mt-1 inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+              >
+                <ReviewStars value={summary.average} size="sm" />
+                <span className="font-mono">
+                  {summary.average.toFixed(1)}
+                </span>
+                <span>
+                  ({summary.total} {locale === "ar" ? "تقييم" : summary.total > 1 ? "reviews" : "review"})
+                </span>
+              </a>
+            )}
           </header>
 
           <ProductActions
@@ -108,6 +129,13 @@ export default async function ProductDetailPage({
           <ProductAccordion product={product} locale={locale} />
         </div>
       </div>
+
+      {/* Reviews */}
+      <ReviewsSection
+        productId={product.id}
+        productSlug={product.slug}
+        locale={locale}
+      />
 
       {/* Related products */}
       {related.length > 0 && (

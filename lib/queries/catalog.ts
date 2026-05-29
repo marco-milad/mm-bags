@@ -35,6 +35,8 @@ export async function getCollectionBySlug(slug: string): Promise<Collection | nu
 export async function getProducts(opts: {
   collectionId?: string;
   sort?: CatalogSort;
+  sizeInches?: number;
+  setOnly?: boolean;
 } = {}): Promise<ProductWithVariants[]> {
   const supabase = await createSupabaseServerClient();
   let query = supabase
@@ -60,7 +62,18 @@ export async function getProducts(opts: {
   const { data, error } = await query;
   if (error) throw new Error(`getProducts failed: ${error.message}`);
 
-  const products = (data ?? []) as ProductWithVariants[];
+  let products = (data ?? []) as ProductWithVariants[];
+
+  // PostgREST can't filter a parent row by a condition on a nested table; do it here.
+  if (opts.sizeInches !== undefined) {
+    const target = opts.sizeInches;
+    products = products.filter((p) =>
+      p.product_variants.some((v) => v.size_inches === target),
+    );
+  }
+  if (opts.setOnly) {
+    products = products.filter((p) => (p.tags ?? []).includes("set"));
+  }
 
   if (sort === "price-asc") {
     products.sort((a, b) => effectivePrice(a) - effectivePrice(b));

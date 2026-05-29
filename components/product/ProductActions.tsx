@@ -1,12 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bell, Check, MessageCircle, ShoppingBag } from "lucide-react";
+import { Check, MessageCircle, ShoppingBag } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { ProductWithVariants } from "@/lib/catalog-shared";
 import type { ProductVariant } from "@/lib/supabase/types";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { useCartStore } from "@/store/cart";
+import { WishlistButton } from "./WishlistButton";
+import { BackInStockForm } from "./BackInStockForm";
+import { SizeGuideModal } from "@/components/size-guide/SizeGuideModal";
+import { Ruler } from "lucide-react";
 
 type Color = { hex: string; ar: string; en: string };
 
@@ -43,8 +47,6 @@ export function ProductActions({
   const [selectedSize, setSelectedSize] = useState<number | null>(
     initial?.size_inches ?? null,
   );
-  const [notifyRequested, setNotifyRequested] = useState(false);
-
   const addItem = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
 
@@ -111,11 +113,6 @@ export function ProductActions({
       unitPrice: price,
     });
     openDrawer();
-  };
-
-  const onNotify = () => {
-    // Phase 3 will POST to /api/notifications with email/phone.
-    setNotifyRequested(true);
   };
 
   const productName = locale === "ar" ? product.name_ar : product.name_en;
@@ -206,9 +203,20 @@ export function ProductActions({
       {/* Size picker */}
       {sizes.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-            {locale === "ar" ? "المقاس" : "Size"}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
+              {locale === "ar" ? "المقاس" : "Size"}
+            </p>
+            <SizeGuideModal locale={locale}>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-primary)] underline-offset-4 hover:underline"
+              >
+                <Ruler className="h-3.5 w-3.5" />
+                {locale === "ar" ? "دليل المقاسات" : "Size guide"}
+              </button>
+            </SizeGuideModal>
+          </div>
           <div className="flex flex-wrap gap-2">
             {sizes.map((s) => {
               const stockedForSize = variantHasStock(
@@ -258,26 +266,14 @@ export function ProductActions({
 
       {/* CTA */}
       {isOOS ? (
-        <button
-          type="button"
-          onClick={onNotify}
-          disabled={notifyRequested}
-          className="flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)] disabled:opacity-70"
-        >
-          {notifyRequested ? (
-            <>
-              <Check className="h-4 w-4" />
-              {locale === "ar"
-                ? "هنبعتلك إشعار لما يرجع"
-                : "We'll notify you when it's back"}
-            </>
-          ) : (
-            <>
-              <Bell className="h-4 w-4" />
-              {locale === "ar" ? "نبّهني لما يرجع" : "Notify me when back"}
-            </>
-          )}
-        </button>
+        selectedVariant && (
+          <BackInStockForm
+            key={selectedVariant.id}
+            productId={product.id}
+            variantId={selectedVariant.id}
+            locale={locale}
+          />
+        )
       ) : (
         <button
           type="button"
@@ -289,15 +285,28 @@ export function ProductActions({
         </button>
       )}
 
-      <a
-        href={whatsappHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2 rounded-full border border-[var(--color-border)] px-6 py-3 text-sm font-medium text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
-      >
-        <MessageCircle className="h-4 w-4" />
-        {locale === "ar" ? "اسأل عن المنتج" : "Ask about this product"}
-      </a>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <WishlistButton
+          locale={locale}
+          variant="button"
+          product={{
+            productId: product.id,
+            productSlug: product.slug,
+            name_ar: product.name_ar,
+            name_en: product.name_en,
+            image: product.images?.[0] ?? null,
+          }}
+        />
+        <a
+          href={whatsappHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 rounded-full border border-[var(--color-border)] px-6 py-3 text-sm font-medium text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
+        >
+          <MessageCircle className="h-4 w-4" />
+          {locale === "ar" ? "اسأل عن المنتج" : "Ask about this product"}
+        </a>
+      </div>
 
       {/* Trust badges */}
       <ul className="grid grid-cols-2 gap-3 border-t border-[var(--color-border)] pt-5 text-xs text-[var(--color-text-secondary)] md:grid-cols-4">

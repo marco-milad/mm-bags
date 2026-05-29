@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Locale } from "@/lib/i18n-config";
 import { formatPriceEGP } from "@/lib/utils";
 import { effectivePrice, totalStock, type ProductWithVariants } from "@/lib/catalog-shared";
+import { WishlistButton } from "@/components/product/WishlistButton";
 
 export function ProductCard({
   product,
@@ -30,6 +31,16 @@ export function ProductCard({
       className="group relative flex flex-col overflow-hidden rounded-xl bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] transition hover:shadow-lg"
     >
       <div className="relative aspect-square overflow-hidden bg-[var(--color-surface-2)]">
+        <WishlistButton
+          locale={locale}
+          product={{
+            productId: product.id,
+            productSlug: product.slug,
+            name_ar: product.name_ar,
+            name_en: product.name_en,
+            image: primaryImage ?? null,
+          }}
+        />
         {primaryImage ? (
           <Image
             src={primaryImage}

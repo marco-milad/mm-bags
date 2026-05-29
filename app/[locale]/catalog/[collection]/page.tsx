@@ -31,13 +31,16 @@ export default async function CollectionPage({
   const sp = await searchParams;
   const sortParam = typeof sp?.sort === "string" ? sp.sort : undefined;
   const sort = isCatalogSort(sortParam) ? sortParam : "featured";
+  const sizeRaw = typeof sp?.size === "string" ? Number(sp.size) : NaN;
+  const sizeInches = Number.isInteger(sizeRaw) && sizeRaw > 0 ? sizeRaw : undefined;
+  const setOnly = sp?.type === "set";
 
   const collection = await getCollectionBySlug(slug);
   if (!collection) notFound();
 
   const [collections, products] = await Promise.all([
     getCollections(),
-    getProducts({ collectionId: collection.id, sort }),
+    getProducts({ collectionId: collection.id, sort, sizeInches, setOnly }),
   ]);
 
   return (
