@@ -10,6 +10,8 @@ import { CartDrawer } from "@/components/cart/CartDrawer";
 import { SizeGuideFAB } from "@/components/size-guide/SizeGuideFAB";
 import { direction, hasLocale, locales } from "@/lib/i18n-config";
 import { getDictionary } from "@/lib/i18n";
+import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
+import { getProducts } from "@/lib/queries/catalog";
 import "../globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -63,7 +65,11 @@ export default async function RootLayout({
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
 
-  const t = await getDictionary(locale);
+  const [t, megaCategories, megaFeatured] = await Promise.all([
+    getDictionary(locale),
+    getTopLevelCategoriesWithCounts(),
+    getProducts({ tag: "best-seller", limit: 3 }),
+  ]);
   const dir = direction(locale);
 
   return (
@@ -74,7 +80,13 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
         <UrgencyBanner locale={locale} />
-        <Navbar locale={locale} t={t.nav} brandName={t.brand.name} />
+        <Navbar
+          locale={locale}
+          t={t.nav}
+          brandName={t.brand.name}
+          megaCategories={megaCategories}
+          megaFeatured={megaFeatured}
+        />
         <main className="flex-1 pb-20 md:pb-0">{children}</main>
         <Footer locale={locale} t={t.footer} brand={t.brand} />
         <MobileBottomNav locale={locale} t={t.nav} />

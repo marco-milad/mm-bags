@@ -57,6 +57,7 @@ export type Database = {
           cover_image: string | null;
           sort_order: number;
           is_active: boolean;
+          parent_slug: string | null;
           created_at: string;
         };
         Insert: {
@@ -69,6 +70,7 @@ export type Database = {
           cover_image?: string | null;
           sort_order?: number;
           is_active?: boolean;
+          parent_slug?: string | null;
           created_at?: string;
         };
         Update: {
@@ -81,6 +83,7 @@ export type Database = {
           cover_image?: string | null;
           sort_order?: number;
           is_active?: boolean;
+          parent_slug?: string | null;
           created_at?: string;
         };
         Relationships: [];

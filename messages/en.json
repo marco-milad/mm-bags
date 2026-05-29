@@ -7,11 +7,14 @@
   "nav": {
     "home": "Home",
     "catalog": "Shop",
+    "categories": "Categories",
     "about": "Story",
     "cart": "Cart",
     "account": "Account",
     "login": "Sign in",
-    "search": "Search"
+    "search": "Search",
+    "shop_all": "Browse all products",
+    "featured": "Today's picks"
   },
   "home": {
     "hero": {

@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { isCatalogSort } from "@/lib/catalog-shared";
-import { getCollections, getProducts } from "@/lib/queries/catalog";
+import { getProducts } from "@/lib/queries/catalog";
+import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -20,17 +21,30 @@ export default async function CatalogPage({
   const sizeInches = Number.isInteger(sizeRaw) && sizeRaw > 0 ? sizeRaw : undefined;
   const setOnly = sp?.type === "set";
 
-  const [collections, products] = await Promise.all([
-    getCollections(),
+  const [topLevel, products] = await Promise.all([
+    getTopLevelCategoriesWithCounts(),
     getProducts({ sort, sizeInches, setOnly }),
   ]);
+
+  const crumbs = [
+    { href: `/${locale}`, label: locale === "ar" ? "الرئيسية" : "Home" },
+    {
+      href: `/${locale}/categories`,
+      label: locale === "ar" ? "التشكيلات" : "Categories",
+    },
+    {
+      href: `/${locale}/catalog`,
+      label: locale === "ar" ? "كل المنتجات" : "All products",
+    },
+  ];
 
   return (
     <CatalogView
       locale={locale}
-      collections={collections}
+      collections={topLevel}
       products={products}
       sort={sort}
+      crumbs={crumbs}
     />
   );
 }

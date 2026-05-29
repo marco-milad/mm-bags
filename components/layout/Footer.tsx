@@ -43,13 +43,12 @@ export function Footer({
         <FooterColumn
           title={t.shop}
           links={[
-            { href: `${base}/catalog`, label: locale === "ar" ? "كل المنتجات" : "All products" },
-            { href: `${base}/catalog/milano-series`, label: "Milano Series" },
-            { href: `${base}/catalog/calvin-klein`, label: "Calvin Klein" },
-            {
-              href: `${base}/catalog/travel-accessories`,
-              label: locale === "ar" ? "إكسسوارات السفر" : "Travel accessories",
-            },
+            { href: `${base}/categories`, label: locale === "ar" ? "كل التشكيلات" : "All categories" },
+            { href: `${base}/catalog/travel-bags`, label: locale === "ar" ? "شنط السفر" : "Travel bags" },
+            { href: `${base}/catalog/backpacks`, label: locale === "ar" ? "شنط الظهر" : "Backpacks" },
+            { href: `${base}/catalog/school-bags`, label: locale === "ar" ? "شنط المدارس" : "School bags" },
+            { href: `${base}/catalog/ladies-bags`, label: locale === "ar" ? "شنط الحريم" : "Ladies bags" },
+            { href: `${base}/catalog/laptop-bags`, label: locale === "ar" ? "شنط لاب توب" : "Laptop bags" },
           ]}
         />
 

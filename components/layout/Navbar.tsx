@@ -1,27 +1,37 @@
 import Link from "next/link";
 import { Heart, Search, User } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
+import type { ProductWithVariants } from "@/lib/catalog-shared";
+import type { TopLevelCategory } from "@/lib/queries/categories";
 import { CartIconButton } from "@/components/cart/CartIconButton";
 import { LocaleSwitcher } from "./LocaleSwitcher";
+import { MegaMenu } from "./MegaMenu";
 
 type NavStrings = {
   home: string;
   catalog: string;
+  categories: string;
   about: string;
   cart: string;
   account: string;
   login: string;
   search: string;
+  shop_all: string;
+  featured: string;
 };
 
 export function Navbar({
   locale,
   t,
   brandName,
+  megaCategories,
+  megaFeatured,
 }: {
   locale: Locale;
   t: NavStrings;
   brandName: string;
+  megaCategories: TopLevelCategory[];
+  megaFeatured: ProductWithVariants[];
 }) {
   const base = `/${locale}`;
   return (
@@ -35,8 +45,19 @@ export function Navbar({
             {brandName}
           </Link>
           <nav className="hidden items-center gap-6 text-sm md:flex">
-            <Link href={`${base}/catalog`} className="hover:text-[var(--color-accent-dark)]">
-              {t.catalog}
+            <MegaMenu
+              locale={locale}
+              triggerLabel={t.catalog}
+              shopAllLabel={t.shop_all}
+              featuredLabel={t.featured}
+              categories={megaCategories}
+              featured={megaFeatured}
+            />
+            <Link
+              href={`${base}/categories`}
+              className="hover:text-[var(--color-accent-dark)]"
+            >
+              {t.categories}
             </Link>
             <Link href={`${base}/about`} className="hover:text-[var(--color-accent-dark)]">
               {t.about}

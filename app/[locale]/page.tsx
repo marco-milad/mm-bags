@@ -6,18 +6,17 @@ import { FounderQuote } from "@/components/shared/FounderQuote";
 import { SizeGuideBanner } from "@/components/size-guide/SizeGuideBanner";
 import { ProductCard } from "@/components/product/ProductCard";
 import { ReviewStars } from "@/components/reviews/ReviewStars";
-import {
-  getCollectionsWithCounts,
-  getProducts,
-} from "@/lib/queries/catalog";
+import { categoryIcon } from "@/lib/categories-config";
+import { getProducts } from "@/lib/queries/catalog";
+import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 import { getFeaturedReviews } from "@/lib/queries/reviews";
 
 export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
 
-  const [collections, bestSellers, homeReviews] = await Promise.all([
-    getCollectionsWithCounts(),
+  const [categories, bestSellers, homeReviews] = await Promise.all([
+    getTopLevelCategoriesWithCounts(),
     getProducts({ tag: "best-seller", limit: 4 }),
     getFeaturedReviews(3),
   ]);
@@ -54,7 +53,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
           </p>
           <div className="mt-2 flex flex-wrap gap-3">
             <Link
-              href={`/${locale}/catalog`}
+              href={`/${locale}/categories`}
               className="rounded-full bg-[var(--color-accent)] px-7 py-3 text-sm font-semibold text-[var(--color-primary)] shadow-lg shadow-black/20 transition hover:bg-[var(--color-accent-light)]"
             >
               {t.home.hero.cta_shop}
@@ -81,17 +80,17 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         <header className="mb-10 flex items-baseline justify-between">
           <h2 className="font-display text-3xl md:text-4xl">{t.home.collections_title}</h2>
           <Link
-            href={`/${locale}/catalog`}
+            href={`/${locale}/categories`}
             className="text-sm text-[var(--color-primary)] underline-offset-4 hover:underline"
           >
             {locale === "ar" ? "اعرض الكل" : "View all"}
           </Link>
         </header>
-        <div className="grid gap-6 md:grid-cols-3">
-          {collections.map((collection) => (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {categories.map((cat) => (
             <Link
-              key={collection.slug}
-              href={`/${locale}/catalog/${collection.slug}`}
+              key={cat.slug}
+              href={`/${locale}/catalog/${cat.slug}`}
               className="group relative flex aspect-[3/4] flex-col overflow-hidden rounded-2xl bg-[var(--color-primary)] ring-1 ring-[var(--color-border)] transition hover:shadow-2xl hover:ring-[var(--color-accent)]"
             >
               <div
@@ -106,27 +105,30 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
                     "radial-gradient(circle at 30% 25%, rgba(212,180,131,0.5), transparent 55%)",
                 }}
               />
-              <div className="relative flex h-full flex-col justify-end gap-2 p-7 text-white">
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--color-accent-light)]">
-                  {collection.productCount}{" "}
-                  {locale === "ar"
-                    ? collection.productCount === 1
+              <div className="relative flex h-full flex-col justify-between gap-2 p-7 text-white">
+                <span aria-hidden className="text-5xl">
+                  {categoryIcon(cat.slug)}
+                </span>
+                <div className="flex flex-col gap-1">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--color-accent-light)]">
+                    {cat.productCount}{" "}
+                    {locale === "ar"
                       ? "منتج"
-                      : "منتج"
-                    : collection.productCount === 1
-                      ? "product"
-                      : "products"}
-                </p>
-                <h3 className="font-display text-3xl leading-tight md:text-4xl">
-                  {locale === "ar" ? collection.name_ar : collection.name_en}
-                </h3>
-                <p className="text-xs text-white/70">
-                  {locale === "ar" ? collection.name_en : collection.name_ar}
-                </p>
-                <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-accent)] transition group-hover:gap-2.5">
-                  {locale === "ar" ? "تصفح المجموعة" : "Browse collection"}
-                  <span aria-hidden>{locale === "ar" ? "←" : "→"}</span>
-                </p>
+                      : cat.productCount === 1
+                        ? "product"
+                        : "products"}
+                  </p>
+                  <h3 className="font-display text-2xl leading-tight md:text-3xl">
+                    {locale === "ar" ? cat.name_ar : cat.name_en}
+                  </h3>
+                  <p className="text-xs text-white/60">
+                    {locale === "ar" ? cat.name_en : cat.name_ar}
+                  </p>
+                  <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-accent)] transition group-hover:gap-2.5">
+                    {locale === "ar" ? "تصفح المجموعة" : "Browse collection"}
+                    <span aria-hidden>{locale === "ar" ? "←" : "→"}</span>
+                  </p>
+                </div>
               </div>
             </Link>
           ))}

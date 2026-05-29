@@ -67,6 +67,7 @@ export async function getCollectionBySlug(slug: string): Promise<Collection | nu
 
 export async function getProducts(opts: {
   collectionId?: string;
+  collectionIds?: string[]; // takes precedence over collectionId
   sort?: CatalogSort;
   sizeInches?: number;
   setOnly?: boolean;
@@ -79,7 +80,9 @@ export async function getProducts(opts: {
     .select("*, product_variants(*)")
     .eq("is_active", true);
 
-  if (opts.collectionId) {
+  if (opts.collectionIds && opts.collectionIds.length > 0) {
+    query = query.in("collection_id", opts.collectionIds);
+  } else if (opts.collectionId) {
     query = query.eq("collection_id", opts.collectionId);
   }
   if (opts.tag) {

@@ -6,14 +6,26 @@ export function CollectionFilter({
   locale,
   collections,
   activeSlug,
+  allHref,
+  allLabel,
 }: {
   locale: Locale;
   collections: Collection[];
   activeSlug?: string;
+  /** Override target of the "All" pill — defaults to /[locale]/catalog */
+  allHref?: string;
+  /** Override label for the "All" pill */
+  allLabel?: { ar: string; en: string };
 }) {
+  const defaultAll = { ar: "الكل", en: "All" };
+  const label = allLabel ?? defaultAll;
   const items = [
-    { slug: null, name_ar: "الكل", name_en: "All" },
-    ...collections.map((c) => ({ slug: c.slug, name_ar: c.name_ar, name_en: c.name_en })),
+    { slug: null as string | null, name_ar: label.ar, name_en: label.en },
+    ...collections.map((c) => ({
+      slug: c.slug as string | null,
+      name_ar: c.name_ar,
+      name_en: c.name_en,
+    })),
   ];
 
   return (
@@ -25,7 +37,7 @@ export function CollectionFilter({
         const isActive = (item.slug ?? null) === (activeSlug ?? null);
         const href = item.slug
           ? `/${locale}/catalog/${item.slug}`
-          : `/${locale}/catalog`;
+          : (allHref ?? `/${locale}/catalog`);
         return (
           <Link
             key={item.slug ?? "all"}

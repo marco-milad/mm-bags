@@ -7,11 +7,14 @@
   "nav": {
     "home": "الرئيسية",
     "catalog": "المنتجات",
+    "categories": "التشكيلات",
     "about": "القصة",
     "cart": "الكارت",
     "account": "حسابي",
     "login": "تسجيل دخول",
-    "search": "بحث"
+    "search": "بحث",
+    "shop_all": "عرض كل المنتجات",
+    "featured": "مختارات اليوم"
   },
   "home": {
     "hero": {

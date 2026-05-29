@@ -6,18 +6,26 @@ import { CollectionFilter } from "./CollectionFilter";
 import { CatalogToolbar } from "./CatalogToolbar";
 import { ProductCard } from "@/components/product/ProductCard";
 
+export type CrumbLink = { href: string; label: string };
+
 export function CatalogView({
   locale,
   collections,
   products,
   activeCollection,
   sort,
+  crumbs,
+  filterAllHref,
+  filterAllLabel,
 }: {
   locale: Locale;
   collections: Collection[];
   products: ProductWithVariants[];
   activeCollection?: Collection | null;
   sort: CatalogSort;
+  crumbs?: CrumbLink[];
+  filterAllHref?: string;
+  filterAllLabel?: { ar: string; en: string };
 }) {
   const title = activeCollection
     ? locale === "ar"
@@ -29,6 +37,26 @@ export function CatalogView({
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
+      {crumbs && crumbs.length > 0 && (
+        <nav
+          aria-label={locale === "ar" ? "مسار التنقل" : "Breadcrumb"}
+          className="mb-4 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]"
+        >
+          {crumbs.map((c, i) => (
+            <span key={i} className="inline-flex items-center gap-2">
+              {i > 0 && <span aria-hidden>/</span>}
+              {i === crumbs.length - 1 ? (
+                <span className="text-[var(--color-text)]">{c.label}</span>
+              ) : (
+                <Link href={c.href} className="hover:text-[var(--color-text)]">
+                  {c.label}
+                </Link>
+              )}
+            </span>
+          ))}
+        </nav>
+      )}
+
       <header className="mb-6 flex flex-col gap-2">
         <p className="font-mono text-xs uppercase tracking-[0.25em] text-[var(--color-text-secondary)]">
           {locale === "ar" ? "تسوق" : "Shop"}
@@ -47,6 +75,8 @@ export function CatalogView({
         locale={locale}
         collections={collections}
         activeSlug={activeCollection?.slug}
+        allHref={filterAllHref}
+        allLabel={filterAllLabel}
       />
 
       <div className="mt-3">
