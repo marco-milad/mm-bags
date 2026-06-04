@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
       // Unsplash — used for hero, mood board, category cards, and product seed
       // images until real photography lands.
       { protocol: "https" as const, hostname: "images.unsplash.com" },
+      // Shopify CDN — imported Milano product imagery from bsbags-eg.com.
+      // Temporary; replace with images hosted on Supabase Storage before launch.
+      { protocol: "https" as const, hostname: "cdn.shopify.com" },
     ],
   },
   async redirects() {
