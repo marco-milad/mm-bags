@@ -40,22 +40,32 @@ export function UrgencyBanner({ locale }: { locale: Locale }) {
     }
   };
 
+  // Per the design-system spec: navy-900 background with brass-200 text.
+  // 12.5px centered, three trust devices separated by middots.
+  const items =
+    locale === "ar"
+      ? ["شحن مجاني على الطلبات فوق ١٬٥٠٠ ج.م.", "الدفع عند الاستلام", "بنشحن لكل ٢٧ محافظة"]
+      : ["Free shipping over LE 1,500", "Cash on delivery", "Ships to all 27 governorates"];
+
   return (
     <div
       role="region"
       aria-label={locale === "ar" ? "إعلان" : "Announcement"}
-      className="sticky top-0 z-50 flex h-10 items-center justify-center bg-[var(--color-accent)] px-4 text-[var(--color-primary)]"
+      className="sticky top-0 z-50 flex h-10 items-center justify-center bg-navy-900 px-10 text-brass-200"
     >
-      <p className="text-center text-xs font-semibold sm:text-sm">
-        {locale === "ar"
-          ? "🔥 عرض محدود — شحن مجاني على الطلبات فوق LE 1,500"
-          : "🔥 Limited time — Free shipping on orders over LE 1,500"}
+      <p className="flex items-center justify-center gap-2 text-center text-[12.5px] font-medium sm:gap-3">
+        {items.map((item, i) => (
+          <span key={i} className="inline-flex items-center gap-2 sm:gap-3">
+            {i > 0 && <span aria-hidden className="text-brass-400/50">·</span>}
+            <span>{item}</span>
+          </span>
+        ))}
       </p>
       <button
         type="button"
         onClick={handleDismiss}
         aria-label={locale === "ar" ? "إخفاء" : "Dismiss"}
-        className="absolute rounded-full p-1.5 text-[var(--color-primary)] transition hover:bg-white/20 ltr:right-2 rtl:left-2"
+        className="absolute rounded-full p-1.5 text-brass-200 transition hover:bg-white/10 hover:text-paper ltr:right-2 rtl:left-2"
       >
         <X className="h-4 w-4" />
       </button>

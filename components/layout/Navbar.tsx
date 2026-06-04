@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Heart, Search, User } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
@@ -40,9 +41,17 @@ export function Navbar({
         <div className="flex items-center gap-6 md:gap-10">
           <Link
             href={base}
-            className="font-display text-xl tracking-tight text-[var(--color-primary)]"
+            aria-label={brandName}
+            className="inline-flex items-center"
           >
-            {brandName}
+            <Image
+              src="/assets/logos/logo-navbar.svg"
+              alt={brandName}
+              width={232}
+              height={64}
+              priority
+              className="h-10 w-auto md:h-11"
+            />
           </Link>
           <nav className="hidden items-center gap-6 text-sm md:flex">
             <MegaMenu

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="M.M Bags travel seal">
+  <circle cx="50" cy="50" r="48" fill="none" stroke="#1B2B4B" stroke-width="1.4"></circle>
+  <circle cx="50" cy="50" r="41.5" fill="none" stroke="#1B2B4B" stroke-width="0.7"></circle>
+  <path d="M49 26 L51 26 L52 32 L59 37 L59 39 L52 37 L52 43 L54.5 45 L54.5 46.4 L50 45.2 L45.5 46.4 L45.5 45 L48 43 L48 37 L41 39 L41 37 L48 32 Z" fill="#B8975A"></path>
+  <text font-family="&#39;Cormorant Garamond&#39;, Georgia, serif" font-weight="700" font-size="21" fill="#1B2B4B" text-anchor="middle" x="50" y="60" letter-spacing="-0.5">M.M</text>
+  <text font-family="&#39;Jost&#39;, Arial, sans-serif" font-weight="600" font-size="4.4" fill="#1B2B4B" text-anchor="middle" x="50" y="69" letter-spacing="2.4">EST · 2026</text>
+  <path id="arcTop" fill="none" d="M 10,50 a 40,40 0 0,1 80,0"></path>
+  <path id="arcBot" fill="none" d="M 13,50 a 37,37 0 0,0 74,0"></path>
+  <text font-family="&#39;Jost&#39;, Arial, sans-serif" font-weight="600" font-size="6" fill="#1B2B4B" letter-spacing="2.6"><textPath href="#arcTop" startOffset="50%" text-anchor="middle">M.M BAGS</textPath></text>
+  <text font-family="&#39;Jost&#39;, Arial, sans-serif" font-weight="500" font-size="5" fill="#1B2B4B" letter-spacing="2"><textPath href="#arcBot" startOffset="50%" text-anchor="middle">CAIRO · EGYPT</textPath></text>
+  <g fill="#B8975A">
+    <rect x="8.6" y="48.6" width="2.8" height="2.8" transform="rotate(45 10 50)"></rect>
+    <rect x="88.6" y="48.6" width="2.8" height="2.8" transform="rotate(45 90 50)"></rect>
+  </g>
+</svg>

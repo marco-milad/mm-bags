@@ -40,8 +40,7 @@ with c as (select id from public.collections where slug = 'milano-series'),
               'شنطة كابين خفيفة من تشكيلة Milano — قياس 20 بوصة، مناسبة للرحلات القصيرة وحجم المقصورة.',
               'A lightweight cabin from the Milano series — 20 inch, perfect for short trips and overhead bins.',
               1800, 1500,
-              array['https://picsum.photos/seed/mm-milano-cabin-20-a/800/800',
-                    'https://picsum.photos/seed/mm-milano-cabin-20-b/800/800'],
+              array['https://images.unsplash.com/photo-1581553673739-c4906b5d0de8?w=800&q=80'],
               'بوليكربونات صلب', 'Hard polycarbonate', 2.8, 10
        from c
        on conflict (slug) do update set
@@ -80,8 +79,7 @@ with c as (select id from public.collections where slug = 'milano-series'),
               'الحجم الوسط من Milano — 24 بوصة، توازن مثالي بين المساحة والوزن لرحلة أسبوع.',
               'Milano in 24" — the sweet spot between space and weight for a week-long trip.',
               2400,
-              array['https://picsum.photos/seed/mm-milano-med-24-a/800/800',
-                    'https://picsum.photos/seed/mm-milano-med-24-b/800/800'],
+              array['https://images.unsplash.com/photo-1581553673739-c4906b5d0de8?w=800&q=80'],
               'بوليكربونات صلب', 'Hard polycarbonate', 3.6, 11
        from c
        on conflict (slug) do update set base_price = excluded.base_price, sale_price = null
@@ -108,8 +106,7 @@ with c as (select id from public.collections where slug = 'milano-series'),
               'طقم كامل من Milano: كابين 20" + وسط 24" + كبير 28". الحل الأمثل للعائلات والرحلات الطويلة.',
               'A full Milano set: 20" cabin + 24" medium + 28" large. The right answer for families and long trips.',
               3900, 3500,
-              array['https://picsum.photos/seed/mm-milano-set-a/800/800',
-                    'https://picsum.photos/seed/mm-milano-set-b/800/800'],
+              array['https://images.unsplash.com/photo-1581553673739-c4906b5d0de8?w=800&q=80'],
               'بوليكربونات صلب', 'Hard polycarbonate', 10.2, 12,
               array['set','family','featured']
        from c
@@ -136,8 +133,7 @@ with c as (select id from public.collections where slug = 'calvin-klein'),
               'تصميم Calvin Klein الأنيق بحجم 24 بوصة — يجمع بين المظهر والجودة.',
               'The signature Calvin Klein silhouette at 24" — style meets durability.',
               2800,
-              array['https://picsum.photos/seed/mm-ck-sig-24-a/800/800',
-                    'https://picsum.photos/seed/mm-ck-sig-24-b/800/800'],
+              array['https://images.unsplash.com/photo-1581553673739-c4906b5d0de8?w=800&q=80'],
               'ABS مع تشطيب نسيج', 'ABS with textured finish', 3.9, 20
        from c
        on conflict (slug) do update set base_price = excluded.base_price
@@ -163,8 +159,7 @@ with c as (select id from public.collections where slug = 'calvin-klein'),
               'حجم الكابين من Calvin Klein — 20 بوصة، خفيف وعملي.',
               'Calvin Klein in carry-on size — lightweight and practical.',
               2200,
-              array['https://picsum.photos/seed/mm-ck-co-20-a/800/800',
-                    'https://picsum.photos/seed/mm-ck-co-20-b/800/800'],
+              array['https://images.unsplash.com/photo-1581553673739-c4906b5d0de8?w=800&q=80'],
               'ABS مع تشطيب نسيج', 'ABS with textured finish', 2.9, 21
        from c
        on conflict (slug) do update set base_price = excluded.base_price
@@ -190,8 +185,7 @@ with c as (select id from public.collections where slug = 'calvin-klein'),
               'شنطة يد لرحلات الويك إند — قماش متين مع تفاصيل CK.',
               'A weekend duffel — durable fabric with classic CK details.',
               1400, 1100,
-              array['https://picsum.photos/seed/mm-ck-wknd-a/800/800',
-                    'https://picsum.photos/seed/mm-ck-wknd-b/800/800'],
+              array['https://images.unsplash.com/photo-1581553673739-c4906b5d0de8?w=800&q=80'],
               'بوليستر متين', 'Heavy-duty polyester', 1.2, 22
        from c
        on conflict (slug) do update set sale_price = excluded.sale_price
@@ -217,8 +211,7 @@ with c as (select id from public.collections where slug = 'travel-accessories'),
               'منظمات سفر بمقاسات متنوعة لترتيب شنطتك بسهولة.',
               'Packing cubes in mixed sizes to keep your luggage organized.',
               600,
-              array['https://picsum.photos/seed/mm-cubes-a/800/800',
-                    'https://picsum.photos/seed/mm-cubes-b/800/800'],
+              array['https://images.unsplash.com/photo-1581553673739-c4906b5d0de8?w=800&q=80'],
               'نايلون خفيف', 'Lightweight nylon', 30
        from c
        on conflict (slug) do update set base_price = excluded.base_price
@@ -244,8 +237,7 @@ with c as (select id from public.collections where slug = 'travel-accessories'),
               'شنطة مقاومة للماء بداخل مقسم لأدوات السفر الشخصية.',
               'A water-resistant toiletry bag with compartments for travel essentials.',
               350, 280,
-              array['https://picsum.photos/seed/mm-toiletry-a/800/800',
-                    'https://picsum.photos/seed/mm-toiletry-b/800/800'],
+              array['https://images.unsplash.com/photo-1581553673739-c4906b5d0de8?w=800&q=80'],
               'بوليستر مقاوم للماء', 'Water-resistant polyester', 31
        from c
        on conflict (slug) do update set sale_price = excluded.sale_price
@@ -271,8 +263,7 @@ with c as (select id from public.collections where slug = 'travel-accessories'),
               'قفل أمان معتمد دولياً — يحمي شنطتك أثناء السفر.',
               'An internationally certified safety lock for your luggage.',
               180,
-              array['https://picsum.photos/seed/mm-tsa-a/800/800',
-                    'https://picsum.photos/seed/mm-tsa-b/800/800'],
+              array['https://images.unsplash.com/photo-1581553673739-c4906b5d0de8?w=800&q=80'],
               'سبيكة معدنية', 'Metal alloy', 32
        from c
        on conflict (slug) do update set base_price = excluded.base_price

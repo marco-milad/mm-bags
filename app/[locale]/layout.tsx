@@ -48,6 +48,10 @@ export const metadata: Metadata = {
   },
   description:
     "M.M Bags — شنط سفر بجودة عالية وسعر معقول. علامة شخصية من ماركو ميلاد، صُممت للمسافر المصري.",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: "/favicon.svg",
+  },
   openGraph: {
     siteName: "M.M Bags",
     type: "website",

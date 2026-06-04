@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="M.M Bags">
+  <rect x="0" y="0" width="100" height="100" rx="16" fill="#1B2B4B"></rect>
+  <circle cx="50" cy="50" r="44" fill="none" stroke="#C9AC74" stroke-width="2"></circle>
+  <path d="M49 26 L51 26 L52 32 L59 37 L59 39 L52 37 L52 43 L54.5 45 L54.5 46.4 L50 45.2 L45.5 46.4 L45.5 45 L48 43 L48 37 L41 39 L41 37 L48 32 Z" fill="#DCC79B"></path>
+  <text font-family="&#39;Cormorant Garamond&#39;, Georgia, serif" font-weight="700" font-size="31" fill="#ffffff" text-anchor="middle" x="50" y="65" letter-spacing="-1">MM</text>
+</svg>

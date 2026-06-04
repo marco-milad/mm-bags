@@ -15,8 +15,9 @@ const nextConfig: NextConfig = {
             },
           ]
         : []),
-      // Placeholder images for seed data — remove once real product photos are uploaded.
-      { protocol: "https" as const, hostname: "picsum.photos" },
+      // Unsplash — used for hero, mood board, category cards, and product seed
+      // images until real photography lands.
+      { protocol: "https" as const, hostname: "images.unsplash.com" },
     ],
   },
   async redirects() {

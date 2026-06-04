@@ -7,11 +7,14 @@ export function AnimatedCounter({
   durationMs = 1500,
   prefix = "",
   suffix = "",
+  decimals = 0,
 }: {
   target: number;
   durationMs?: number;
   prefix?: string;
   suffix?: string;
+  /** Number of decimals to show (e.g. 1 for "4.8"). Default 0 = integer w/ thousands. */
+  decimals?: number;
 }) {
   const [value, setValue] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
@@ -32,7 +35,7 @@ export function AnimatedCounter({
               const progress = Math.min(1, elapsed / durationMs);
               // ease-out cubic — fast at first, gentle settle
               const eased = 1 - Math.pow(1 - progress, 3);
-              setValue(Math.round(target * eased));
+              setValue(target * eased);
               if (progress < 1) requestAnimationFrame(tick);
             };
             requestAnimationFrame(tick);
@@ -46,10 +49,15 @@ export function AnimatedCounter({
     return () => observer.disconnect();
   }, [target, durationMs]);
 
+  const display =
+    decimals > 0
+      ? value.toFixed(decimals)
+      : Math.round(value).toLocaleString("en-US");
+
   return (
     <span ref={ref}>
       {prefix}
-      {value.toLocaleString("en-US")}
+      {display}
       {suffix}
     </span>
   );

@@ -41,7 +41,7 @@ with c as (select id from public.collections where slug = 'backpacks'),
               'شنطة ظهر أنيقة للشغل — جيب لاب توب 15"، تنظيم داخلي، وقماش مقاوم للماء.',
               'Sleek work backpack — 15" laptop sleeve, internal organization, water-resistant fabric.',
               850, 750,
-              array['https://picsum.photos/seed/mm-bp-pro-a/800/800', 'https://picsum.photos/seed/mm-bp-pro-b/800/800'],
+              array['https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80'],
               'بوليستر مقاوم للماء', 'Water-resistant polyester', 1.1, 40
        from c on conflict (slug) do update set sale_price = excluded.sale_price returning id
      )
@@ -57,7 +57,7 @@ with c as (select id from public.collections where slug = 'backpacks'),
               'شنطة ظهر خفيفة لاستخدامك اليومي — مساحة كافية للابتوب والكتب.',
               'A light everyday daypack — fits a laptop, books, and the essentials.',
               480,
-              array['https://picsum.photos/seed/mm-bp-day-a/800/800', 'https://picsum.photos/seed/mm-bp-day-b/800/800'],
+              array['https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80'],
               'نايلون متين', 'Heavy-duty nylon', 0.7, 41
        from c on conflict (slug) do update set base_price = excluded.base_price returning id
      )
@@ -73,7 +73,7 @@ with c as (select id from public.collections where slug = 'backpacks'),
               'شنطة ظهر صغيرة أنيقة — مثالية للخروجات اليومية والسفر القصير.',
               'Stylish mini backpack — perfect for daily outings and short trips.',
               320,
-              array['https://picsum.photos/seed/mm-bp-mini-a/800/800', 'https://picsum.photos/seed/mm-bp-mini-b/800/800'],
+              array['https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80'],
               'جلد صناعي', 'Vegan leather', 0.5, 42
        from c on conflict (slug) do update set base_price = excluded.base_price returning id
      )
@@ -90,7 +90,7 @@ with c as (select id from public.collections where slug = 'school-bags'),
               'شنطة مدرسية متينة بألوان مرحة لطلاب الابتدائي — حزام مبطن وعدة جيوب.',
               'A sturdy primary-school bag in cheerful colors — padded straps and multiple pockets.',
               350,
-              array['https://picsum.photos/seed/mm-sb-prim-a/800/800', 'https://picsum.photos/seed/mm-sb-prim-b/800/800'],
+              array['https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=800&q=80'],
               'بوليستر متين', 'Heavy-duty polyester', 50
        from c on conflict (slug) do update set base_price = excluded.base_price returning id
      )
@@ -106,7 +106,7 @@ with c as (select id from public.collections where slug = 'school-bags'),
               'شنطة عملية لطلاب الإعدادي — مقاسات وألوان عصرية، جيوب جانبية للزجاجات.',
               'A practical middle-school bag — modern sizing and colors, side pockets for bottles.',
               480,
-              array['https://picsum.photos/seed/mm-sb-prep-a/800/800', 'https://picsum.photos/seed/mm-sb-prep-b/800/800'],
+              array['https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=800&q=80'],
               'بوليستر متين', 'Heavy-duty polyester', 51
        from c on conflict (slug) do update set base_price = excluded.base_price returning id
      )
@@ -122,7 +122,7 @@ with c as (select id from public.collections where slug = 'school-bags'),
               'شنطة جامعية أنيقة بحجم اللاب توب — للذكور والإناث، تصميم محايد.',
               'A sleek university bag with a laptop sleeve — unisex, neutral design.',
               720, 620,
-              array['https://picsum.photos/seed/mm-sb-uni-a/800/800', 'https://picsum.photos/seed/mm-sb-uni-b/800/800'],
+              array['https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=800&q=80'],
               'قماش مقاوم للماء', 'Water-resistant canvas', 52
        from c on conflict (slug) do update set sale_price = excluded.sale_price returning id
      )
@@ -139,7 +139,7 @@ with c as (select id from public.collections where slug = 'ladies-bags'),
               'شنطة توت واسعة بتصميم كلاسيك — مناسبة للشغل والخروج.',
               'A spacious classic tote — perfect for work and outings.',
               950,
-              array['https://picsum.photos/seed/mm-lb-tote-a/800/800', 'https://picsum.photos/seed/mm-lb-tote-b/800/800'],
+              array['https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80'],
               'جلد صناعي فاخر', 'Premium vegan leather', 60
        from c on conflict (slug) do update set base_price = excluded.base_price returning id
      )
@@ -155,7 +155,7 @@ with c as (select id from public.collections where slug = 'ladies-bags'),
               'شنطة كروسبودي صغيرة وعملية — حزام قابل للتعديل، جيوب متعددة.',
               'A practical crossbody bag — adjustable strap, multiple pockets.',
               650,
-              array['https://picsum.photos/seed/mm-lb-cross-a/800/800', 'https://picsum.photos/seed/mm-lb-cross-b/800/800'],
+              array['https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80'],
               'جلد صناعي', 'Vegan leather', 61
        from c on conflict (slug) do update set base_price = excluded.base_price returning id
      )
@@ -172,7 +172,7 @@ with c as (select id from public.collections where slug = 'handbags'),
               'شنطة يد بتصميم كلاسيك راقي — مقابض جلدية وتفاصيل معدنية ذهبية.',
               'A refined classic handbag — leather handles and gold metal hardware.',
               1200, 980,
-              array['https://picsum.photos/seed/mm-hb-classic-a/800/800', 'https://picsum.photos/seed/mm-hb-classic-b/800/800'],
+              array['https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80'],
               'جلد صناعي فاخر', 'Premium vegan leather', 70
        from c on conflict (slug) do update set sale_price = excluded.sale_price returning id
      )
@@ -188,7 +188,7 @@ with c as (select id from public.collections where slug = 'handbags'),
               'كلتش سهرة أنيق بتصميم بسيط وراقي — مثالي للمناسبات.',
               'An elegant evening clutch — simple, refined, perfect for occasions.',
               420,
-              array['https://picsum.photos/seed/mm-hb-clutch-a/800/800', 'https://picsum.photos/seed/mm-hb-clutch-b/800/800'],
+              array['https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80'],
               'ساتان مع تطريز', 'Satin with embellishment', 71
        from c on conflict (slug) do update set base_price = excluded.base_price returning id
      )
@@ -205,7 +205,7 @@ with c as (select id from public.collections where slug = 'laptop-bags'),
               'شنطة لاب توب احترافية بتصميم بريفكيس — تتسع لجهاز حتى 17 بوصة + الإكسسوارات.',
               'A professional briefcase-style laptop bag — fits up to 17" plus accessories.',
               1100,
-              array['https://picsum.photos/seed/mm-lap-brief-a/800/800', 'https://picsum.photos/seed/mm-lap-brief-b/800/800'],
+              array['https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?w=800&q=80'],
               'جلد صناعي', 'Vegan leather', 1.4, 80
        from c on conflict (slug) do update set base_price = excluded.base_price returning id
      )
@@ -221,7 +221,7 @@ with c as (select id from public.collections where slug = 'laptop-bags'),
               'كفر بسيط وخفيف لحماية جهازك — بطانة داخلية ناعمة.',
               'A simple lightweight sleeve to protect your device — soft interior lining.',
               380,
-              array['https://picsum.photos/seed/mm-lap-sleeve-a/800/800', 'https://picsum.photos/seed/mm-lap-sleeve-b/800/800'],
+              array['https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?w=800&q=80'],
               'نيوبرين مبطن', 'Padded neoprene', 0.3, 81
        from c on conflict (slug) do update set base_price = excluded.base_price returning id
      )
@@ -237,7 +237,7 @@ with c as (select id from public.collections where slug = 'laptop-bags'),
               'شنطة ظهر مخصصة للاب توب — جيب مبطن مقاوم للصدمات + جيوب تنظيم.',
               'A laptop-focused backpack — padded shock-resistant compartment plus organization pockets.',
               820, 720,
-              array['https://picsum.photos/seed/mm-lap-bp-a/800/800', 'https://picsum.photos/seed/mm-lap-bp-b/800/800'],
+              array['https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?w=800&q=80'],
               'بوليستر مقاوم للماء', 'Water-resistant polyester', 1.0, 82
        from c on conflict (slug) do update set sale_price = excluded.sale_price returning id
      )
