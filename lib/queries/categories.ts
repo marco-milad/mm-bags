@@ -1,16 +1,25 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { categoryImage } from "@/lib/categories-config";
 import type { Collection } from "@/lib/supabase/types";
 
 export type TopLevelCategory = Collection & {
   productCount: number;
+  /**
+   * First active product's first image across the collection's full scope
+   * (parent + child collections), picked in sort_order. Falls back to the
+   * Unsplash placeholder from `categoryImage(slug)` when no products exist.
+   */
+  coverImage: string;
 };
 
 /**
  * All top-level collections (parent_slug IS NULL) with a product count
- * that aggregates direct + descendant products. A parent like "travel-bags"
- * shows the sum of products across milano-series + calvin-klein + travel-accessories.
+ * that aggregates direct + descendant products, and a cover image pulled
+ * dynamically from the first active product in the collection's scope.
+ * A parent like "travel-bags" sums and samples across
+ * milano-series + calvin-klein + travel-accessories.
  */
 export async function getTopLevelCategoriesWithCounts(): Promise<TopLevelCategory[]> {
   const supabase = await createSupabaseServerClient();
@@ -23,16 +32,29 @@ export async function getTopLevelCategoriesWithCounts(): Promise<TopLevelCategor
 
   if (!collections) return [];
 
-  // Compute counts per collection in a single round-trip
-  const { data: productCollections } = await supabase
+  // One round-trip pulls every active product's collection + images + order.
+  // We use the same payload for counts (per row) and cover-image lookup (first
+  // row in sort_order per collection_id with a non-empty images array).
+  const { data: productRows } = await supabase
     .from("products")
-    .select("collection_id")
-    .eq("is_active", true);
+    .select("collection_id, images, sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
 
   const directCounts = new Map<string, number>();
-  for (const row of productCollections ?? []) {
+  const firstImageByCollection = new Map<string, string>();
+  for (const row of productRows ?? []) {
     if (!row.collection_id) continue;
     directCounts.set(row.collection_id, (directCounts.get(row.collection_id) ?? 0) + 1);
+    if (
+      !firstImageByCollection.has(row.collection_id) &&
+      Array.isArray(row.images) &&
+      row.images.length > 0 &&
+      typeof row.images[0] === "string" &&
+      row.images[0].length > 0
+    ) {
+      firstImageByCollection.set(row.collection_id, row.images[0]);
+    }
   }
 
   const childrenByParent = new Map<string, Collection[]>();
@@ -53,7 +75,26 @@ export async function getTopLevelCategoriesWithCounts(): Promise<TopLevelCategor
         (sum, child) => sum + (directCounts.get(child.id) ?? 0),
         0,
       );
-      return { ...c, productCount: direct + childTotal };
+
+      // Cover image: prefer the parent's own first product, otherwise walk
+      // children in sort_order. Children come from `collections` which was
+      // already sorted, so iteration order is correct.
+      let coverImage = firstImageByCollection.get(c.id);
+      if (!coverImage) {
+        for (const child of children) {
+          const childImage = firstImageByCollection.get(child.id);
+          if (childImage) {
+            coverImage = childImage;
+            break;
+          }
+        }
+      }
+
+      return {
+        ...c,
+        productCount: direct + childTotal,
+        coverImage: coverImage ?? categoryImage(c.slug),
+      };
     });
 }
 

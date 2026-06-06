@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { hasLocale } from "@/lib/i18n-config";
-import { categoryImage, categoryLucideIcon } from "@/lib/categories-config";
+import { categoryLucideIcon } from "@/lib/categories-config";
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 
 export const dynamic = "force-dynamic";
@@ -61,9 +61,11 @@ export default async function CategoriesPage({
                   href={`/${locale}/catalog/${cat.slug}`}
                   className="group relative flex aspect-[4/5] flex-col overflow-hidden rounded-2xl bg-navy-900 ring-1 ring-line transition hover:shadow-xl hover:ring-brass-300"
                 >
-                  {/* Lifestyle image */}
+                  {/* Cover image — pulled live from the first active product in
+                      the collection's scope (parent + children), falls back to
+                      the Unsplash placeholder when no products exist yet. */}
                   <Image
-                    src={categoryImage(cat.slug)}
+                    src={cat.coverImage}
                     alt=""
                     fill
                     sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
