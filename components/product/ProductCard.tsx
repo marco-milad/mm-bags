@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/i18n-config";
 import { formatPriceEGP } from "@/lib/utils";
 import { effectivePrice, totalStock, type ProductWithVariants } from "@/lib/catalog-shared";
 import { WishlistButton } from "@/components/product/WishlistButton";
+import { ProductSpecsChips } from "@/components/product/ProductSpecs";
 
 export function ProductCard({
   product,
@@ -95,6 +96,9 @@ export function ProductCard({
             {locale === "ar" ? `باقي ${stock} قطع فقط!` : `Only ${stock} left!`}
           </p>
         )}
+
+        {/* Up to 3 spec chips — skipped automatically when product has no specs */}
+        <ProductSpecsChips product={product} locale={locale} max={3} />
       </div>
     </Link>
   );

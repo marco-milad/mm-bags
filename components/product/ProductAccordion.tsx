@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { Product } from "@/lib/supabase/types";
+import { ProductSpecs } from "@/components/product/ProductSpecs";
 
 export function ProductAccordion({
   product,
@@ -13,19 +14,24 @@ export function ProductAccordion({
     | "material_ar"
     | "material_en"
     | "weight_kg"
+    | "dimensions"
+    | "laptop_inches"
+    | "material_type"
+    | "wheel_type"
+    | "lock_type"
+    | "capacity_liters"
+    | "is_water_resistant"
+    | "is_expandable"
   >;
   locale: Locale;
 }) {
   const description =
     (locale === "ar" ? product.description_ar : product.description_en) ?? "";
-  const material =
-    (locale === "ar" ? product.material_ar : product.material_en) ?? "—";
-  const weight =
-    product.weight_kg !== null
-      ? locale === "ar"
-        ? `${product.weight_kg} كجم`
-        : `${product.weight_kg} kg`
-      : "—";
+  // Fallback prose-material line (material_ar/material_en) — surfaces above
+  // the icon grid since it's free-form and complements the structured
+  // material_type chip. Keeps backwards compat for products imported before
+  // the specs migration.
+  const proseMaterial = locale === "ar" ? product.material_ar : product.material_en;
 
   const sections: { title: string; content: React.ReactNode }[] = [
     {
@@ -41,16 +47,14 @@ export function ProductAccordion({
     {
       title: locale === "ar" ? "المواصفات" : "Specifications",
       content: (
-        <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-          <dt className="text-[var(--color-text-secondary)]">
-            {locale === "ar" ? "المادة" : "Material"}
-          </dt>
-          <dd className="text-[var(--color-text)]">{material}</dd>
-          <dt className="text-[var(--color-text-secondary)]">
-            {locale === "ar" ? "الوزن" : "Weight"}
-          </dt>
-          <dd className="text-[var(--color-text)]">{weight}</dd>
-        </dl>
+        <div className="flex flex-col gap-5">
+          {proseMaterial && (
+            <p className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
+              {proseMaterial}
+            </p>
+          )}
+          <ProductSpecs product={product} locale={locale} />
+        </div>
       ),
     },
     {

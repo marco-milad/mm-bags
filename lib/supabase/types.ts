@@ -105,6 +105,16 @@ export type Database = {
           material_ar: string | null;
           material_en: string | null;
           weight_kg: number | null;
+          // === Product specifications (migration: add_product_specifications_columns) ===
+          dimensions: string | null;
+          laptop_inches: number | null;
+          material_type: string | null;
+          wheel_type: string | null;
+          lock_type: string | null;
+          capacity_liters: number | null;
+          is_water_resistant: boolean;
+          is_expandable: boolean;
+          // === /specs ===
           is_active: boolean;
           sort_order: number;
           created_at: string;
@@ -125,6 +135,14 @@ export type Database = {
           material_ar?: string | null;
           material_en?: string | null;
           weight_kg?: number | null;
+          dimensions?: string | null;
+          laptop_inches?: number | null;
+          material_type?: string | null;
+          wheel_type?: string | null;
+          lock_type?: string | null;
+          capacity_liters?: number | null;
+          is_water_resistant?: boolean;
+          is_expandable?: boolean;
           is_active?: boolean;
           sort_order?: number;
           created_at?: string;
@@ -145,6 +163,14 @@ export type Database = {
           material_ar?: string | null;
           material_en?: string | null;
           weight_kg?: number | null;
+          dimensions?: string | null;
+          laptop_inches?: number | null;
+          material_type?: string | null;
+          wheel_type?: string | null;
+          lock_type?: string | null;
+          capacity_liters?: number | null;
+          is_water_resistant?: boolean;
+          is_expandable?: boolean;
           is_active?: boolean;
           sort_order?: number;
           created_at?: string;
