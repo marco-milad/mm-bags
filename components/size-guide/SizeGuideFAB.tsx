@@ -4,7 +4,7 @@ import { Ruler, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
-import { SizeGuideModal } from "./SizeGuideModal";
+import { SizeGuideModalLazy } from "./SizeGuideModalLazy";
 import {
   useSizeGuideUxHydrated,
   useSizeGuideUxStore,
@@ -57,7 +57,7 @@ export function SizeGuideFAB({ locale }: { locale: Locale }) {
     // The tooltip must NOT be a child of the trigger <button> (nested <button>
     // is invalid HTML), so it lives as a sibling inside this relative container.
     <div className="group fixed bottom-24 left-4 z-40 md:bottom-6 md:left-6">
-      <SizeGuideModal locale={locale}>
+      <SizeGuideModalLazy locale={locale}>
         <button
           type="button"
           onClick={() => {
@@ -78,7 +78,7 @@ export function SizeGuideFAB({ locale }: { locale: Locale }) {
             {locale === "ar" ? "دليل المقاسات" : "Size guide"}
           </span>
         </button>
-      </SizeGuideModal>
+      </SizeGuideModalLazy>
 
       {tooltipVisible && (
         <Tooltip

@@ -7,9 +7,14 @@ import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
 import type { ProductWithVariants } from "@/lib/catalog-shared";
 import { effectivePrice } from "@/lib/catalog-shared";
-import { categoryIcon } from "@/lib/categories-config";
+import { categoryLucideIcon } from "@/lib/categories-config";
 import type { TopLevelCategory } from "@/lib/queries/categories";
 import { cn, formatPriceEGP } from "@/lib/utils";
+
+// Grace period before the dropdown closes after the cursor leaves both the
+// trigger and the panel. Long enough to absorb a typical mouse traverse from
+// trigger → panel without the menu flickering shut mid-motion.
+const CLOSE_DELAY_MS = 180;
 
 export function MegaMenu({
   locale,
@@ -28,29 +33,59 @@ export function MegaMenu({
 }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Close on route change (the Link inside the panel triggers navigation).
-  // Also close on Escape for accessibility.
+  const cancelClose = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  // Schedule a close after a short delay. Calling cancelClose() inside the
+  // mouseenter handlers on the trigger wrapper *or* the panel cancels this,
+  // so the menu only really closes when the cursor has left both for the
+  // full delay window.
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimerRef.current = setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
+  };
+
+  const openMenu = () => {
+    cancelClose();
+    setOpen(true);
+  };
+
+  const closeNow = () => {
+    cancelClose();
+    setOpen(false);
+  };
+
+  // Esc closes immediately; also handles cleanup if Esc fires mid-grace-window.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closeNow();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Cancel any pending close timer on unmount so it can't fire setState on a
+  // dead component (e.g. when a link navigation tears the menu down mid-grace).
+  useEffect(() => () => cancelClose(), []);
+
   return (
     <div
       ref={wrapperRef}
       className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={openMenu}
+      onMouseLeave={scheduleClose}
     >
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open ? "true" : "false"}
+        onClick={() => (open ? closeNow() : openMenu())}
+        aria-expanded={open}
         aria-haspopup="true"
         className="inline-flex items-center gap-1 text-sm hover:text-[var(--color-accent-dark)]"
       >
@@ -63,13 +98,37 @@ export function MegaMenu({
         />
       </button>
 
-      {/* Full-width panel — positioned below the navbar via fixed + header-height offset */}
+      {/* Hover bridge — invisible, fills the visual gap between the trigger
+          button (which is vertically centered inside the navbar's h-16) and
+          the panel that sits just below the navbar. As a child of the
+          wrapper, hovering it keeps the wrapper considered "still hovered"
+          and short-circuits the close timer. -inset-x-4 widens the catch
+          area a few pixels past the trigger's edges for diagonal motions;
+          h-8 reaches all the way to the navbar's bottom edge. */}
+      {open && (
+        <span
+          aria-hidden
+          className="pointer-events-auto absolute -inset-x-4 top-full h-8"
+        />
+      )}
+
+      {/* Full-width panel — pinned directly under the navbar with a 1px
+          overlap so the panel's top border merges with the navbar's bottom
+          border, leaving zero visible seam.
+          NOTE on positioning: the navbar header must not have a
+          `backdrop-filter` / `transform` / `filter` on it. Any of those
+          values creates a containing block for `position: fixed` descendants
+          per CSS spec, which would offset this panel by the full
+          banner-h + 4rem distance and produce a visible gap. The Navbar's
+          header is `bg-[var(--color-bg)]` (no backdrop-blur) for that reason. */}
       <div
         role="region"
         aria-hidden={!open}
+        onMouseEnter={openMenu}
+        onMouseLeave={scheduleClose}
         className={cn(
           "fixed inset-x-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)] shadow-2xl transition duration-200",
-          "top-[calc(var(--mm-banner-h,0px)+4rem)]",
+          "top-[calc(var(--mm-banner-h,0px)+4rem-1px)]",
           open
             ? "translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-2 opacity-0",
@@ -82,37 +141,40 @@ export function MegaMenu({
               {locale === "ar" ? "كل التشكيلات" : "All categories"}
             </p>
             <ul className="grid grid-cols-2 gap-3">
-              {categories.map((cat) => (
-                <li key={cat.slug}>
-                  <Link
-                    href={`/${locale}/catalog/${cat.slug}`}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 transition hover:border-[var(--color-accent)] hover:bg-[var(--color-surface)]"
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface)] text-xl">
-                      {categoryIcon(cat.slug)}
-                    </span>
-                    <span className="flex flex-1 flex-col">
-                      <span className="text-sm font-semibold text-[var(--color-text)]">
-                        {locale === "ar" ? cat.name_ar : cat.name_en}
+              {categories.map((cat) => {
+                const Icon = categoryLucideIcon(cat.slug);
+                return (
+                  <li key={cat.slug}>
+                    <Link
+                      href={`/${locale}/catalog/${cat.slug}`}
+                      onClick={closeNow}
+                      className="group flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 transition hover:border-[var(--color-accent)] hover:bg-[var(--color-surface)]"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface)] text-[var(--color-text)] transition group-hover:bg-[var(--color-accent)] group-hover:text-[var(--color-primary)]">
+                        <Icon className="h-5 w-5" strokeWidth={1.75} />
                       </span>
-                      <span className="text-xs text-[var(--color-text-secondary)]">
-                        {cat.productCount}{" "}
-                        {locale === "ar"
-                          ? "منتج"
-                          : cat.productCount === 1
-                            ? "product"
-                            : "products"}
+                      <span className="flex flex-1 flex-col">
+                        <span className="text-sm font-semibold text-[var(--color-text)]">
+                          {locale === "ar" ? cat.name_ar : cat.name_en}
+                        </span>
+                        <span className="text-xs text-[var(--color-text-secondary)]">
+                          {cat.productCount}{" "}
+                          {locale === "ar"
+                            ? "منتج"
+                            : cat.productCount === 1
+                              ? "product"
+                              : "products"}
+                        </span>
                       </span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
 
             <Link
               href={`/${locale}/catalog`}
-              onClick={() => setOpen(false)}
+              onClick={closeNow}
               className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
             >
               {shopAllLabel}
@@ -136,7 +198,7 @@ export function MegaMenu({
                     <li key={p.id}>
                       <Link
                         href={`/${locale}/products/${p.slug}`}
-                        onClick={() => setOpen(false)}
+                        onClick={closeNow}
                         className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-[var(--color-surface)]"
                       >
                         <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[var(--color-surface-2)]">

@@ -41,3 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# local-only media — videos live in Supabase Storage (bucket: videos)
+# after uploading; the source mp4s don't belong in git.
+supabase/videos/

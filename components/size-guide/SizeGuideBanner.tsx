@@ -1,6 +1,6 @@
 import { Ruler, Sparkles } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
-import { SizeGuideModal } from "./SizeGuideModal";
+import { SizeGuideModalLazy } from "./SizeGuideModalLazy";
 
 export function SizeGuideBanner({ locale }: { locale: Locale }) {
   return (
@@ -23,7 +23,7 @@ export function SizeGuideBanner({ locale }: { locale: Locale }) {
           </p>
         </div>
 
-        <SizeGuideModal locale={locale}>
+        <SizeGuideModalLazy locale={locale}>
           <button
             type="button"
             className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-accent)] px-6 py-3 text-sm font-semibold text-[var(--color-primary)] shadow-lg shadow-black/20 transition hover:bg-[var(--color-accent-light)]"
@@ -31,7 +31,7 @@ export function SizeGuideBanner({ locale }: { locale: Locale }) {
             <Ruler className="h-4 w-4" />
             {locale === "ar" ? "ابدأ الاختبار" : "Take the quiz"}
           </button>
-        </SizeGuideModal>
+        </SizeGuideModalLazy>
       </div>
     </section>
   );

@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Heart, Home, Package2, ShoppingBag, User } from "lucide-react";
+import { Heart, Home, Package2, User } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 
 type NavStrings = {
   home: string;
   catalog: string;
-  cart: string;
+  wishlist: string;
   account: string;
 };
 
@@ -17,11 +17,13 @@ export function MobileBottomNav({
   t: NavStrings;
 }) {
   const base = `/${locale}`;
+  // Cart intentionally omitted — the top-right Cart icon opens the
+  // CartDrawer and is visible on mobile too, so this used to duplicate it
+  // (and the old /cart link 404'd).
   const items = [
     { href: base, icon: Home, label: t.home },
     { href: `${base}/catalog`, icon: Package2, label: t.catalog },
-    { href: `${base}/account/wishlist`, icon: Heart, label: "Wishlist" },
-    { href: `${base}/cart`, icon: ShoppingBag, label: t.cart },
+    { href: `${base}/account/wishlist`, icon: Heart, label: t.wishlist },
     { href: `${base}/account`, icon: User, label: t.account },
   ];
 
@@ -30,7 +32,7 @@ export function MobileBottomNav({
       className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur md:hidden"
       aria-label="Mobile bottom navigation"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-5">
+      <ul className="mx-auto grid max-w-md grid-cols-4">
         {items.map((item) => {
           const Icon = item.icon;
           return (

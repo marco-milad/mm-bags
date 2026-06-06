@@ -1,12 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Search, User } from "lucide-react";
+import { Heart, User } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { ProductWithVariants } from "@/lib/catalog-shared";
 import type { TopLevelCategory } from "@/lib/queries/categories";
 import { CartIconButton } from "@/components/cart/CartIconButton";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import { MegaMenu } from "./MegaMenu";
+import { MobileMenuSheet } from "./MobileMenuSheet";
+import { SearchDialog } from "./SearchDialog";
 
 type NavStrings = {
   home: string;
@@ -15,8 +17,14 @@ type NavStrings = {
   about: string;
   cart: string;
   account: string;
+  wishlist: string;
   login: string;
   search: string;
+  search_placeholder: string;
+  search_submit: string;
+  search_empty: string;
+  menu: string;
+  contact: string;
   shop_all: string;
   featured: string;
 };
@@ -36,9 +44,24 @@ export function Navbar({
 }) {
   const base = `/${locale}`;
   return (
-    <header className="sticky top-[var(--mm-banner-h,0px)] z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)]/85 backdrop-blur">
+    <header className="sticky top-[var(--mm-banner-h,0px)] z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
-        <div className="flex items-center gap-6 md:gap-10">
+        <div className="flex items-center gap-2 md:gap-10">
+          <MobileMenuSheet
+            locale={locale}
+            categories={megaCategories}
+            labels={{
+              menu: t.menu,
+              home: t.home,
+              catalog: t.catalog,
+              categories: t.categories,
+              about: t.about,
+              contact: t.contact,
+              account: t.account,
+              wishlist: t.wishlist,
+              shop_all: t.shop_all,
+            }}
+          />
           <Link
             href={base}
             aria-label={brandName}
@@ -75,16 +98,18 @@ export function Navbar({
         </div>
 
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label={t.search}
-            className="rounded-full p-2 text-[var(--color-text)] transition hover:bg-[var(--color-surface)]"
-          >
-            <Search className="h-5 w-5" />
-          </button>
+          <SearchDialog
+            locale={locale}
+            labels={{
+              search: t.search,
+              search_placeholder: t.search_placeholder,
+              search_submit: t.search_submit,
+              search_empty: t.search_empty,
+            }}
+          />
           <Link
             href={`${base}/account/wishlist`}
-            aria-label="Wishlist"
+            aria-label={t.wishlist}
             className="hidden rounded-full p-2 text-[var(--color-text)] transition hover:bg-[var(--color-surface)] md:inline-flex"
           >
             <Heart className="h-5 w-5" />
