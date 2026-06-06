@@ -91,7 +91,12 @@ export default async function RootLayout({
           megaCategories={megaCategories}
           megaFeatured={megaFeatured}
         />
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        {/* overflow-x-clip contains any horizontal-bleed sections (e.g.
+            VideosStrip's negative-margin carousel) so the page can't
+            sideways-scroll on mobile. Using `clip` instead of `hidden` so
+            we don't establish a scroll container that would break sticky
+            children. */}
+        <main className="flex-1 overflow-x-clip pb-20 md:pb-0">{children}</main>
         <Footer locale={locale} t={t.footer} brand={t.brand} />
         <MobileBottomNav locale={locale} t={t.nav} />
         <WhatsAppFAB locale={locale} />
