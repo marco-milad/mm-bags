@@ -20,10 +20,15 @@ export default async function CatalogPage({
   const sizeRaw = typeof sp?.size === "string" ? Number(sp.size) : NaN;
   const sizeInches = Number.isInteger(sizeRaw) && sizeRaw > 0 ? sizeRaw : undefined;
   const setOnly = sp?.type === "set";
+  const q = typeof sp?.q === "string" ? sp.q.trim().slice(0, 80) : undefined;
+  const material =
+    typeof sp?.material === "string"
+      ? sp.material.trim().slice(0, 80)
+      : undefined;
 
   const [topLevel, products] = await Promise.all([
     getTopLevelCategoriesWithCounts(),
-    getProducts({ sort, sizeInches, setOnly }),
+    getProducts({ sort, sizeInches, setOnly, q, material }),
   ]);
 
   const crumbs = [
@@ -36,6 +41,22 @@ export default async function CatalogPage({
       href: `/${locale}/catalog`,
       label: locale === "ar" ? "كل المنتجات" : "All products",
     },
+    ...(material
+      ? [
+          {
+            href: `/${locale}/catalog?material=${encodeURIComponent(material)}`,
+            label: locale === "ar" ? `الخامة: ${material}` : `Material: ${material}`,
+          },
+        ]
+      : []),
+    ...(q
+      ? [
+          {
+            href: `/${locale}/catalog?q=${encodeURIComponent(q)}`,
+            label: locale === "ar" ? `بحث: ${q}` : `Search: ${q}`,
+          },
+        ]
+      : []),
   ];
 
   return (

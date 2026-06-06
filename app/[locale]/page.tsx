@@ -11,8 +11,14 @@ import { VideosStrip } from "@/components/home/VideosStrip";
 import { StatsStrip } from "@/components/home/StatsStrip";
 import { PromiseSection } from "@/components/home/PromiseSection";
 import { ReviewsReel } from "@/components/home/ReviewsReel";
+import { FeaturedProduct } from "@/components/home/FeaturedProduct";
+import { ShopByMaterial } from "@/components/home/ShopByMaterial";
 import { NewsletterPanel } from "@/components/home/NewsletterPanel";
-import { getProducts } from "@/lib/queries/catalog";
+import {
+  getProducts,
+  getFeaturedProduct,
+  getMaterialCounts,
+} from "@/lib/queries/catalog";
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 import { getFeaturedReviews } from "@/lib/queries/reviews";
 
@@ -20,11 +26,14 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
 
-  const [categories, bestSellers, homeReviews] = await Promise.all([
-    getTopLevelCategoriesWithCounts(),
-    getProducts({ tag: "best-seller", limit: 8 }),
-    getFeaturedReviews(3),
-  ]);
+  const [categories, bestSellers, homeReviews, featuredProduct, materials] =
+    await Promise.all([
+      getTopLevelCategoriesWithCounts(),
+      getProducts({ tag: "best-seller", limit: 8 }),
+      getFeaturedReviews(3),
+      getFeaturedProduct(),
+      getMaterialCounts(),
+    ]);
 
   return (
     <>
@@ -58,6 +67,12 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       {homeReviews.length > 0 && (
         <ReviewsReel locale={locale} reviews={homeReviews} />
       )}
+
+      {featuredProduct && (
+        <FeaturedProduct locale={locale} product={featuredProduct} />
+      )}
+
+      <ShopByMaterial locale={locale} materials={materials} />
 
       <SizeGuideBanner locale={locale} />
 
