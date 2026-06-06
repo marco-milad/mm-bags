@@ -48,6 +48,11 @@ export function ProductGallery({
         priority
         rounded="2xl"
         aspectClassName="aspect-square w-full"
+        // Cap the rendered height on mobile so a tall PDP gallery doesn't
+        // swallow the whole viewport on phones — aspect-square at 100%
+        // width on a 400+ px viewport would otherwise force the box past
+        // 400px tall. md:max-h-none restores aspect-square at tablet+.
+        containerClassName="max-h-[400px] md:max-h-none"
       />
 
       {safeImages.length > 1 && (

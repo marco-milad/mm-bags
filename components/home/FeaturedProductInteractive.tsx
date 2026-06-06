@@ -110,7 +110,11 @@ export function FeaturedProductInteractive({
             priority
             rounded="2xl"
             aspectClassName="aspect-square w-full"
-            containerClassName="ring-1 ring-[var(--color-border)]"
+            // Same mobile-only height cap as ProductGallery: stops a tall
+            // portrait Featured image (Milano/CK) from pushing the rest of
+            // the homepage below the fold on phones. md:max-h-none lets the
+            // box go back to aspect-square at tablet+ where it has room.
+            containerClassName="max-h-[400px] md:max-h-none ring-1 ring-[var(--color-border)]"
           />
         )}
 
