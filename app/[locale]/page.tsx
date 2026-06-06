@@ -7,6 +7,7 @@ import { CollectionsSection } from "@/components/home/CollectionsSection";
 import { FounderMoment } from "@/components/home/FounderMoment";
 import { BestSellersCarousel } from "@/components/home/BestSellersCarousel";
 import { MoodBoard } from "@/components/home/MoodBoard";
+import { VideosStrip } from "@/components/home/VideosStrip";
 import { StatsStrip } from "@/components/home/StatsStrip";
 import { PromiseSection } from "@/components/home/PromiseSection";
 import { ReviewsReel } from "@/components/home/ReviewsReel";
@@ -47,6 +48,8 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       )}
 
       <MoodBoard locale={locale} />
+
+      <VideosStrip locale={locale} />
 
       <StatsStrip locale={locale} />
 

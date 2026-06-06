@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, MapPin, ShieldCheck, Truck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -8,6 +7,15 @@ import type { Locale } from "@/lib/i18n-config";
 import { KineticDestination } from "./KineticDestination";
 
 const RISE = "mm-rise 0.9s cubic-bezier(0.22,1,0.36,1) forwards";
+
+// Hero background video (Supabase Storage, public bucket "videos").
+// The accompanying Unsplash photo doubles as the <video poster> AND is what
+// the page renders if the user prefers reduced motion (video element stays
+// paused on the poster frame — zero video bandwidth burned).
+const HERO_VIDEO_URL =
+  "https://nrlcypdrfmjdwuvuaryp.supabase.co/storage/v1/object/public/videos/4684102-hd_1920_1080_25fps.mp4";
+const HERO_POSTER_URL =
+  "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=1920&q=90";
 
 export function Hero({
   locale,
@@ -20,6 +28,10 @@ export function Hero({
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  // `reduced` drives parallax / glow on/off (same as before). The video also
+  // reads `prefers-reduced-motion` directly so it can stay paused even on
+  // touch devices that aren't reduced-motion-flagged.
   const [reduced, setReduced] = useState(false);
 
   // Honor reduced-motion AND coarse pointers (skip parallax/glow on touch).
@@ -28,6 +40,24 @@ export function Hero({
     const m = window.matchMedia("(prefers-reduced-motion: reduce)");
     const t = window.matchMedia("(pointer: coarse)");
     setReduced(m.matches || t.matches);
+  }, []);
+
+  // Kick off video playback once the component is mounted, unless the user
+  // has reduced-motion turned on. The video element is rendered without the
+  // `autoPlay` attribute so SSR / first paint stays on the poster — we only
+  // ever fetch the video bytes on motion-OK clients.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const v = videoRef.current;
+    if (!v) return;
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reducedMotion) return;
+    // play() returns a promise that can reject (autoplay-blocked browsers).
+    // Swallow — the poster stays visible in that case, which is the same
+    // visual result as if the user had reduced motion on.
+    v.play().catch(() => undefined);
   }, []);
 
   // Parallax: translate the bg image by scrollY * 0.26.
@@ -82,20 +112,26 @@ export function Hero({
         ["--my" as never]: "-9999px",
       }}
     >
-      {/* Background image — parallax target */}
+      {/* Background — parallax target. The <video> shows the Unsplash poster
+          frame until the post-mount play() effect (above) kicks it off.
+          Reduced-motion / autoplay-blocked clients never see anything but
+          the poster, which is exactly the previous static-hero behavior. */}
       <div
         ref={bgRef}
         aria-hidden
         className="absolute inset-0 -z-20 will-change-transform"
         style={{ transform: "scale(1.18)" }}
       >
-        <Image
-          src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=1920&q=90"
-          alt=""
-          fill
-          sizes="100vw"
-          priority
-          className="object-cover"
+        <video
+          ref={videoRef}
+          src={HERO_VIDEO_URL}
+          poster={HERO_POSTER_URL}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          tabIndex={-1}
+          className="h-full w-full object-cover"
         />
       </div>
 
