@@ -89,7 +89,12 @@ export default async function ProductDetailPage({
 
       {/* Main grid */}
       <div className="grid gap-8 md:grid-cols-2 md:gap-12">
-        <ProductGallery images={product.images} name={name} locale={locale} />
+        <ProductGallery
+          images={product.images}
+          name={name}
+          locale={locale}
+          imageFit={product.image_fit}
+        />
 
         <div className="flex flex-col gap-6">
           <header className="flex flex-col gap-2">

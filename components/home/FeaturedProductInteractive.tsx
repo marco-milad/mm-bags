@@ -8,6 +8,7 @@ import type { ProductWithVariants } from "@/lib/catalog-shared";
 import { effectivePrice, totalStock } from "@/lib/catalog-shared";
 import { useCartStore } from "@/store/cart";
 import { cn } from "@/lib/utils";
+import { ImageContainer } from "@/components/product/ImageContainer";
 
 /**
  * Client subtree of FeaturedProduct: image gallery (main + thumb swap),
@@ -98,53 +99,64 @@ export function FeaturedProductInteractive({
       {/* ============ LEFT — gallery ============ */}
       <div className="flex flex-col gap-3">
         {images[activeImage] && (
-          <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[var(--color-bg)] ring-1 ring-[var(--color-border)]">
-            <Image
-              key={images[activeImage]}
-              src={images[activeImage]}
-              alt={isRTL ? product.name_ar : product.name_en}
-              fill
-              sizes="(min-width: 1024px) 560px, 100vw"
-              className="object-cover"
-              priority
-            />
-          </div>
+          <ImageContainer
+            // key on the wrapper forces React to remount when the active
+            // image changes, so the new one fades in cleanly.
+            key={images[activeImage]}
+            src={images[activeImage]}
+            alt={isRTL ? product.name_ar : product.name_en}
+            fit={product.image_fit}
+            sizes="(min-width: 1024px) 560px, 100vw"
+            priority
+            rounded="2xl"
+            aspectClassName="aspect-square w-full"
+            containerClassName="ring-1 ring-[var(--color-border)]"
+          />
         )}
 
         {images.length > 1 && (
-          <ul
+          <div
             className="-mx-1 flex gap-2 overflow-x-auto px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-            role="tablist"
             aria-label={isRTL ? "صور المنتج" : "Product images"}
           >
             {images.map((src, idx) => (
-              <li key={src} className="shrink-0">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={idx === activeImage}
-                  aria-label={
-                    isRTL ? `الصورة رقم ${idx + 1}` : `Image ${idx + 1}`
-                  }
-                  onClick={() => setActiveImage(idx)}
+              <button
+                key={src}
+                type="button"
+                // eslint-disable-next-line jsx-a11y/aria-proptypes -- stringified
+                // ternary produces only valid "true"|"false" literals at runtime;
+                // the static analyzer can't narrow the conditional expression.
+                aria-pressed={idx === activeImage ? "true" : "false"}
+                aria-label={
+                  isRTL ? `الصورة رقم ${idx + 1}` : `Image ${idx + 1}`
+                }
+                onClick={() => setActiveImage(idx)}
+                className={cn(
+                  "relative h-16 w-16 shrink-0 overflow-hidden rounded-lg transition",
+                  // Thumbnail bg matches the contain mode so product-on-white
+                  // shots blend in nicely; cover mode uses the neutral surface.
+                  product.image_fit === "contain"
+                    ? "bg-white"
+                    : "bg-[var(--color-surface-2)]",
+                  idx === activeImage
+                    ? "ring-2 ring-[var(--color-accent)]"
+                    : "opacity-70 ring-1 ring-[var(--color-border)] hover:opacity-100",
+                )}
+              >
+                <Image
+                  src={src}
+                  alt=""
+                  fill
+                  sizes="64px"
                   className={cn(
-                    "relative h-16 w-16 overflow-hidden rounded-lg transition",
-                    idx === activeImage
-                      ? "ring-2 ring-[var(--color-accent)]"
-                      : "opacity-70 ring-1 ring-[var(--color-border)] hover:opacity-100",
+                    product.image_fit === "contain"
+                      ? "object-contain p-1"
+                      : "object-cover",
                   )}
-                >
-                  <Image
-                    src={src}
-                    alt=""
-                    fill
-                    sizes="64px"
-                    className="object-cover"
-                  />
-                </button>
-              </li>
+                />
+              </button>
             ))}
-          </ul>
+          </div>
         )}
       </div>
 

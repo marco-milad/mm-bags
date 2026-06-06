@@ -3,15 +3,21 @@
 import Image from "next/image";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import type { ImageFit } from "@/components/product/ImageContainer";
+import { ImageContainer } from "@/components/product/ImageContainer";
 
 export function ProductGallery({
   images,
   name,
   locale,
+  imageFit = "cover",
 }: {
   images: string[];
   name: string;
   locale: "ar" | "en";
+  /** Determines whether the main image and thumbnails crop (`cover`) or
+      letterbox with padding (`contain`). See ImageContainer for details. */
+  imageFit?: ImageFit;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const safeImages = images.length > 0 ? images : [];
@@ -25,41 +31,50 @@ export function ProductGallery({
     );
   }
 
+  const isContain = imageFit === "contain";
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[var(--color-surface)]">
-        <Image
-          key={active}
-          src={active}
-          alt={name}
-          fill
-          sizes="(min-width: 1024px) 600px, 100vw"
-          className="object-cover"
-          priority
-        />
-      </div>
+      <ImageContainer
+        // `key` on the wrapper makes React unmount/remount the underlying
+        // <Image> when activeIndex changes, so the next picture starts its
+        // own fade instead of crossfading with the previous one (we don't
+        // want the secondary slot's hover-swap behavior here).
+        key={active}
+        src={active}
+        alt={name}
+        fit={imageFit}
+        sizes="(min-width: 1024px) 600px, 100vw"
+        priority
+        rounded="2xl"
+        aspectClassName="aspect-square w-full"
+      />
 
       {safeImages.length > 1 && (
-        <ul
-          className="scroll-row -mx-2 flex gap-2 overflow-x-auto px-2 pb-1"
-          role="tablist"
+        <div
+          className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           aria-label={locale === "ar" ? "صور المنتج" : "Product images"}
         >
           {safeImages.map((src, idx) => (
-            <li key={src} className="shrink-0">
+            <div key={src} className="shrink-0">
               <button
                 type="button"
-                role="tab"
-                aria-selected={idx === activeIndex}
+                // eslint-disable-next-line jsx-a11y/aria-proptypes -- stringified
+                // ternary produces only valid "true"|"false" literals at runtime;
+                // the static analyzer can't narrow the conditional expression.
+                aria-pressed={idx === activeIndex ? "true" : "false"}
                 aria-label={
                   locale === "ar" ? `الصورة رقم ${idx + 1}` : `Image ${idx + 1}`
                 }
                 onClick={() => setActiveIndex(idx)}
                 className={cn(
-                  "relative h-16 w-16 overflow-hidden rounded-lg ring-1 transition",
+                  "relative h-16 w-16 overflow-hidden rounded-lg transition",
+                  // Thumbnail bg matches the contain mode so product-on-white
+                  // shots blend in nicely; cover mode uses the neutral surface.
+                  isContain ? "bg-white" : "bg-[var(--color-surface-2)]",
                   idx === activeIndex
                     ? "ring-2 ring-[var(--color-accent)]"
-                    : "opacity-70 ring-[var(--color-border)] hover:opacity-100",
+                    : "opacity-70 ring-1 ring-[var(--color-border)] hover:opacity-100",
                 )}
               >
                 <Image
@@ -67,12 +82,14 @@ export function ProductGallery({
                   alt=""
                   fill
                   sizes="64px"
-                  className="object-cover"
+                  className={cn(
+                    isContain ? "object-contain p-1" : "object-cover",
+                  )}
                 />
               </button>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

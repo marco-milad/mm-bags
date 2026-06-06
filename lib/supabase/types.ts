@@ -115,6 +115,10 @@ export type Database = {
           is_water_resistant: boolean;
           is_expandable: boolean;
           // === /specs ===
+          // 'cover' (default) crops images to fill the container. 'contain'
+          // letterboxes with padding so the full bag is visible — use for
+          // product-on-white photography with non-square source ratios.
+          image_fit: "cover" | "contain";
           is_active: boolean;
           sort_order: number;
           created_at: string;
@@ -143,6 +147,7 @@ export type Database = {
           capacity_liters?: number | null;
           is_water_resistant?: boolean;
           is_expandable?: boolean;
+          image_fit?: "cover" | "contain";
           is_active?: boolean;
           sort_order?: number;
           created_at?: string;
@@ -171,6 +176,7 @@ export type Database = {
           capacity_liters?: number | null;
           is_water_resistant?: boolean;
           is_expandable?: boolean;
+          image_fit?: "cover" | "contain";
           is_active?: boolean;
           sort_order?: number;
           created_at?: string;

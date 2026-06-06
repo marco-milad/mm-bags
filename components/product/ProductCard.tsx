@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n-config";
 import { formatPriceEGP } from "@/lib/utils";
 import { effectivePrice, totalStock, type ProductWithVariants } from "@/lib/catalog-shared";
 import { WishlistButton } from "@/components/product/WishlistButton";
 import { ProductSpecsChips } from "@/components/product/ProductSpecs";
+import { ImageContainer } from "@/components/product/ImageContainer";
 
 /**
  * Default `sizes` matches the catalog grid (CatalogView): 2-col mobile,
@@ -44,51 +44,40 @@ export function ProductCard({
       href={`/${locale}/products/${product.slug}`}
       className="group relative flex flex-col overflow-hidden rounded-xl bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] transition hover:shadow-lg"
     >
-      <div className="relative aspect-square overflow-hidden bg-[var(--color-surface-2)]">
-        <WishlistButton
-          locale={locale}
-          product={{
-            productId: product.id,
-            productSlug: product.slug,
-            name_ar: product.name_ar,
-            name_en: product.name_en,
-            image: primaryImage ?? null,
-          }}
-        />
-        {primaryImage ? (
-          <Image
-            src={primaryImage}
-            alt={name}
-            fill
-            sizes={sizes}
-            className="object-cover transition duration-300 group-hover:scale-[1.03]"
+      {primaryImage ? (
+        <ImageContainer
+          src={primaryImage}
+          secondarySrc={secondaryImage ?? null}
+          alt={name}
+          fit={product.image_fit}
+          sizes={sizes}
+        >
+          <WishlistButton
+            locale={locale}
+            product={{
+              productId: product.id,
+              productSlug: product.slug,
+              name_ar: product.name_ar,
+              name_en: product.name_en,
+              image: primaryImage,
+            }}
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-[var(--color-text-secondary)]">
-            {locale === "ar" ? "بدون صورة" : "No image"}
-          </div>
-        )}
-        {secondaryImage && (
-          <Image
-            src={secondaryImage}
-            alt=""
-            aria-hidden
-            fill
-            sizes={sizes}
-            className="object-cover opacity-0 transition duration-300 group-hover:opacity-100"
-          />
-        )}
-        {hasSale && !isOOS && (
-          <span className="absolute top-3 rounded-full bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--color-primary)] ltr:left-3 rtl:right-3">
-            -{savings}%
-          </span>
-        )}
-        {isOOS && (
-          <span className="absolute inset-x-0 bottom-0 bg-[var(--color-primary)]/90 py-2 text-center text-xs font-medium text-white">
-            {locale === "ar" ? "غير متوفر حالياً" : "Out of stock"}
-          </span>
-        )}
-      </div>
+          {hasSale && !isOOS && (
+            <span className="absolute top-3 z-10 rounded-full bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--color-primary)] ltr:left-3 rtl:right-3">
+              -{savings}%
+            </span>
+          )}
+          {isOOS && (
+            <span className="absolute inset-x-0 bottom-0 z-10 bg-[var(--color-primary)]/90 py-2 text-center text-xs font-medium text-white">
+              {locale === "ar" ? "غير متوفر حالياً" : "Out of stock"}
+            </span>
+          )}
+        </ImageContainer>
+      ) : (
+        <div className="relative flex aspect-square w-full items-center justify-center bg-[var(--color-surface-2)] text-xs text-[var(--color-text-secondary)]">
+          {locale === "ar" ? "بدون صورة" : "No image"}
+        </div>
+      )}
 
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="line-clamp-2 text-sm font-medium text-[var(--color-text)]">{name}</h3>
