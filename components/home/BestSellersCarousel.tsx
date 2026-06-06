@@ -76,7 +76,7 @@ export function BestSellersCarousel({
               key={p.id}
               className="w-[270px] shrink-0 snap-start md:w-[290px]"
             >
-              <ProductCard product={p} locale={locale} />
+              <ProductCard product={p} locale={locale} sizes="290px" />
             </li>
           ))}
         </ul>

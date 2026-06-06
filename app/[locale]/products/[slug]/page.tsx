@@ -146,7 +146,13 @@ export default async function ProductDetailPage({
           <ul className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {related.map((p) => (
               <li key={p.id}>
-                <ProductCard product={p} locale={locale} />
+                {/* Related-products grid is 2-col mobile / 4-col md+
+                    (no 3-col tablet step like the catalog uses). */}
+                <ProductCard
+                  product={p}
+                  locale={locale}
+                  sizes="(min-width: 768px) 25vw, 50vw"
+                />
               </li>
             ))}
           </ul>

@@ -6,12 +6,25 @@ import { effectivePrice, totalStock, type ProductWithVariants } from "@/lib/cata
 import { WishlistButton } from "@/components/product/WishlistButton";
 import { ProductSpecsChips } from "@/components/product/ProductSpecs";
 
+/**
+ * Default `sizes` matches the catalog grid (CatalogView): 2-col mobile,
+ * 3-col md+, 4-col lg+. Carousels and other fixed-width hosts should pass
+ * their own `sizes` so the image optimizer doesn't ship more bytes than
+ * the rendered card is wide.
+ */
+const DEFAULT_SIZES = "(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw";
+
 export function ProductCard({
   product,
   locale,
+  sizes = DEFAULT_SIZES,
 }: {
   product: ProductWithVariants;
   locale: Locale;
+  /** Override the `sizes` attribute for hosts that render the card at a
+      different width than the catalog grid (e.g. BestSellersCarousel
+      uses a fixed ~290px card; pass `sizes="290px"` there). */
+  sizes?: string;
 }) {
   const name = locale === "ar" ? product.name_ar : product.name_en;
   const price = effectivePrice(product);
@@ -47,7 +60,7 @@ export function ProductCard({
             src={primaryImage}
             alt={name}
             fill
-            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 90vw"
+            sizes={sizes}
             className="object-cover transition duration-300 group-hover:scale-[1.03]"
           />
         ) : (
@@ -61,7 +74,7 @@ export function ProductCard({
             alt=""
             aria-hidden
             fill
-            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 90vw"
+            sizes={sizes}
             className="object-cover opacity-0 transition duration-300 group-hover:opacity-100"
           />
         )}
