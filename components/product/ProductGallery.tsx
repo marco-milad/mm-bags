@@ -38,33 +38,35 @@ export function ProductGallery({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* HARD HEIGHT CLAMP — single inline CSS rule handles every viewport.
-          - height: min(420px, 80vw)
-          - iPhone 14 (390 px): 80vw = 312 → image fills ~80% of viewport width.
-          - Pixel 8 (412 px):  80vw = 330.
-          - iPad (744 px+):    hits the 420 cap.
-          - Desktop:           stays at 420 px (PDP is 2-col there anyway).
-          The clamp wins over any aspect-ratio inheritance and matches the
-          standard e-commerce mobile pattern (Noon / Amazon / Jumia) where
-          the gallery dominates the above-the-fold area on phones. */}
+      {/* NATURAL-FLOW IMAGE — no fixed height, no aspect-ratio forcing.
+          The image renders at its own intrinsic proportions (width 100%
+          of container, height computed by the browser from the natural
+          aspect), capped at maxHeight: 70vh so a tall portrait can't
+          ever exceed the viewport. This is the pattern Shopify themes
+          and Bagzawy/Noon/Amazon use for product galleries — the source
+          image decides the box, not the box deciding the source. */}
       <div
         key={active}
-        className="relative w-full overflow-hidden rounded-2xl"
-        style={{
-          height: "min(420px, 80vw)",
-          background: isContain ? "white" : undefined,
-        }}
+        className={cn(
+          "relative w-full overflow-hidden rounded-2xl",
+          isContain && "bg-white",
+        )}
       >
         <Image
           src={active}
           alt={name}
-          fill
+          /* width/height=0 + sizes + style:height:auto is the Next.js
+             documented pattern for letting next/image render at natural
+             intrinsic aspect while still going through the optimizer. */
+          width={0}
+          height={0}
           sizes="(min-width: 1024px) 600px, 100vw"
           priority
           className={cn(
-            "transition duration-300",
+            "block h-auto w-full",
             isContain ? "object-contain p-4" : "object-cover",
           )}
+          style={{ maxHeight: "70vh" }}
         />
       </div>
 

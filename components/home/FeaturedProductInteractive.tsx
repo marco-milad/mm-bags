@@ -98,30 +98,31 @@ export function FeaturedProductInteractive({
       {/* ============ LEFT — gallery ============ */}
       <div className="flex flex-col gap-3">
         {images[activeImage] && (
-          // HARD HEIGHT CLAMP — slightly shorter than the PDP gallery
-          // (`min(380px, 75vw)` vs PDP's `min(420px, 80vw)`) because the
-          // homepage Featured section also has eyebrow + headline above it,
-          // and we want everything visible above the fold on phones.
+          // NATURAL-FLOW IMAGE — same pattern as the PDP gallery. width:100%
+          // + height:auto + maxHeight:70vh means the source's intrinsic
+          // aspect drives the box; the viewport cap only kicks in for tall
+          // portrait sources that would otherwise scroll past the fold.
           <div
             key={images[activeImage]}
-            className="relative w-full overflow-hidden rounded-2xl ring-1 ring-[var(--color-border)]"
-            style={{
-              height: "min(380px, 75vw)",
-              background: product.image_fit === "contain" ? "white" : undefined,
-            }}
+            className={cn(
+              "relative w-full overflow-hidden rounded-2xl ring-1 ring-[var(--color-border)]",
+              product.image_fit === "contain" && "bg-white",
+            )}
           >
             <Image
               src={images[activeImage]}
               alt={isRTL ? product.name_ar : product.name_en}
-              fill
+              width={0}
+              height={0}
               sizes="(min-width: 1024px) 560px, 100vw"
               priority
               className={cn(
-                "transition duration-300",
+                "block h-auto w-full",
                 product.image_fit === "contain"
                   ? "object-contain p-4"
                   : "object-cover",
               )}
+              style={{ maxHeight: "70vh" }}
             />
           </div>
         )}
