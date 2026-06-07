@@ -35,7 +35,7 @@ export function BestSellersCarousel({
   const Next = locale === "ar" ? ChevronLeft : ChevronRight;
 
   return (
-    <section className="bg-surface py-20 md:py-24">
+    <section className="bg-surface py-12 md:py-24">
       <div className="mx-auto max-w-[1200px] px-6 md:px-12">
         <header className="mb-8 flex items-end justify-between gap-4">
           <div>

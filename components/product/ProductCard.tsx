@@ -50,6 +50,7 @@ export function ProductCard({
           secondarySrc={secondaryImage ?? null}
           alt={name}
           fit={product.image_fit}
+          aspect={product.image_aspect}
           sizes={sizes}
         >
           <WishlistButton

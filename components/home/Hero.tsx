@@ -160,7 +160,7 @@ export function Hero({
       )}
 
       {/* Content */}
-      <div className="relative mx-auto flex min-h-[82vh] max-w-[1360px] flex-col items-start justify-center gap-5 px-6 py-24 md:min-h-[88vh] md:px-12 md:py-32">
+      <div className="relative mx-auto flex min-h-[82vh] max-w-[1360px] flex-col items-start justify-center gap-5 px-6 py-12 md:min-h-[88vh] md:px-12 md:py-32">
         <p
           className="font-mono text-[11px] uppercase tracking-[0.3em] text-brass-300 opacity-0"
           style={{ animation: RISE, animationDelay: "50ms" }}

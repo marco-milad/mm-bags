@@ -91,7 +91,7 @@ export function VideosStrip({ locale }: { locale: Locale }) {
 
   return (
     <section
-      className="mx-auto max-w-[1360px] px-6 py-20 md:px-12 md:py-24"
+      className="mx-auto max-w-[1360px] px-6 py-12 md:px-12 md:py-24"
       aria-labelledby="videos-strip-heading"
     >
       <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4">

@@ -119,6 +119,10 @@ export type Database = {
           // letterboxes with padding so the full bag is visible — use for
           // product-on-white photography with non-square source ratios.
           image_fit: "cover" | "contain";
+          // Source image orientation; controls aspect ratio of the gallery
+          // container. 'landscape' suits Milano sources (~1.4), 'portrait'
+          // suits Calvin Klein sources (~0.75), 'square' is the default.
+          image_aspect: "square" | "landscape" | "portrait";
           is_active: boolean;
           sort_order: number;
           created_at: string;
@@ -148,6 +152,7 @@ export type Database = {
           is_water_resistant?: boolean;
           is_expandable?: boolean;
           image_fit?: "cover" | "contain";
+          image_aspect?: "square" | "landscape" | "portrait";
           is_active?: boolean;
           sort_order?: number;
           created_at?: string;
@@ -177,6 +182,7 @@ export type Database = {
           is_water_resistant?: boolean;
           is_expandable?: boolean;
           image_fit?: "cover" | "contain";
+          image_aspect?: "square" | "landscape" | "portrait";
           is_active?: boolean;
           sort_order?: number;
           created_at?: string;

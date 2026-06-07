@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import type { ImageFit } from "@/components/product/ImageContainer";
+import type { ImageAspect, ImageFit } from "@/components/product/ImageContainer";
 import { ImageContainer } from "@/components/product/ImageContainer";
 
 export function ProductGallery({
@@ -11,6 +11,7 @@ export function ProductGallery({
   name,
   locale,
   imageFit = "cover",
+  imageAspect = "square",
 }: {
   images: string[];
   name: string;
@@ -18,6 +19,10 @@ export function ProductGallery({
   /** Determines whether the main image and thumbnails crop (`cover`) or
       letterbox with padding (`contain`). See ImageContainer for details. */
   imageFit?: ImageFit;
+  /** Source-image orientation; drives the main-image aspect ratio so the
+      bag fills the visible frame without letterboxing. Thumbnails always
+      stay square so the strip stays uniform. */
+  imageAspect?: ImageAspect;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const safeImages = images.length > 0 ? images : [];
@@ -44,15 +49,10 @@ export function ProductGallery({
         src={active}
         alt={name}
         fit={imageFit}
+        aspect={imageAspect}
         sizes="(min-width: 1024px) 600px, 100vw"
         priority
         rounded="2xl"
-        aspectClassName="aspect-square w-full"
-        // Final main-image wrapper class: `relative w-full aspect-square
-        // max-h-[360px] md:max-h-none`. The 360 cap stops the box from
-        // eating the viewport on phones; md:max-h-none lets the gallery
-        // breathe at tablet+ where aspect-square has room.
-        containerClassName="max-h-[360px] md:max-h-none"
       />
 
       {safeImages.length > 1 && (

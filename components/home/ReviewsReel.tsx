@@ -33,7 +33,7 @@ export function ReviewsReel({
   const r = reviews[i];
 
   return (
-    <section className="mx-auto max-w-[1200px] px-6 py-20 md:px-12 md:py-24">
+    <section className="mx-auto max-w-[1200px] px-6 py-12 md:px-12 md:py-24">
       <header className="mb-10 flex flex-col items-center gap-2 text-center">
         <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-brass-700">
           {locale === "ar" ? "آراء عملائنا" : "Customer voices"}

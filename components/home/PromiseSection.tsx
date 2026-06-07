@@ -52,7 +52,7 @@ const PROMISES: Promise[] = [
  */
 export function PromiseSection({ locale }: { locale: Locale }) {
   return (
-    <section className="bg-paper py-20 md:py-24">
+    <section className="bg-paper py-12 md:py-24">
       <div className="mx-auto max-w-[1200px] px-6 md:px-12">
         <header className="mb-12 flex flex-col gap-2 md:mb-16">
           <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-brass-700">

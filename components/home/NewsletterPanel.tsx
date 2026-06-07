@@ -10,7 +10,7 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
   const Forward = locale === "ar" ? ArrowLeft : ArrowRight;
 
   return (
-    <section className="px-6 py-20 md:px-12 md:py-24">
+    <section className="px-6 py-12 md:px-12 md:py-24">
       <div className="relative mx-auto max-w-[1200px] overflow-hidden rounded-[18px] bg-navy-900 px-8 py-14 text-paper md:px-16 md:py-20">
         {/* Faint MM watermark on the right */}
         <span

@@ -26,7 +26,7 @@ export function CollectionsSection({
   const Forward = isRTL ? ArrowLeft : ArrowRight;
 
   return (
-    <section className="mx-auto max-w-[1360px] px-6 py-20 md:px-12 md:py-24">
+    <section className="mx-auto max-w-[1360px] px-6 py-12 md:px-12 md:py-24">
       <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-brass-700">

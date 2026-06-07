@@ -3,19 +3,22 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export type ImageFit = "cover" | "contain";
+export type ImageAspect = "square" | "landscape" | "portrait";
 
 /**
- * Universal product-image primitive. The container locks the aspect ratio;
- * `fit` controls whether the image fills it (cropping out anything that
- * doesn't fit) or letterboxes inside it (with matching padding + background
- * so the empty space looks intentional).
+ * Universal product-image primitive. Two orthogonal knobs:
  *
- * - fit="cover":   for square sources or lifestyle / model shots where
- *                  cropping is fine. Container gets a neutral surface bg.
- * - fit="contain": for product-on-white photography with non-square source
- *                  ratios (Milano + CK luggage, laptop sleeves). Container
- *                  gets a white bg + inset padding so the bag floats inside
- *                  the frame with no awkward letterbox stripe.
+ * - `fit`:    how the image meets its container.
+ *               cover   → crops to fill (square sources, lifestyle shots)
+ *               contain → letterboxes with matching white bg + padding so the
+ *                         entire bag is visible (product-on-white photography)
+ *
+ * - `aspect`: the container's aspect ratio. Matches the SOURCE's native
+ *             orientation so contain-mode bags fill the visible frame
+ *             without 30% whitespace stripes.
+ *               square    → aspect-square        (most products)
+ *               landscape → aspect-[7/5]   ≈ 1.4 (Milano series)
+ *               portrait  → aspect-[3/4]   ≈ 0.75 (Calvin Klein)
  *
  * Two `next/image` slots are supported via `secondarySrc` so consumers
  * (ProductCard hover-swap) can crossfade without re-implementing the
@@ -26,9 +29,9 @@ export function ImageContainer({
   secondarySrc,
   alt,
   fit,
+  aspect = "square",
   sizes,
   priority = false,
-  aspectClassName = "aspect-square",
   containerClassName,
   rounded = "none",
   children,
@@ -37,12 +40,13 @@ export function ImageContainer({
   secondarySrc?: string | null;
   alt: string;
   fit: ImageFit;
+  /** Source orientation — drives the container's aspect-ratio. */
+  aspect?: ImageAspect;
   sizes: string;
   priority?: boolean;
-  /** Aspect ratio utility — defaults to `aspect-square`. Pass any Tailwind
-      aspect class (e.g. `aspect-[4/5]`) for non-square hosts. */
-  aspectClassName?: string;
-  /** Extra classes for the outer wrapper. Useful for ring/border treatments. */
+  /** Extra classes for the outer wrapper. Useful for ring/border, mobile
+      max-h caps, w-full, etc. NB: any `aspect-*` class here will be
+      overridden by the resolved aspect from `aspect` via twMerge. */
   containerClassName?: string;
   /** Border-radius preset — matches the look at the call site. */
   rounded?: "none" | "lg" | "xl" | "2xl";
@@ -52,6 +56,17 @@ export function ImageContainer({
   children?: ReactNode;
 }) {
   const isContain = fit === "contain";
+
+  // Aspect ratio class for the wrapper. Two arbitrary ratios chosen to
+  // closely match the measured native dimensions of our sources without
+  // introducing per-product mathematical ratios.
+  const aspectClass =
+    aspect === "landscape"
+      ? "aspect-[7/5]"
+      : aspect === "portrait"
+        ? "aspect-[3/4]"
+        : "aspect-square";
+
   const radiusClass =
     rounded === "2xl"
       ? "rounded-2xl"
@@ -75,14 +90,11 @@ export function ImageContainer({
   return (
     <div
       className={cn(
-        "relative overflow-hidden",
-        aspectClassName,
-        // ALWAYS lock the box to aspect-square, both cover and contain.
-        // cn / twMerge's last-wins rule means this overrides whatever
-        // aspect-* class the consumer passed in aspectClassName above.
-        // The box height comes from the width × 1:1 ratio — no callers
-        // should be applying their own height constants.
-        "aspect-square",
+        "relative overflow-hidden w-full",
+        // Per-product aspect ratio — drives the container's height as
+        // width × ratio. Placed before containerClassName so a caller can
+        // still pass a different aspect/max-h override if needed.
+        aspectClass,
         radiusClass,
         bgClass,
         containerClassName,

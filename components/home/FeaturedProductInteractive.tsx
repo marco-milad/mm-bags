@@ -106,15 +106,11 @@ export function FeaturedProductInteractive({
             src={images[activeImage]}
             alt={isRTL ? product.name_ar : product.name_en}
             fit={product.image_fit}
+            aspect={product.image_aspect}
             sizes="(min-width: 1024px) 560px, 100vw"
             priority
             rounded="2xl"
-            aspectClassName="aspect-square w-full"
-            // Same mobile-only height cap as ProductGallery: stops a tall
-            // portrait Featured image (Milano/CK) from pushing the rest of
-            // the homepage below the fold on phones. md:max-h-none lets the
-            // box go back to aspect-square at tablet+ where it has room.
-            containerClassName="max-h-[360px] md:max-h-none ring-1 ring-[var(--color-border)]"
+            containerClassName="ring-1 ring-[var(--color-border)]"
           />
         )}
 

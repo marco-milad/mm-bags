@@ -29,7 +29,7 @@ export function ShopByMaterial({
       className="bg-navy-900 text-paper"
       aria-labelledby="shop-by-material-heading"
     >
-      <div className="mx-auto max-w-[1360px] px-6 py-20 md:px-12 md:py-24">
+      <div className="mx-auto max-w-[1360px] px-6 py-12 md:px-12 md:py-24">
         <header className="mb-10 flex flex-col gap-2 text-center md:mb-14">
           <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-brass-300">
             {isRTL ? "اعرف خامتك" : "Know your material"}

@@ -36,7 +36,7 @@ const TILES: Tile[] = [
  */
 export function MoodBoard({ locale }: { locale: Locale }) {
   return (
-    <section className="relative isolate overflow-hidden bg-navy-900 py-20 text-paper md:py-28">
+    <section className="relative isolate overflow-hidden bg-navy-900 py-12 text-paper md:py-28">
       <span
         aria-hidden
         className="absolute inset-x-0 top-0 mx-auto h-px max-w-[1200px] bg-brass-500/40"

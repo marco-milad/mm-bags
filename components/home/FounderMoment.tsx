@@ -49,7 +49,7 @@ export function FounderMoment({ locale }: { locale: Locale }) {
   return (
     <section
       ref={ref}
-      className="relative isolate overflow-hidden bg-navy-900 py-24 text-paper md:py-32"
+      className="relative isolate overflow-hidden bg-navy-900 py-12 text-paper md:py-32"
     >
       {/* Giant faint MM watermark */}
       <span
