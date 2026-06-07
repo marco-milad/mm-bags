@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
-import { SizeGuideBanner } from "@/components/size-guide/SizeGuideBanner";
 import { Hero } from "@/components/home/Hero";
 import { Marquee } from "@/components/home/Marquee";
 import { CollectionsSection } from "@/components/home/CollectionsSection";
@@ -73,8 +72,6 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       )}
 
       <ShopByMaterial locale={locale} materials={materials} />
-
-      <SizeGuideBanner locale={locale} />
 
       <NewsletterPanel locale={locale} />
     </>

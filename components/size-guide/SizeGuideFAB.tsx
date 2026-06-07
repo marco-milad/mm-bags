@@ -12,15 +12,43 @@ import {
 
 const PULSE_DELAY_MS = 15_000;
 
-// Path-based visibility. Show only on catalog, collection, and product pages.
+// Travel-bag-only catalog slugs where the Size Guide is contextually
+// relevant. Soft-bag collections (backpacks, school, ladies, handbags,
+// laptop) get nothing — the guide is about luggage sizing for trips, not
+// daily-carry capacity.
+const TRAVEL_CATALOG_SLUGS = new Set([
+  "travel-bags",
+  "milano-series",
+  "calvin-klein",
+  "travel-accessories",
+]);
+
+// Product slugs that belong to a travel-bag family. We match by slug prefix
+// rather than walking a join to product.collection because this runs on
+// every route change and we already have the slug in the URL.
+const TRAVEL_PRODUCT_PREFIXES = ["bs-milano-", "ck-"];
+
+// Path-based visibility. Show ONLY on travel-bag catalogs + travel-bag
+// product detail pages.
 function matchesAllowedPath(pathname: string | null): {
   visible: boolean;
   isProduct: boolean;
 } {
   if (!pathname) return { visible: false, isProduct: false };
-  const product = /^\/(ar|en)\/products\/[^/]+$/.test(pathname);
-  const catalog = /^\/(ar|en)\/catalog(?:\/[^/]+)?$/.test(pathname);
-  return { visible: product || catalog, isProduct: product };
+
+  // /{locale}/catalog/{slug}
+  const catalogMatch = pathname.match(/^\/(?:ar|en)\/catalog\/([^/]+)$/);
+  if (catalogMatch && TRAVEL_CATALOG_SLUGS.has(catalogMatch[1])) {
+    return { visible: true, isProduct: false };
+  }
+
+  // /{locale}/products/{slug}
+  const productMatch = pathname.match(/^\/(?:ar|en)\/products\/([^/]+)$/);
+  if (productMatch && TRAVEL_PRODUCT_PREFIXES.some((p) => productMatch[1].startsWith(p))) {
+    return { visible: true, isProduct: true };
+  }
+
+  return { visible: false, isProduct: false };
 }
 
 export function SizeGuideFAB({ locale }: { locale: Locale }) {

@@ -6,6 +6,8 @@ import { UrgencyBanner } from "@/components/layout/UrgencyBanner";
 import { Footer } from "@/components/layout/Footer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { WhatsAppFAB } from "@/components/shared/WhatsAppFAB";
+import { SocialBar } from "@/components/shared/SocialBar";
+import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { SizeGuideFAB } from "@/components/size-guide/SizeGuideFAB";
 import { direction, hasLocale, locales } from "@/lib/i18n-config";
@@ -101,6 +103,8 @@ export default async function RootLayout({
         <MobileBottomNav locale={locale} t={t.nav} />
         <WhatsAppFAB locale={locale} />
         <SizeGuideFAB locale={locale} />
+        <SocialBar locale={locale} />
+        <ScrollToTop locale={locale} />
         <CartDrawer locale={locale} />
       </body>
     </html>
