@@ -77,13 +77,12 @@ export function ImageContainer({
       className={cn(
         "relative overflow-hidden",
         aspectClassName,
-        // Contain-mode boxes ALWAYS use aspect-square. Landscape/portrait
-        // product-on-white sources would otherwise leak their intrinsic
-        // aspect through the box when a consumer overrode aspectClassName
-        // with something other than square. cn / twMerge keeps the last
-        // aspect-* class, so this line wins over anything in
-        // aspectClassName above.
-        isContain && "aspect-square",
+        // ALWAYS lock the box to aspect-square, both cover and contain.
+        // cn / twMerge's last-wins rule means this overrides whatever
+        // aspect-* class the consumer passed in aspectClassName above.
+        // The box height comes from the width × 1:1 ratio — no callers
+        // should be applying their own height constants.
+        "aspect-square",
         radiusClass,
         bgClass,
         containerClassName,

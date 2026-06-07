@@ -114,7 +114,7 @@ export function FeaturedProductInteractive({
             // portrait Featured image (Milano/CK) from pushing the rest of
             // the homepage below the fold on phones. md:max-h-none lets the
             // box go back to aspect-square at tablet+ where it has room.
-            containerClassName="max-h-[400px] md:max-h-none ring-1 ring-[var(--color-border)]"
+            containerClassName="max-h-[360px] md:max-h-none ring-1 ring-[var(--color-border)]"
           />
         )}
 

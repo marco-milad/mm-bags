@@ -89,12 +89,17 @@ export default async function ProductDetailPage({
 
       {/* Main grid */}
       <div className="grid gap-8 md:grid-cols-2 md:gap-12">
-        <ProductGallery
-          images={product.images}
-          name={name}
-          locale={locale}
-          imageFit={product.image_fit}
-        />
+        {/* Mobile cap on the whole gallery column matches the inner-image
+            cap so any future addition to the gallery (zoom buttons, badge,
+            etc.) can't push the column past viewport-friendly height. */}
+        <div className="w-full max-h-[360px] md:max-h-none">
+          <ProductGallery
+            images={product.images}
+            name={name}
+            locale={locale}
+            imageFit={product.image_fit}
+          />
+        </div>
 
         <div className="flex flex-col gap-6">
           <header className="flex flex-col gap-2">
