@@ -8,7 +8,6 @@ import type { ProductWithVariants } from "@/lib/catalog-shared";
 import { effectivePrice, totalStock } from "@/lib/catalog-shared";
 import { useCartStore } from "@/store/cart";
 import { cn } from "@/lib/utils";
-import { ImageContainer } from "@/components/product/ImageContainer";
 
 /**
  * Client subtree of FeaturedProduct: image gallery (main + thumb swap),
@@ -99,19 +98,32 @@ export function FeaturedProductInteractive({
       {/* ============ LEFT — gallery ============ */}
       <div className="flex flex-col gap-3">
         {images[activeImage] && (
-          <ImageContainer
-            // key on the wrapper forces React to remount when the active
-            // image changes, so the new one fades in cleanly.
+          // HARD HEIGHT CLAMP — same `min(320px, 45vw)` as the PDP gallery so
+          // the homepage Featured hero plays by the same viewport rules. See
+          // ProductGallery for the math; in short, image height = 45vw until
+          // viewport hits 711 px, then caps at 320 px.
+          <div
             key={images[activeImage]}
-            src={images[activeImage]}
-            alt={isRTL ? product.name_ar : product.name_en}
-            fit={product.image_fit}
-            aspect={product.image_aspect}
-            sizes="(min-width: 1024px) 560px, 100vw"
-            priority
-            rounded="2xl"
-            containerClassName="ring-1 ring-[var(--color-border)]"
-          />
+            className="relative w-full overflow-hidden rounded-2xl ring-1 ring-[var(--color-border)]"
+            style={{
+              height: "min(320px, 45vw)",
+              background: product.image_fit === "contain" ? "white" : undefined,
+            }}
+          >
+            <Image
+              src={images[activeImage]}
+              alt={isRTL ? product.name_ar : product.name_en}
+              fill
+              sizes="(min-width: 1024px) 560px, 100vw"
+              priority
+              className={cn(
+                "transition duration-300",
+                product.image_fit === "contain"
+                  ? "object-contain p-4"
+                  : "object-cover",
+              )}
+            />
+          </div>
         )}
 
         {images.length > 1 && (

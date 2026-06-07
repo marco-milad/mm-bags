@@ -4,24 +4,22 @@ import Image from "next/image";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ImageAspect, ImageFit } from "@/components/product/ImageContainer";
-import { ImageContainer } from "@/components/product/ImageContainer";
 
 export function ProductGallery({
   images,
   name,
   locale,
   imageFit = "cover",
-  imageAspect = "square",
+  imageAspect: _imageAspect = "square",
 }: {
   images: string[];
   name: string;
   locale: "ar" | "en";
   /** Determines whether the main image and thumbnails crop (`cover`) or
-      letterbox with padding (`contain`). See ImageContainer for details. */
+      letterbox with padding (`contain`). */
   imageFit?: ImageFit;
-  /** Source-image orientation; drives the main-image aspect ratio so the
-      bag fills the visible frame without letterboxing. Thumbnails always
-      stay square so the strip stays uniform. */
+  /** Reserved for ImageContainer-based hosts; main-image gallery uses a
+      hard `min(320px, 45vw)` height clamp regardless of orientation. */
   imageAspect?: ImageAspect;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -40,20 +38,33 @@ export function ProductGallery({
 
   return (
     <div className="flex flex-col gap-3">
-      <ImageContainer
-        // `key` on the wrapper makes React unmount/remount the underlying
-        // <Image> when activeIndex changes, so the next picture starts its
-        // own fade instead of crossfading with the previous one (we don't
-        // want the secondary slot's hover-swap behavior here).
+      {/* HARD HEIGHT CLAMP — single inline CSS rule handles every viewport.
+          - height: min(320px, 45vw)
+          - At a 360-px viewport: 45vw = 162 px → image area is 162 px tall.
+          - At a 711-px viewport (320 ÷ 0.45): hits the 320 cap.
+          - At 1280 px+: stays at 320 px, the upper bound.
+          The clamp wins over any aspect-ratio inheritance and stops the
+          source image's intrinsic dimensions from leaking into layout. */}
+      <div
         key={active}
-        src={active}
-        alt={name}
-        fit={imageFit}
-        aspect={imageAspect}
-        sizes="(min-width: 1024px) 600px, 100vw"
-        priority
-        rounded="2xl"
-      />
+        className="relative w-full overflow-hidden rounded-2xl"
+        style={{
+          height: "min(320px, 45vw)",
+          background: isContain ? "white" : undefined,
+        }}
+      >
+        <Image
+          src={active}
+          alt={name}
+          fill
+          sizes="(min-width: 1024px) 600px, 100vw"
+          priority
+          className={cn(
+            "transition duration-300",
+            isContain ? "object-contain p-4" : "object-cover",
+          )}
+        />
+      </div>
 
       {safeImages.length > 1 && (
         <div
