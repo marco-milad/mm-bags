@@ -39,17 +39,19 @@ export function ProductGallery({
   return (
     <div className="flex flex-col gap-3">
       {/* HARD HEIGHT CLAMP — single inline CSS rule handles every viewport.
-          - height: min(320px, 45vw)
-          - At a 360-px viewport: 45vw = 162 px → image area is 162 px tall.
-          - At a 711-px viewport (320 ÷ 0.45): hits the 320 cap.
-          - At 1280 px+: stays at 320 px, the upper bound.
-          The clamp wins over any aspect-ratio inheritance and stops the
-          source image's intrinsic dimensions from leaking into layout. */}
+          - height: min(420px, 80vw)
+          - iPhone 14 (390 px): 80vw = 312 → image fills ~80% of viewport width.
+          - Pixel 8 (412 px):  80vw = 330.
+          - iPad (744 px+):    hits the 420 cap.
+          - Desktop:           stays at 420 px (PDP is 2-col there anyway).
+          The clamp wins over any aspect-ratio inheritance and matches the
+          standard e-commerce mobile pattern (Noon / Amazon / Jumia) where
+          the gallery dominates the above-the-fold area on phones. */}
       <div
         key={active}
         className="relative w-full overflow-hidden rounded-2xl"
         style={{
-          height: "min(320px, 45vw)",
+          height: "min(420px, 80vw)",
           background: isContain ? "white" : undefined,
         }}
       >

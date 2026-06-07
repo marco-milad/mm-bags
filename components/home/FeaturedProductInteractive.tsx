@@ -98,15 +98,15 @@ export function FeaturedProductInteractive({
       {/* ============ LEFT — gallery ============ */}
       <div className="flex flex-col gap-3">
         {images[activeImage] && (
-          // HARD HEIGHT CLAMP — same `min(320px, 45vw)` as the PDP gallery so
-          // the homepage Featured hero plays by the same viewport rules. See
-          // ProductGallery for the math; in short, image height = 45vw until
-          // viewport hits 711 px, then caps at 320 px.
+          // HARD HEIGHT CLAMP — slightly shorter than the PDP gallery
+          // (`min(380px, 75vw)` vs PDP's `min(420px, 80vw)`) because the
+          // homepage Featured section also has eyebrow + headline above it,
+          // and we want everything visible above the fold on phones.
           <div
             key={images[activeImage]}
             className="relative w-full overflow-hidden rounded-2xl ring-1 ring-[var(--color-border)]"
             style={{
-              height: "min(320px, 45vw)",
+              height: "min(380px, 75vw)",
               background: product.image_fit === "contain" ? "white" : undefined,
             }}
           >
