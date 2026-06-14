@@ -1,25 +1,22 @@
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n-config";
-import type { MaterialCount } from "@/lib/queries/catalog";
-import { materialIcon, materialNameAr } from "@/lib/materials-config";
+import type { MaterialBucketCount } from "@/lib/queries/catalog";
+import { bucketById } from "@/lib/material-buckets";
+import { Layers } from "lucide-react";
 
 /**
  * Homepage Shop By Material section. Pure server component — receives the
- * distinct material_type values + their active-product counts from a
- * getMaterialCounts() call in the page. New materials surface here
- * automatically (no hardcoded list); only the icon + AR display name are
- * looked up via the materials-config rule list, with sensible fallbacks
- * for unknown values.
- *
- * Dark navy section with brass accents for contrast against the cream
- * sections above and below it.
+ * pre-bucketed material families from `getMaterialCounts()` (capped at 8)
+ * and renders one card per bucket. The card deep-links to the catalog with
+ * `?materialBucket=<id>`, which expands to `IN (...)` over the bucket's
+ * member `material_type` values on the server.
  */
 export function ShopByMaterial({
   locale,
   materials,
 }: {
   locale: Locale;
-  materials: MaterialCount[];
+  materials: MaterialBucketCount[];
 }) {
   if (materials.length === 0) return null;
   const isRTL = locale === "ar";
@@ -43,15 +40,18 @@ export function ShopByMaterial({
         </header>
 
         <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
-          {materials.map(({ material_type, productCount }) => {
-            const Icon = materialIcon(material_type);
-            const labelAr = materialNameAr(material_type) || material_type;
-            const display = isRTL ? labelAr : material_type;
-            const sub = isRTL ? material_type : labelAr;
+          {materials.map((bucket) => {
+            // Bucket meta (icon + canonical labels) comes from the same
+            // rule list the query used — keeps display synced with the
+            // groupings without duplicating data through the query layer.
+            const meta = bucketById(bucket.id);
+            const Icon = meta?.icon ?? Layers;
+            const display = isRTL ? bucket.ar : bucket.en;
+            const sub = isRTL ? bucket.en : bucket.ar;
             return (
-              <li key={material_type}>
+              <li key={bucket.id}>
                 <Link
-                  href={`/${locale}/catalog?material=${encodeURIComponent(material_type)}`}
+                  href={`/${locale}/catalog?materialBucket=${bucket.id}`}
                   className="group flex h-full flex-col items-start gap-3 rounded-2xl border border-white/10 bg-navy-800/40 p-5 transition duration-300 hover:-translate-y-[3px] hover:border-brass-300 hover:bg-navy-800/70 md:p-6"
                 >
                   <span
@@ -73,10 +73,10 @@ export function ShopByMaterial({
                   </div>
 
                   <p className="font-mono text-[11px] uppercase tracking-wider text-brass-300">
-                    {productCount}{" "}
+                    {bucket.productCount}{" "}
                     {isRTL
                       ? "منتج"
-                      : productCount === 1
+                      : bucket.productCount === 1
                         ? "product"
                         : "products"}
                   </p>

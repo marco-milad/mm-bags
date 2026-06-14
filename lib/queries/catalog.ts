@@ -74,6 +74,7 @@ export async function getProducts(opts: {
   tag?: string;
   q?: string; // free-text search over name_ar / name_en
   material?: string; // filter by exact material_type value
+  materials?: string[]; // filter by ANY of these material_type values (bucket expansion)
   limit?: number;
 } = {}): Promise<ProductWithVariants[]> {
   const supabase = await createSupabaseServerClient();
@@ -90,10 +91,13 @@ export async function getProducts(opts: {
   if (opts.tag) {
     query = query.contains("tags", [opts.tag]);
   }
-  if (opts.material) {
-    // material_type is the structured single-word column populated by the
-    // specs system. The ShopByMaterial section deep-links the exact value
-    // (e.g. "Polycarbonate", "Faux Leather") so we match it as-is.
+  if (opts.materials && opts.materials.length > 0) {
+    // Bucket-driven filter: ShopByMaterial groups multiple raw material_type
+    // values into one card (e.g. all leather variants → "جلد طبيعي"), so we
+    // need a multi-value IN clause to match every member of the bucket.
+    query = query.in("material_type", opts.materials);
+  } else if (opts.material) {
+    // Legacy / single-material filter — exact match on `material_type`.
     query = query.eq("material_type", opts.material);
   }
   if (opts.q) {
@@ -178,20 +182,37 @@ export async function getFeaturedProduct(): Promise<ProductDetail | null> {
   return (row ?? null) as ProductDetail | null;
 }
 
-export type MaterialCount = {
-  material_type: string;
+/**
+ * A consolidated material family, ready for the homepage card grid. The
+ * `id` is the canonical slug used by the catalog page's `?materialBucket=`
+ * filter; `members` is the set of raw `material_type` values from the
+ * products table that roll up into this bucket — the catalog uses them to
+ * expand the bucket into a multi-value `IN (...)` query.
+ */
+export type MaterialBucketCount = {
+  id: string;
+  ar: string;
+  en: string;
+  members: string[];
   productCount: number;
 };
 
+// Backwards-compat alias — older imports use MaterialCount.
+export type MaterialCount = MaterialBucketCount;
+
 /**
- * Reads distinct material_type values + their active-product counts. The
- * ShopByMaterial section renders the result verbatim — admins adding a new
- * material_type to a product surface it here automatically (no hardcode).
+ * Groups the raw `material_type` values across active products into a
+ * customer-facing set of buckets (see `lib/material-buckets.ts` for the
+ * rules), then returns the TOP 8 by product count.
  *
- * PostgREST doesn't support GROUP BY, so we pull material_type for all active
- * products and aggregate in JS. With ~60 products this is single-digit ms.
+ * PostgREST doesn't support GROUP BY, so we pull material_type for all
+ * active products and aggregate in JS. With ~60 products the work is
+ * single-digit ms.
  */
-export async function getMaterialCounts(): Promise<MaterialCount[]> {
+const MAX_MATERIAL_CARDS = 8;
+
+export async function getMaterialCounts(): Promise<MaterialBucketCount[]> {
+  const { bucketForMaterial } = await import("@/lib/material-buckets");
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("products")
@@ -201,16 +222,29 @@ export async function getMaterialCounts(): Promise<MaterialCount[]> {
 
   if (error) throw new Error(`getMaterialCounts failed: ${error.message}`);
 
-  const counts = new Map<string, number>();
+  const buckets = new Map<string, MaterialBucketCount>();
   for (const row of data ?? []) {
-    const m = row.material_type;
-    if (!m) continue;
-    counts.set(m, (counts.get(m) ?? 0) + 1);
+    const raw = row.material_type;
+    if (!raw) continue;
+    const meta = bucketForMaterial(raw);
+    const existing = buckets.get(meta.id);
+    if (existing) {
+      existing.productCount += 1;
+      if (!existing.members.includes(raw)) existing.members.push(raw);
+    } else {
+      buckets.set(meta.id, {
+        id: meta.id,
+        ar: meta.ar,
+        en: meta.en,
+        members: [raw],
+        productCount: 1,
+      });
+    }
   }
 
-  return Array.from(counts.entries())
-    .map(([material_type, productCount]) => ({ material_type, productCount }))
-    .sort((a, b) => b.productCount - a.productCount);
+  return Array.from(buckets.values())
+    .sort((a, b) => b.productCount - a.productCount)
+    .slice(0, MAX_MATERIAL_CARDS);
 }
 
 export async function getRelatedProducts(opts: {
