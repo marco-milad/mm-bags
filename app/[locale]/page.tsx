@@ -29,7 +29,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
     await Promise.all([
       getTopLevelCategoriesWithCounts(),
       getProducts({ tag: "best-seller", limit: 8 }),
-      getFeaturedReviews(3),
+      getFeaturedReviews(6),
       getFeaturedProduct(),
       getMaterialCounts(),
     ]);
