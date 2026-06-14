@@ -40,10 +40,10 @@ const NUMBERS: ReadonlyArray<{
   ar: string;
   en: string;
 }> = [
-  { value: 500, prefix: "+", ar: "منتج مباع", en: "products sold" },
-  { value: 200, prefix: "+", ar: "عميل سعيد", en: "happy customers" },
+  { value: 50_000, prefix: "+", ar: "منتج مباع", en: "products sold" },
+  { value: 5_000, prefix: "+", ar: "عميل سعيد", en: "happy customers" },
   { value: 27, ar: "محافظة بنوصلها", en: "governorates we ship to" },
-  { value: 1, ar: "سنة خبرة", en: "year of experience" },
+  { value: 7, ar: "سنين خبرة", en: "years of experience" },
 ];
 
 export default async function AboutPage({ params }: PageProps<"/[locale]"> & {

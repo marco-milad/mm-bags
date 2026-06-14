@@ -11,7 +11,7 @@ type Stat = {
 
 const STATS: Stat[] = [
   { value: 27,     label_ar: "محافظة بنوصلها",     label_en: "Governorates"     },
-  { value: 12_000, suffix: "+", label_ar: "رحلة سفر",       label_en: "Trips"      },
+  { value: 50_000, suffix: "+", label_ar: "منتج مباع",       label_en: "Products sold" },
   { value: 4.8,    decimals: 1, label_ar: "نجوم تقييم",     label_en: "★ rating"   },
   { value: 14,     label_ar: "يوم ضمان استبدال", label_en: "Day guarantee"      },
 ];
