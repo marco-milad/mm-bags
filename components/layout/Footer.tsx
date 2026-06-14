@@ -62,9 +62,11 @@ export function Footer({
         <FooterColumn
           title={t.help}
           links={[
-            { href: `${base}/about`, label: locale === "ar" ? "عن M.M Bags" : "About" },
+            { href: `${base}/faq`, label: locale === "ar" ? "الأسئلة الشائعة" : "FAQ" },
+            { href: `${base}/contact`, label: locale === "ar" ? "تواصل معنا" : "Contact us" },
             { href: `${base}/track`, label: locale === "ar" ? "تتبع طلبك" : "Track your order" },
             { href: `${base}/account`, label: locale === "ar" ? "حسابي" : "My account" },
+            { href: `${base}/about`, label: locale === "ar" ? "عن M.M Bags" : "About" },
           ]}
         />
 

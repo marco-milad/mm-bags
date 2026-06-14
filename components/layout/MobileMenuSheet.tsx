@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Heart,
+  HelpCircle,
   Home,
   Info,
   MessageCircle,
@@ -87,6 +88,11 @@ export function MobileMenuSheet({
     { href: `${base}/catalog`, icon: Package2, label: labels.catalog },
     { href: `${base}/categories`, icon: Tag, label: labels.categories },
     { href: `${base}/about`, icon: Info, label: labels.about },
+    {
+      href: `${base}/faq`,
+      icon: HelpCircle,
+      label: isRTL ? "الأسئلة الشائعة" : "FAQ",
+    },
   ];
 
   return (
@@ -210,6 +216,16 @@ export function MobileMenuSheet({
 
               {/* Contact + Language */}
               <div className="mt-4 border-t border-[var(--color-border)] pt-4">
+                {/* Two ways to reach us: the contact page (form + email +
+                    business hours) and a direct WhatsApp deep-link for users
+                    who'd rather chat immediately. */}
+                <Link
+                  href={`${base}/contact`}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[var(--color-text)] transition hover:bg-[var(--color-surface)]"
+                >
+                  <MessageCircle className="h-5 w-5 text-[var(--color-text-secondary)]" />
+                  {labels.contact}
+                </Link>
                 <a
                   href={waHref}
                   target="_blank"
@@ -217,7 +233,7 @@ export function MobileMenuSheet({
                   className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[var(--color-text)] transition hover:bg-[var(--color-surface)]"
                 >
                   <MessageCircle className="h-5 w-5 text-[var(--color-text-secondary)]" />
-                  {labels.contact}
+                  WhatsApp
                 </a>
 
                 <Link

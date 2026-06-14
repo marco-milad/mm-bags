@@ -5,6 +5,7 @@ import { effectivePrice, totalStock, type ProductWithVariants } from "@/lib/cata
 import { WishlistButton } from "@/components/product/WishlistButton";
 import { ProductSpecsChips } from "@/components/product/ProductSpecs";
 import { ImageContainer } from "@/components/product/ImageContainer";
+import { QuickViewTrigger } from "@/components/product/QuickViewTrigger";
 
 /**
  * Default `sizes` matches the catalog grid (CatalogView): 2-col mobile,
@@ -73,6 +74,10 @@ export function ProductCard({
               {locale === "ar" ? "غير متوفر حالياً" : "Out of stock"}
             </span>
           )}
+          {/* Quick view — hover-revealed pill, desktop only. Hidden when
+              the card is OOS since the modal's primary CTA (add to cart)
+              wouldn't be available anyway. */}
+          {!isOOS && <QuickViewTrigger product={product} locale={locale} />}
         </ImageContainer>
       ) : (
         <div className="relative flex aspect-square w-full items-center justify-center bg-[var(--color-surface-2)] text-xs text-[var(--color-text-secondary)]">

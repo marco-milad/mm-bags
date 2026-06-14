@@ -592,6 +592,31 @@ export type Database = {
           },
         ];
       };
+
+      newsletter_subscribers: {
+        Row: {
+          id: string;
+          email: string;
+          locale: "ar" | "en";
+          subscribed_at: string;
+          is_active: boolean;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          locale: "ar" | "en";
+          subscribed_at?: string;
+          is_active?: boolean;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          locale?: "ar" | "en";
+          subscribed_at?: string;
+          is_active?: boolean;
+        };
+        Relationships: [];
+      };
     };
 
     Views: Record<string, never>;

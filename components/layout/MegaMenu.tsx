@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, HelpCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
 import type { ProductWithVariants } from "@/lib/catalog-shared";
@@ -232,6 +232,34 @@ export function MegaMenu({
                   );
                 })}
               </ul>
+
+              {/* Help section — small contextual entry inside the catalog
+                  dropdown so customers browsing collections can jump to
+                  the FAQ without leaving the menu. */}
+              <div className="mt-6 border-t border-[var(--color-border)] pt-5">
+                <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-secondary)]">
+                  {locale === "ar" ? "مساعدة" : "Help"}
+                </p>
+                <Link
+                  href={`/${locale}/faq`}
+                  onClick={closeNow}
+                  className="group flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-3 transition hover:border-[var(--color-accent)] hover:bg-[var(--color-surface)]"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface)] text-[var(--color-text)] transition group-hover:bg-[var(--color-accent)] group-hover:text-[var(--color-primary)]">
+                    <HelpCircle className="h-4 w-4" strokeWidth={1.75} />
+                  </span>
+                  <span className="flex flex-1 flex-col">
+                    <span className="text-sm font-semibold text-[var(--color-text)]">
+                      {locale === "ar" ? "الأسئلة الشائعة" : "FAQ"}
+                    </span>
+                    <span className="text-xs text-[var(--color-text-secondary)]">
+                      {locale === "ar"
+                        ? "شحن، دفع، إرجاع، وأكتر"
+                        : "Shipping, payment, returns & more"}
+                    </span>
+                  </span>
+                </Link>
+              </div>
             </aside>
           )}
         </div>

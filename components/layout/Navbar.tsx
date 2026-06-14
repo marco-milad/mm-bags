@@ -94,6 +94,9 @@ export function Navbar({
             <Link href={`${base}/about`} className="hover:text-[var(--color-accent-dark)]">
               {t.about}
             </Link>
+            <Link href={`${base}/faq`} className="hover:text-[var(--color-accent-dark)]">
+              {locale === "ar" ? "الأسئلة الشائعة" : "FAQ"}
+            </Link>
           </nav>
         </div>
 
