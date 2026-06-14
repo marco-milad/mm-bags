@@ -18,7 +18,7 @@ export function TrackingDetails({
   locale: Locale;
 }) {
   const whatsappNumber = (
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201000000000"
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
   ).replace(/\D/g, "");
   const whatsappHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     locale === "ar"

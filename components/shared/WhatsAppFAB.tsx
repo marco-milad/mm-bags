@@ -1,7 +1,7 @@
 import type { Locale } from "@/lib/i18n-config";
 
 export function WhatsAppFAB({ locale }: { locale: Locale }) {
-  const number = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201000000000").replace(/[^\d]/g, "");
+  const number = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608").replace(/[^\d]/g, "");
   const message =
     locale === "ar"
       ? "أهلاً ماركو، عايز أسأل عن منتج من M.M Bags."

@@ -62,7 +62,7 @@ export default async function ProductDetailPage({
       ? product.collection.name_ar
       : product.collection.name_en);
   const whatsappNumber =
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201000000000";
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608";
 
   return (
     <article className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-12">

@@ -17,7 +17,7 @@ export default async function ContactPage({ params }: PageProps<"/[locale]">) {
   // Same WhatsApp number as the FAB / Mobile menu — env-driven so it stays
   // in lockstep across the site.
   const waNumber = (
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201000000000"
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
   ).replace(/[^\d]/g, "");
   const waMessage = isRTL
     ? "أهلاً ماركو، عايز أتواصل بخصوص M.M Bags."

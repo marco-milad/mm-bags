@@ -52,7 +52,7 @@ export function FAQContent({ locale }: { locale: Locale }) {
   // WhatsApp handoff for the bottom CTA — matches the FAB number env var so
   // there's one source of truth for the brand's number.
   const waNumber = (
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201000000000"
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
   ).replace(/[^\d]/g, "");
   const waMessage = isRTL
     ? "أهلاً، عندي سؤال مش لاقي إجابته في الـ FAQ."

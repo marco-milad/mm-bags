@@ -76,7 +76,7 @@ export function MobileMenuSheet({
 
   // WhatsApp contact — same number + prefilled message as the floating FAB.
   const waNumber = (
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201000000000"
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
   ).replace(/[^\d]/g, "");
   const waMessage = isRTL
     ? "أهلاً ماركو، عايز أسأل عن منتج من M.M Bags."

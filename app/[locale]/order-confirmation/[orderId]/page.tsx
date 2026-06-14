@@ -41,7 +41,7 @@ export default async function OrderConfirmationPage({
   const address = (order.shipping_address as ShippingAddressShape) ?? {};
   const phoneDigits = address.phone?.replace(/[^\d]/g, "") ?? "";
   const whatsappNumber = (
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201000000000"
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
   ).replace(/[^\d]/g, "");
   const whatsappHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     locale === "ar"
