@@ -34,10 +34,16 @@ export function ProductActions({
   product,
   locale,
   whatsappNumber,
+  onColorHover,
 }: {
   product: ProductWithVariants;
   locale: Locale;
   whatsappNumber: string;
+  /** Notify the surrounding layout that the user is hovering / focusing a
+      color swatch (hex value). `null` means the pointer has left — the
+      layout should clear its preview-image override. Fired by both
+      hover and keyboard focus to keep the image preview accessible. */
+  onColorHover?: (hex: string | null) => void;
 }) {
   const variants = product.product_variants;
   const initial = pickInitialVariant(variants);
@@ -178,7 +184,19 @@ export function ProductActions({
                 <button
                   key={c.hex}
                   type="button"
-                  onClick={() => setSelectedColor(c.hex)}
+                  onClick={() => {
+                    setSelectedColor(c.hex);
+                    // Mobile tap: phones don't fire pointer-leave/blur
+                    // reliably after a tap, so we keep the previewed image
+                    // pinned to the just-selected color until the next
+                    // tap on another swatch. Selecting the color is the
+                    // intent, so this matches expectations.
+                    onColorHover?.(c.hex);
+                  }}
+                  onMouseEnter={() => onColorHover?.(c.hex)}
+                  onMouseLeave={() => onColorHover?.(null)}
+                  onFocus={() => onColorHover?.(c.hex)}
+                  onBlur={() => onColorHover?.(null)}
                   aria-label={colorLabel(c)}
                   aria-pressed={isActive ? "true" : "false"}
                   className={cn(

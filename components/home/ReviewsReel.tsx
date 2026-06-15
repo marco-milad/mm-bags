@@ -106,6 +106,25 @@ export function ReviewsReel({
             })}
           </div>
         )}
+
+        {/* Self-serve CTA — points returning customers at the catalog so
+            they can pick the product they already own and leave their
+            own review there. We don't link to a single "write a review"
+            page because the form lives on each PDP under #reviews. */}
+        <div className="mt-10 flex flex-col items-center gap-2 text-center">
+          <p className="text-sm text-ink-500">
+            {locale === "ar"
+              ? "عندك تجربة مع M.M Bags؟"
+              : "Have you shopped with M.M Bags?"}
+          </p>
+          <a
+            href={`/${locale}/catalog`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-brass-500 bg-brass-500/10 px-5 py-2 text-sm font-semibold text-navy-900 transition hover:bg-brass-500 hover:text-white"
+          >
+            {locale === "ar" ? "شاركنا رأيك" : "Share your review"}
+            <span aria-hidden>{locale === "ar" ? "←" : "→"}</span>
+          </a>
+        </div>
       </div>
     </section>
   );

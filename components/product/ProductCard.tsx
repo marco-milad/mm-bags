@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n-config";
-import { formatPriceEGP } from "@/lib/utils";
+import { cn, formatPriceEGP } from "@/lib/utils";
 import { effectivePrice, totalStock, type ProductWithVariants } from "@/lib/catalog-shared";
 import { WishlistButton } from "@/components/product/WishlistButton";
 import { ProductSpecsChips } from "@/components/product/ProductSpecs";
@@ -19,6 +19,7 @@ export function ProductCard({
   product,
   locale,
   sizes = DEFAULT_SIZES,
+  urgencyStockThreshold,
 }: {
   product: ProductWithVariants;
   locale: Locale;
@@ -26,6 +27,12 @@ export function ProductCard({
       different width than the catalog grid (e.g. BestSellersCarousel
       uses a fixed ~290px card; pass `sizes="290px"` there). */
   sizes?: string;
+  /** When set, the under-price low-stock line switches to the "urgency"
+      treatment used on best-sellers: fire emoji at any value ≤ this
+      threshold, pulse animation at values ≤ 5, and a stronger color.
+      Leave undefined for the standard catalog look (which only shows a
+      muted "Only N left" line at ≤ 5). */
+  urgencyStockThreshold?: number;
 }) {
   const name = locale === "ar" ? product.name_ar : product.name_en;
   const price = effectivePrice(product);
@@ -35,8 +42,18 @@ export function ProductCard({
       ? Math.round(((product.base_price - product.sale_price) / product.base_price) * 100)
       : 0;
   const stock = totalStock(product);
-  const lowStock = stock > 0 && stock <= 5;
   const isOOS = stock === 0;
+  // Two distinct low-stock displays.
+  // - "urgent": opt-in via urgencyStockThreshold. Shows fire + warning red
+  //   for any value within the threshold; ≤5 also pulses.
+  // - "standard": catalog default — quiet "Only N left" at ≤5.
+  const urgentLow =
+    !isOOS &&
+    urgencyStockThreshold !== undefined &&
+    stock <= urgencyStockThreshold;
+  const urgentPulse = urgentLow && stock <= 5;
+  const standardLow =
+    !isOOS && urgencyStockThreshold === undefined && stock <= 5;
   const primaryImage = product.images?.[0];
   const secondaryImage = product.images?.[1];
 
@@ -99,9 +116,22 @@ export function ProductCard({
           )}
         </div>
 
-        {lowStock && (
+        {standardLow && (
           <p className="text-[11px] text-[var(--color-warning)]">
             {locale === "ar" ? `باقي ${stock} قطع فقط!` : `Only ${stock} left!`}
+          </p>
+        )}
+
+        {urgentLow && (
+          <p
+            className={cn(
+              "text-[11px] font-semibold text-[var(--color-error)]",
+              urgentPulse && "animate-pulse",
+            )}
+          >
+            {locale === "ar"
+              ? `باقي ${stock} قطعة فقط! 🔥`
+              : `Only ${stock} left! 🔥`}
           </p>
         )}
 

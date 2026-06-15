@@ -76,7 +76,16 @@ export function BestSellersCarousel({
               key={p.id}
               className="w-[270px] shrink-0 snap-start md:w-[290px]"
             >
-              <ProductCard product={p} locale={locale} sizes="290px" />
+              {/* urgencyStockThreshold=10 → fire-emoji + warning red at
+                  any stock ≤ 10; ≤ 5 also pulses. The OOS overlay on the
+                  card image still handles stock = 0 with its own
+                  "غير متوفر" badge, so no extra handling needed here. */}
+              <ProductCard
+                product={p}
+                locale={locale}
+                sizes="290px"
+                urgencyStockThreshold={10}
+              />
             </li>
           ))}
         </ul>

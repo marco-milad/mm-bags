@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GitCompareArrows } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { Collection } from "@/lib/supabase/types";
 import type { CatalogSort, ProductWithVariants } from "@/lib/catalog-shared";
@@ -17,6 +18,8 @@ export function CatalogView({
   crumbs,
   filterAllHref,
   filterAllLabel,
+  compareHref,
+  compareLabel,
 }: {
   locale: Locale;
   collections: Collection[];
@@ -26,6 +29,11 @@ export function CatalogView({
   crumbs?: CrumbLink[];
   filterAllHref?: string;
   filterAllLabel?: { ar: string; en: string };
+  /** When set, renders a "Compare models" CTA under the title that links
+      to the given URL (typically the collection's `/compare` page). */
+  compareHref?: string;
+  /** Localized labels for the compare CTA; falls back to default copy. */
+  compareLabel?: { ar: string; en: string };
 }) {
   const title = activeCollection
     ? locale === "ar"
@@ -68,6 +76,17 @@ export function CatalogView({
               ? activeCollection.description_ar
               : activeCollection.description_en ?? activeCollection.description_ar}
           </p>
+        )}
+        {compareHref && (
+          <Link
+            href={compareHref}
+            className="mt-1 inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)]/10 px-4 py-2 text-sm font-semibold text-[var(--color-primary)] transition hover:bg-[var(--color-accent)] hover:text-[var(--color-primary)]"
+          >
+            <GitCompareArrows className="h-4 w-4" />
+            {locale === "ar"
+              ? compareLabel?.ar ?? "قارن بين الموديلات"
+              : compareLabel?.en ?? "Compare models"}
+          </Link>
         )}
       </header>
 

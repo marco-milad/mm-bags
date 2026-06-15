@@ -23,6 +23,15 @@ export const reviewSchema = z.object({
     .trim()
     .min(10, { message: "اكتب على الأقل 10 حروف" })
     .max(1000, { message: "النص طويل أوي" }),
+  // Optional image URLs (uploaded via /api/reviews/upload to the
+  // review-photos bucket). Capped at 3 so the moderation queue stays
+  // sane and a single review can't bloat the row. We don't `.default([])`
+  // here so rhf's input/output types stay aligned — the action treats
+  // `undefined` and `[]` the same.
+  images: z
+    .array(z.url())
+    .max(3, { message: "أقصى 3 صور لكل تقييم" })
+    .optional(),
 });
 
 export type ReviewInput = z.infer<typeof reviewSchema>;

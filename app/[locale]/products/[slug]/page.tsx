@@ -2,9 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { getProductBySlug, getRelatedProducts } from "@/lib/queries/catalog";
-import { ProductGallery } from "@/components/product/ProductGallery";
-import { ProductActions } from "@/components/product/ProductActions";
-import { ProductAccordion } from "@/components/product/ProductAccordion";
+import { ProductDetailLayout } from "@/components/product/ProductDetailLayout";
 import { ProductCard } from "@/components/product/ProductCard";
 import { ReviewsSection } from "@/components/reviews/ReviewsSection";
 import { ReviewStars } from "@/components/reviews/ReviewStars";
@@ -87,17 +85,17 @@ export default async function ProductDetailPage({
         )}
       </nav>
 
-      {/* Main grid */}
-      <div className="grid gap-8 md:grid-cols-2 md:gap-12">
-        <ProductGallery
-          images={product.images}
-          name={name}
-          locale={locale}
-          imageFit={product.image_fit}
-          imageAspect={product.image_aspect}
-        />
-
-        <div className="flex flex-col gap-6">
+      {/* Main grid — client wrapper owns the shared hovered-color state
+          so a swatch in the buy-box can preview the matching image in
+          the gallery without a global store. The header block stays
+          server-rendered and is handed to the client wrapper as
+          children. */}
+      <ProductDetailLayout
+        product={product}
+        locale={locale}
+        name={name}
+        whatsappNumber={whatsappNumber}
+        header={
           <header className="flex flex-col gap-2">
             {collectionName && (
               <p className="font-mono text-xs uppercase tracking-[0.25em] text-[var(--color-accent-dark)]">
@@ -125,16 +123,8 @@ export default async function ProductDetailPage({
               </a>
             )}
           </header>
-
-          <ProductActions
-            product={product}
-            locale={locale}
-            whatsappNumber={whatsappNumber}
-          />
-
-          <ProductAccordion product={product} locale={locale} />
-        </div>
-      </div>
+        }
+      />
 
       {/* Reviews */}
       <ReviewsSection

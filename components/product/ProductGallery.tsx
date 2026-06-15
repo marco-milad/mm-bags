@@ -11,6 +11,7 @@ export function ProductGallery({
   locale,
   imageFit = "cover",
   imageAspect: _imageAspect = "square",
+  previewImageIndex = null,
 }: {
   images: string[];
   name: string;
@@ -21,10 +22,25 @@ export function ProductGallery({
   /** Reserved for ImageContainer-based hosts; main-image gallery uses a
       hard `min(320px, 45vw)` height clamp regardless of orientation. */
   imageAspect?: ImageAspect;
+  /** External override (e.g. ProductActions color-swatch hover) that
+      replaces the internally-tracked thumbnail selection without
+      mutating it. `null` = no preview, fall back to the selected image.
+      Used by ProductDetailLayout to let a color hover swap the main
+      image while leaving the user's clicked thumbnail intact. */
+  previewImageIndex?: number | null;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const safeImages = images.length > 0 ? images : [];
-  const active = safeImages[activeIndex];
+  // Preview wins when set + in range. We intentionally don't touch
+  // setActiveIndex on hover so the original click-selected thumb stays
+  // visually marked + restored on mouse-out.
+  const effectiveIndex =
+    previewImageIndex !== null &&
+    previewImageIndex >= 0 &&
+    previewImageIndex < safeImages.length
+      ? previewImageIndex
+      : activeIndex;
+  const active = safeImages[effectiveIndex];
 
   if (safeImages.length === 0) {
     return (
@@ -51,6 +67,11 @@ export function ProductGallery({
           "relative w-full overflow-hidden rounded-2xl",
           isContain && "bg-white",
         )}
+        // 300ms crossfade fires whenever `active` changes — color-swatch
+        // hover swaps the src, the key remounts the div, and the inline
+        // animation runs on the fresh node. Cheap and avoids the
+        // double-buffer two-image dance.
+        style={{ animation: "mm-gallery-fade 0.3s ease-out" }}
       >
         <Image
           src={active}
@@ -82,6 +103,8 @@ export function ProductGallery({
                 // eslint-disable-next-line jsx-a11y/aria-proptypes -- stringified
                 // ternary produces only valid "true"|"false" literals at runtime;
                 // the static analyzer can't narrow the conditional expression.
+                // Stays bound to `activeIndex` (not effectiveIndex) so a
+                // color-hover preview doesn't visually re-select the thumb.
                 aria-pressed={idx === activeIndex ? "true" : "false"}
                 aria-label={
                   locale === "ar" ? `الصورة رقم ${idx + 1}` : `Image ${idx + 1}`
@@ -111,6 +134,15 @@ export function ProductGallery({
           ))}
         </div>
       )}
+
+      {/* Scoped keyframe for the crossfade above — kept inline to avoid
+          polluting globals.css for a one-element animation. */}
+      <style>{`
+        @keyframes mm-gallery-fade {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }

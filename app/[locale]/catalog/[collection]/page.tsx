@@ -101,6 +101,16 @@ export default async function CollectionPage({
     setOnly,
   });
 
+  // Show the Compare CTA only on Milano (the design brief). Other
+  // collections can opt in later by extending this allow-list; we keep
+  // it explicit so a random collection doesn't surface an unhelpful
+  // 1-product comparison table.
+  const COMPARE_ENABLED = new Set(["milano-series"]);
+  const compareHref =
+    COMPARE_ENABLED.has(collection.slug) && products.length >= 2
+      ? `/${locale}/catalog/${collection.slug}/compare`
+      : undefined;
+
   return (
     <CatalogView
       locale={locale}
@@ -111,6 +121,11 @@ export default async function CollectionPage({
       crumbs={crumbs}
       filterAllHref={filterAllHref}
       filterAllLabel={filterAllLabel}
+      compareHref={compareHref}
+      compareLabel={{
+        ar: `قارن بين موديلات ${collection.name_ar}`,
+        en: `Compare ${collection.name_en} models`,
+      }}
     />
   );
 }

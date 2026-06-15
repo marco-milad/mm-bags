@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Loader2, Star } from "lucide-react";
+import { Check, Gift, ImagePlus, Loader2, Star, X } from "lucide-react";
+import Image from "next/image";
 import type { Locale } from "@/lib/i18n-config";
 import { reviewSchema, type ReviewInput } from "@/lib/reviews/schema";
 import { submitReview } from "@/lib/reviews/actions";
 import { cn } from "@/lib/utils";
+
+const MAX_PHOTOS = 3;
 
 export function ReviewForm({
   productId,
@@ -18,9 +21,52 @@ export function ReviewForm({
   productSlug: string;
   locale: Locale;
 }) {
+  const isRTL = locale === "ar";
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Photo upload state — array of public URLs returned from the upload
+  // endpoint. We keep this OUTSIDE react-hook-form because the inputs
+  // are uncontrolled file pickers; rhf would over-serialize them.
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset the input so picking the SAME file twice still fires onChange.
+    e.target.value = "";
+    if (photoUrls.length >= MAX_PHOTOS) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/reviews/upload", { method: "POST", body: fd });
+      const json = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !json.url) {
+        setUploadError(
+          isRTL
+            ? "تعذّر رفع الصورة. ابعت رأيك من غيرها لو حابب."
+            : "Upload failed. You can still submit your review without a photo.",
+        );
+        return;
+      }
+      setPhotoUrls((prev) => [...prev, json.url as string]);
+    } catch {
+      setUploadError(
+        isRTL ? "مشكلة في الاتصال." : "Network error.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function removePhoto(url: string) {
+    setPhotoUrls((prev) => prev.filter((u) => u !== url));
+  }
 
   const {
     register,
@@ -43,12 +89,18 @@ export function ReviewForm({
   const onSubmit = handleSubmit((values) => {
     setServerError(null);
     startTransition(async () => {
-      const result = await submitReview(values, productSlug);
+      // Photos are merged here rather than as a controlled rhf field so
+      // the form state stays clean even when a user picks → removes → picks.
+      const result = await submitReview(
+        { ...values, images: photoUrls },
+        productSlug,
+      );
       if (!result.ok) {
         setServerError(result.error);
         return;
       }
       setDone(true);
+      setPhotoUrls([]);
       reset({
         productId,
         name: "",
@@ -68,19 +120,16 @@ export function ReviewForm({
         <Check className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-success)]" />
         <div>
           <p className="font-medium text-[var(--color-text)]">
-            {locale === "ar" ? "تم استلام تقييمك" : "Thanks for your review"}
-          </p>
-          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            {locale === "ar"
-              ? "هيظهر للجميع بعد المراجعة من فريقنا."
-              : "It'll appear publicly once our team has reviewed it."}
+            {isRTL
+              ? "شكراً! رأيك بيراجعه الفريق وهيظهر قريباً"
+              : "Thanks! Your review is with our team and will be live soon."}
           </p>
           <button
             type="button"
             onClick={() => setDone(false)}
             className="mt-3 text-xs font-medium text-[var(--color-primary)] underline-offset-4 hover:underline"
           >
-            {locale === "ar" ? "ضيف تقييم تاني" : "Add another review"}
+            {isRTL ? "ضيف تقييم تاني" : "Add another review"}
           </button>
         </div>
       </div>
@@ -94,8 +143,20 @@ export function ReviewForm({
       className="flex flex-col gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5"
     >
       <h3 className="font-display text-lg text-[var(--color-text)]">
-        {locale === "ar" ? "شاركنا رأيك" : "Share your review"}
+        {isRTL ? "شاركنا رأيك" : "Share your review"}
       </h3>
+
+      {/* Loyalty incentive — brass-tinted callout above the fields. The
+          loyalty programme itself ships later; we tease it here so the
+          ask feels like a fair exchange instead of pure effort. */}
+      <div className="flex items-start gap-3 rounded-lg border border-brass-500/30 bg-brass-100/60 p-3 text-xs">
+        <Gift className="mt-0.5 h-4 w-4 shrink-0 text-brass-700" />
+        <p className="text-[var(--color-text)]">
+          {isRTL
+            ? "شاركنا رأيك واكسب 25 نقطة في برنامج الولاء (قريباً)."
+            : "Share your review and earn 25 points in our loyalty programme (coming soon)."}
+        </p>
+      </div>
 
       <Field
         label={locale === "ar" ? "تقييمك" : "Your rating"}
@@ -138,7 +199,7 @@ export function ReviewForm({
       </Field>
 
       <Field
-        label={locale === "ar" ? "رأيك" : "Your review"}
+        label={isRTL ? "رأيك" : "Your review"}
         error={errors.body?.message}
       >
         <textarea
@@ -146,6 +207,76 @@ export function ReviewForm({
           {...register("body")}
           className={cn(inputClass(!!errors.body), "resize-none")}
         />
+      </Field>
+
+      {/* Optional photo upload — single-pick input we open via the
+          ref-controlled "Add photo" button so we can style consistently
+          across browsers. Each successful upload becomes a thumbnail
+          chip with a remove button; cap at MAX_PHOTOS to match the
+          schema. */}
+      <Field
+        label={
+          isRTL
+            ? `صور (اختياري — حد أقصى ${MAX_PHOTOS})`
+            : `Photos (optional — up to ${MAX_PHOTOS})`
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          {photoUrls.map((url) => (
+            <div
+              key={url}
+              className="relative h-16 w-16 overflow-hidden rounded-lg border border-[var(--color-border)]"
+            >
+              <Image
+                src={url}
+                alt=""
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removePhoto(url)}
+                aria-label={isRTL ? "إزالة الصورة" : "Remove photo"}
+                className="absolute end-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+          {photoUrls.length < MAX_PHOTOS && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-[var(--color-border-dark)] text-[10px] text-[var(--color-text-secondary)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-text)] disabled:opacity-60"
+            >
+              {uploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4" />
+              )}
+              {!uploading &&
+                (isRTL ? "ضيف صورة" : "Add photo")}
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleFilePick}
+            // Title gives screen-reader users the same affordance the
+            // visible "Add photo" button provides — the input is hidden
+            // visually but still tabbable / focusable.
+            title={isRTL ? "ضيف صورة للتقييم" : "Add a review photo"}
+            className="hidden"
+          />
+        </div>
+        {uploadError && (
+          <p className="mt-1.5 text-xs text-[var(--color-error)]">
+            {uploadError}
+          </p>
+        )}
       </Field>
 
       {serverError && (
