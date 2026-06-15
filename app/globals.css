@@ -205,3 +205,23 @@
    ============================================================ */
 .scroll-row { scrollbar-width: none; }
 .scroll-row::-webkit-scrollbar { display: none; }
+
+/* ============================================================
+   7. POS RECEIPT PRINT STYLE
+   ------------------------------------------------------------
+   When the cashier hits Print on the receipt modal we want
+   ONLY the receipt body to land on paper. Everything else
+   (sidebar, header, modal chrome) is suppressed.
+   ============================================================ */
+@media print {
+  body > *:not(:has(#pos-receipt-print)) { display: none !important; }
+  #pos-receipt-print {
+    position: fixed; inset: 0;
+    background: #fff !important; color: #000 !important;
+    padding: 24px !important;
+    overflow: visible !important;
+  }
+  /* Drop the dialog backdrop / footer / close button when printing. */
+  [role="dialog"]:has(#pos-receipt-print) > button,
+  [role="dialog"]:has(#pos-receipt-print) > footer { display: none !important; }
+}
