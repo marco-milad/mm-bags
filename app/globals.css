@@ -214,8 +214,9 @@
    (sidebar, header, modal chrome) is suppressed.
    ============================================================ */
 @media print {
-  body > *:not(:has(#pos-receipt-print)) { display: none !important; }
-  #pos-receipt-print {
+  body > *:not(:has(#pos-receipt-print, #order-invoice-print)) { display: none !important; }
+  #pos-receipt-print,
+  #order-invoice-print {
     position: fixed; inset: 0;
     background: #fff !important; color: #000 !important;
     padding: 24px !important;
@@ -224,4 +225,8 @@
   /* Drop the dialog backdrop / footer / close button when printing. */
   [role="dialog"]:has(#pos-receipt-print) > button,
   [role="dialog"]:has(#pos-receipt-print) > footer { display: none !important; }
+  /* Admin chrome hidden in print: the .print\:hidden Tailwind class
+     already kills the sidebar + status form; this rule catches any
+     stray elements (e.g. wrapping aside) we didn't tag. */
+  .print\:hidden { display: none !important; }
 }
