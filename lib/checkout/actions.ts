@@ -2,6 +2,7 @@
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { deductStock } from "@/lib/inventory/deduct-stock";
 import { EG_GOVERNORATES } from "./governorates";
 import {
   calcTotals,
@@ -101,6 +102,33 @@ export async function placeOrder(
       return {
         ok: false,
         error: `حصلت مشكلة في حفظ المنتجات: ${itemsErr.message}`,
+      };
+    }
+
+    // ─── Stock deduction (atomic per variant, logged in stock_movements) ──
+    // Runs AFTER order_items insert so the ledger reference_id points at
+    // a real order row. On failure (insufficient stock surfaced by a
+    // concurrent buy, or RPC error) we cancel the order — better the
+    // customer sees an honest failure than an oversold confirmation.
+    // Note: partial-deduction items remain decremented; an admin can
+    // reconcile via /admin/stock (Step 6) using the stock_movements
+    // ledger which captured every successful decrement.
+    const deductResult = await deductStock({
+      items: items.map((line) => ({
+        variantId: line.variantId,
+        productId: line.productId,
+        qty: line.qty,
+      })),
+      referenceType: "online_sale",
+      referenceId: order.id,
+      createdBy: user?.id ?? null,
+    });
+    if (!deductResult.ok) {
+      await admin.from("order_items").delete().eq("order_id", order.id);
+      await admin.from("orders").delete().eq("id", order.id);
+      return {
+        ok: false,
+        error: `المنتج خلص من المخزون. ${deductResult.error}`,
       };
     }
 
