@@ -1,8 +1,20 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { AdminSidebar } from "@/components/admin/Sidebar";
+import "../globals.css";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Admin shell. Wraps every /admin route with:
+ *   - Auth + role guard (signed-in admin or staff with role=admin)
+ *   - Fixed sidebar (260px on md+, slide-over on mobile)
+ *   - A scrollable main content area pushed right of the sidebar
+ *
+ * The shell uses its own <html> tag because the public storefront's
+ * RootLayout adds locale-specific fonts and an RTL direction; admin
+ * is LTR English with a system font stack.
+ */
 export default async function AdminLayout({
   children,
 }: {
@@ -27,14 +39,17 @@ export default async function AdminLayout({
 
   return (
     <html lang="en" dir="ltr">
-      <body className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
-        <header className="border-b border-[var(--color-border)] bg-[var(--color-primary)] text-white">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-            <p className="font-display text-lg">M.M Bags · Admin</p>
-            <p className="text-xs text-white/70">{user.email}</p>
+      <body className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] antialiased">
+        <AdminSidebar userEmail={user.email ?? "(no email)"} />
+
+        {/* Main content area sits flush to the right of the 64-unit
+            (256px) sidebar on md+; full-width on mobile. The sidebar
+            renders its own mobile hamburger in the top-left. */}
+        <main className="min-h-screen md:pl-64">
+          <div className="mx-auto max-w-7xl px-6 py-8 pt-14 md:px-10 md:pt-8">
+            {children}
           </div>
-        </header>
-        <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
+        </main>
       </body>
     </html>
   );
