@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AdminSidebar } from "@/components/admin/Sidebar";
+import { getCurrentRole } from "@/lib/admin/staff-actions";
 import "../globals.css";
 
 export const dynamic = "force-dynamic";
@@ -29,18 +30,21 @@ export default async function AdminLayout({
     redirect("/ar/auth/login?next=/admin");
   }
 
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const role = (user.user_metadata as { role?: string } | null)?.role;
-  const isAdmin = role === "admin" || (adminEmail && user.email === adminEmail);
-
-  if (!isAdmin) {
+  // Resolve the effective role — admin via env/metadata, OR an active
+  // staff row (cashier / manager / admin). Non-staff users get punted
+  // back to the storefront.
+  const effective = await getCurrentRole();
+  if (!effective) {
     redirect("/ar");
   }
 
   return (
     <html lang="en" dir="ltr">
       <body className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] antialiased">
-        <AdminSidebar userEmail={user.email ?? "(no email)"} />
+        <AdminSidebar
+          userEmail={user.email ?? "(no email)"}
+          role={effective.role}
+        />
 
         {/* Main content area sits flush to the right of the 64-unit
             (256px) sidebar on md+; full-width on mobile. The sidebar

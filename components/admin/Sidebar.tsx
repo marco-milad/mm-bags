@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
-import { ADMIN_NAV } from "@/lib/admin/nav";
+import { ADMIN_NAV, navForRole, type EffectiveRole } from "@/lib/admin/nav";
 import { adminSignOut } from "@/lib/admin/actions";
 import { cn } from "@/lib/utils";
 
@@ -18,9 +18,20 @@ import { cn } from "@/lib/utils";
  * with a longest-prefix rule so /admin/reviews/anything-deeper still
  * highlights the Reviews entry.
  */
-export function AdminSidebar({ userEmail }: { userEmail: string }) {
+export function AdminSidebar({
+  userEmail,
+  role,
+}: {
+  userEmail: string;
+  role: EffectiveRole;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Filter the full nav definition down to what this role can see.
+  // Falls back to the full ADMIN_NAV if filtering yielded nothing
+  // (defence against an unknown role string).
+  const sections = navForRole(role);
+  const finalSections = sections.length > 0 ? sections : ADMIN_NAV;
 
   return (
     <>
@@ -78,7 +89,7 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
 
         {/* Sections */}
         <nav className="flex-1 overflow-y-auto px-2 py-4">
-          {ADMIN_NAV.map((section) => (
+          {finalSections.map((section) => (
             <div key={section.id} className="mb-5 last:mb-0">
               <p className="px-3 pb-1.5 font-mono text-[10px] uppercase tracking-[0.3em] text-paper/40">
                 {section.label_en}
@@ -128,6 +139,9 @@ export function AdminSidebar({ userEmail }: { userEmail: string }) {
             title={userEmail}
           >
             {userEmail}
+          </p>
+          <p className="px-2 font-mono text-[10px] uppercase tracking-wider text-brass-300/70">
+            {role}
           </p>
           <form action={adminSignOut} className="mt-2">
             <button
