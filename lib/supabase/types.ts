@@ -24,6 +24,18 @@ export type PaymentMethod = "card" | "cod";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export type NotificationChannel = "email" | "whatsapp";
 
+// ─── ERP enums (see supabase/migrations/0003_erp_schema.sql) ──────────────
+export type StaffRole = "cashier" | "manager" | "admin";
+export type PosPaymentMethod = "cash" | "e-wallet" | "instapay" | "card";
+export type PurchaseOrderStatus = "pending" | "received" | "partial" | "paid";
+export type StockMovementType =
+  | "purchase_in"
+  | "online_sale"
+  | "pos_sale"
+  | "adjustment"
+  | "return"
+  | "transfer";
+
 export interface ShippingAddress {
   name: string;
   phone: string;
@@ -124,6 +136,9 @@ export type Database = {
           // suits Calvin Klein sources (~0.75), 'square' is the default.
           image_aspect: "square" | "landscape" | "portrait";
           is_active: boolean;
+          // show_in_store=true + is_active=false → POS-only product
+          // (rings up at the till, hidden from /catalog).
+          show_in_store: boolean;
           sort_order: number;
           created_at: string;
           updated_at: string;
@@ -154,6 +169,7 @@ export type Database = {
           image_fit?: "cover" | "contain";
           image_aspect?: "square" | "landscape" | "portrait";
           is_active?: boolean;
+          show_in_store?: boolean;
           sort_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -184,6 +200,7 @@ export type Database = {
           image_fit?: "cover" | "contain";
           image_aspect?: "square" | "landscape" | "portrait";
           is_active?: boolean;
+          show_in_store?: boolean;
           sort_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -617,10 +634,373 @@ export type Database = {
         };
         Relationships: [];
       };
+
+      // ─── ERP tables (added by 0003_erp_schema.sql) ──────────────────
+      suppliers: {
+        Row: {
+          id: string;
+          name: string;
+          phone: string | null;
+          address: string | null;
+          notes: string | null;
+          total_paid: number;
+          total_owed: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          phone?: string | null;
+          address?: string | null;
+          notes?: string | null;
+          total_paid?: number;
+          total_owed?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          phone?: string | null;
+          address?: string | null;
+          notes?: string | null;
+          total_paid?: number;
+          total_owed?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+
+      purchase_orders: {
+        Row: {
+          id: string;
+          supplier_id: string | null;
+          order_date: string;
+          total_cost: number;
+          amount_paid: number;
+          amount_owed: number;
+          status: PurchaseOrderStatus;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          supplier_id?: string | null;
+          order_date?: string;
+          total_cost?: number;
+          amount_paid?: number;
+          amount_owed?: number;
+          status?: PurchaseOrderStatus;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          supplier_id?: string | null;
+          order_date?: string;
+          total_cost?: number;
+          amount_paid?: number;
+          amount_owed?: number;
+          status?: PurchaseOrderStatus;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_supplier_id_fkey";
+            columns: ["supplier_id"];
+            isOneToOne: false;
+            referencedRelation: "suppliers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      purchase_order_items: {
+        Row: {
+          id: string;
+          purchase_order_id: string | null;
+          product_id: string | null;
+          variant_id: string | null;
+          qty: number;
+          unit_cost: number;
+          total_cost: number; // generated
+        };
+        Insert: {
+          id?: string;
+          purchase_order_id?: string | null;
+          product_id?: string | null;
+          variant_id?: string | null;
+          qty: number;
+          unit_cost: number;
+          // total_cost is GENERATED, never written.
+        };
+        Update: {
+          id?: string;
+          purchase_order_id?: string | null;
+          product_id?: string | null;
+          variant_id?: string | null;
+          qty?: number;
+          unit_cost?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_purchase_order_id_fkey";
+            columns: ["purchase_order_id"];
+            isOneToOne: false;
+            referencedRelation: "purchase_orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "purchase_order_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "purchase_order_items_variant_id_fkey";
+            columns: ["variant_id"];
+            isOneToOne: false;
+            referencedRelation: "product_variants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      staff: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          name: string;
+          phone: string | null;
+          role: StaffRole;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          name: string;
+          phone?: string | null;
+          role?: StaffRole;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          name?: string;
+          phone?: string | null;
+          role?: StaffRole;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "staff_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      pos_sales: {
+        Row: {
+          id: string;
+          sale_number: string;
+          cashier_id: string | null;
+          subtotal: number;
+          discount_amount: number;
+          total: number;
+          payment_method: PosPaymentMethod;
+          payment_ref: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sale_number: string;
+          cashier_id?: string | null;
+          subtotal: number;
+          discount_amount?: number;
+          total: number;
+          payment_method: PosPaymentMethod;
+          payment_ref?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          sale_number?: string;
+          cashier_id?: string | null;
+          subtotal?: number;
+          discount_amount?: number;
+          total?: number;
+          payment_method?: PosPaymentMethod;
+          payment_ref?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pos_sales_cashier_id_fkey";
+            columns: ["cashier_id"];
+            isOneToOne: false;
+            referencedRelation: "staff";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      pos_sale_items: {
+        Row: {
+          id: string;
+          sale_id: string | null;
+          variant_id: string | null;
+          product_id: string | null;
+          qty: number;
+          unit_price: number;
+          total_price: number; // generated
+          snapshot_name: string | null;
+          snapshot_color: string | null;
+          snapshot_size: string | null;
+        };
+        Insert: {
+          id?: string;
+          sale_id?: string | null;
+          variant_id?: string | null;
+          product_id?: string | null;
+          qty: number;
+          unit_price: number;
+          // total_price is GENERATED, never written.
+          snapshot_name?: string | null;
+          snapshot_color?: string | null;
+          snapshot_size?: string | null;
+        };
+        Update: {
+          id?: string;
+          sale_id?: string | null;
+          variant_id?: string | null;
+          product_id?: string | null;
+          qty?: number;
+          unit_price?: number;
+          snapshot_name?: string | null;
+          snapshot_color?: string | null;
+          snapshot_size?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pos_sale_items_sale_id_fkey";
+            columns: ["sale_id"];
+            isOneToOne: false;
+            referencedRelation: "pos_sales";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pos_sale_items_variant_id_fkey";
+            columns: ["variant_id"];
+            isOneToOne: false;
+            referencedRelation: "product_variants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pos_sale_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      stock_movements: {
+        Row: {
+          id: string;
+          variant_id: string | null;
+          product_id: string | null;
+          type: StockMovementType;
+          qty_change: number;
+          qty_before: number;
+          qty_after: number;
+          reference_type: string | null;
+          reference_id: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          variant_id?: string | null;
+          product_id?: string | null;
+          type: StockMovementType;
+          qty_change: number;
+          qty_before: number;
+          qty_after: number;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          variant_id?: string | null;
+          product_id?: string | null;
+          type?: StockMovementType;
+          qty_change?: number;
+          qty_before?: number;
+          qty_after?: number;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_variant_id_fkey";
+            columns: ["variant_id"];
+            isOneToOne: false;
+            referencedRelation: "product_variants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
 
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      deduct_stock_atomic: {
+        Args: {
+          p_variant_id: string;
+          p_qty: number;
+          p_reference_type: string;
+          p_reference_id: string;
+          p_created_by: string | null;
+          p_movement_type?: StockMovementType;
+        };
+        Returns: void;
+      };
+      is_active_staff: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
@@ -648,3 +1028,12 @@ export type CodTracking = Tables<"cod_tracking">;
 export type Wishlist = Tables<"wishlists">;
 export type Review = Tables<"reviews">;
 export type NotificationSubscription = Tables<"notification_subscriptions">;
+
+// ─── ERP aliases ──────────────────────────────────────────────────────────
+export type Supplier = Tables<"suppliers">;
+export type PurchaseOrder = Tables<"purchase_orders">;
+export type PurchaseOrderItem = Tables<"purchase_order_items">;
+export type Staff = Tables<"staff">;
+export type PosSale = Tables<"pos_sales">;
+export type PosSaleItem = Tables<"pos_sale_items">;
+export type StockMovement = Tables<"stock_movements">;
