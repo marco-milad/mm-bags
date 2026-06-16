@@ -1,5 +1,17 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
+import {
+  localeAlternates,
+  SITE_DESCRIPTION_AR,
+  SITE_DESCRIPTION_EN,
+  SITE_URL,
+} from "@/lib/seo/site";
+import {
+  organizationSchema,
+  websiteSchema,
+} from "@/lib/seo/jsonld";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { Hero } from "@/components/home/Hero";
 import { Marquee } from "@/components/home/Marquee";
 import { CollectionsSection } from "@/components/home/CollectionsSection";
@@ -21,6 +33,30 @@ import {
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 import { getFeaturedReviews } from "@/lib/queries/reviews";
 
+export async function generateMetadata({
+  params,
+}: PageProps<"/[locale]">): Promise<Metadata> {
+  const { locale } = await params;
+  if (!hasLocale(locale)) return {};
+  const isAr = locale === "ar";
+  return {
+    title: isAr
+      ? "M.M Bags — شنط سفر بجودة عالية | Cairo, Egypt"
+      : "M.M Bags — Premium travel & everyday bags | Cairo, Egypt",
+    description: isAr ? SITE_DESCRIPTION_AR : SITE_DESCRIPTION_EN,
+    alternates: localeAlternates("/"),
+    openGraph: {
+      title: isAr ? "M.M Bags — شنط سفر بجودة عالية" : "M.M Bags",
+      description: isAr ? SITE_DESCRIPTION_AR : SITE_DESCRIPTION_EN,
+      url: `${SITE_URL}/${locale}`,
+      type: "website",
+      locale: isAr ? "ar_EG" : "en_US",
+      alternateLocale: isAr ? "en_US" : "ar_EG",
+      images: ["/api/og"],
+    },
+  };
+}
+
 export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
@@ -36,6 +72,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
 
   return (
     <>
+      <JsonLd data={[organizationSchema(), websiteSchema()]} />
       <Hero
         locale={locale}
         taglineAr="سافر بذكاء. سافر بأناقة."

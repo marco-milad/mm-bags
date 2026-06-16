@@ -1,6 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
+import {
+  absoluteUrl,
+  localeAlternates,
+} from "@/lib/seo/site";
+import {
+  breadcrumbSchema,
+  productSchema,
+} from "@/lib/seo/jsonld";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { effectivePrice, totalStock } from "@/lib/catalog-shared";
 import { getProductBySlug, getRelatedProducts } from "@/lib/queries/catalog";
 import { ProductDetailLayout } from "@/components/product/ProductDetailLayout";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -21,15 +31,41 @@ export async function generateMetadata({
   const description =
     (locale === "ar" ? product.description_ar : product.description_en) ??
     undefined;
-  return {
+  const isAr = locale === "ar";
+  const price = effectivePrice(product);
+  // Dynamic OG image with product context (title + image + price)
+  // served from the edge route at /api/og.
+  const ogParams = new URLSearchParams({
     title: name,
+    price: String(Math.round(price)),
+  });
+  if (product.images?.[0]) ogParams.set("image", product.images[0]);
+  const ogUrl = `/api/og?${ogParams.toString()}`;
+  return {
+    title: `${name} | M.M Bags`,
     description: description?.slice(0, 155),
+    alternates: localeAlternates(`/products/${slug}`),
     openGraph: {
       title: name,
       description: description?.slice(0, 155),
-      images: product.images?.[0]
-        ? [{ url: product.images[0], width: 1200, height: 1200 }]
-        : undefined,
+      url: absoluteUrl(`/${locale}/products/${slug}`),
+      type: "website",
+      locale: isAr ? "ar_EG" : "en_US",
+      alternateLocale: isAr ? "en_US" : "ar_EG",
+      images: [
+        {
+          url: ogUrl,
+          width: 1200,
+          height: 630,
+          alt: name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: name,
+      description: description?.slice(0, 155),
+      images: [ogUrl],
     },
   };
 }
@@ -62,8 +98,48 @@ export default async function ProductDetailPage({
   const whatsappNumber =
     process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608";
 
+  // ─── JSON-LD: Product + BreadcrumbList ──────────────────────────
+  const description =
+    locale === "ar" ? product.description_ar : product.description_en;
+  const breadcrumbItems: Array<{ name: string; url: string }> = [
+    {
+      name: locale === "ar" ? "الرئيسية" : "Home",
+      url: `/${locale}`,
+    },
+    {
+      name: locale === "ar" ? "المنتجات" : "Catalog",
+      url: `/${locale}/catalog`,
+    },
+  ];
+  if (product.collection && collectionName) {
+    breadcrumbItems.push({
+      name: collectionName,
+      url: `/${locale}/catalog/${product.collection.slug}`,
+    });
+  }
+  breadcrumbItems.push({
+    name,
+    url: `/${locale}/products/${product.slug}`,
+  });
+  const pdpSchemas = [
+    productSchema({
+      name,
+      description: description ?? name,
+      slug: product.slug,
+      locale,
+      images: product.images ?? [],
+      price: effectivePrice(product),
+      originalPrice: product.sale_price ? product.base_price : null,
+      totalStock: totalStock(product),
+      averageRating: summary.average,
+      reviewCount: summary.total,
+    }),
+    breadcrumbSchema(breadcrumbItems),
+  ];
+
   return (
     <article className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-12">
+      <JsonLd data={pdpSchemas} />
       {/* Breadcrumb */}
       <nav
         className="mb-6 flex items-center gap-2 text-xs text-[var(--color-text-secondary)]"

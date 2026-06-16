@@ -43,13 +43,29 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://mmbags.com"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://mm-bags.vercel.app",
+  ),
   title: {
-    default: "M.M Bags — Travel Smart. Travel in Style.",
+    default: "M.M Bags — شنط سفر بجودة عالية | Cairo, Egypt",
     template: "%s · M.M Bags",
   },
   description:
-    "M.M Bags — شنط سفر بجودة عالية وسعر معقول. علامة شخصية من ماركو ميلاد، صُممت للمسافر المصري.",
+    "تسوق أفضل شنط السفر والظهر والمدارس في مصر. جودة عالية بسعر معقول. شحن لكل 27 محافظة. الدفع عند الاستلام متاح.",
+  applicationName: "M.M Bags",
+  authors: [{ name: "Marco Milad" }],
+  creator: "Marco Milad",
+  publisher: "M.M Bags",
+  keywords: [
+    "M.M Bags",
+    "شنط سفر مصر",
+    "شنط ظهر",
+    "شنط مدارس",
+    "شنط حريم",
+    "شنط لاب توب",
+    "travel bags Egypt",
+    "backpacks Cairo",
+  ],
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     apple: "/favicon.svg",
@@ -57,6 +73,12 @@ export const metadata: Metadata = {
   openGraph: {
     siteName: "M.M Bags",
     type: "website",
+    images: ["/api/og"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@mmbags_eg",
+    creator: "@mmbags_eg",
   },
 };
 
@@ -84,6 +106,17 @@ export default async function RootLayout({
       dir={dir}
       className={`${cormorant.variable} ${jost.variable} ${tajawal.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Performance: preconnect to font hosts so the first font
+            byte arrives in parallel with the HTML parse. Crossorigin
+            is required for font fetches per the CORS spec. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
         <UrgencyBanner locale={locale} />
         <Navbar

@@ -1,18 +1,28 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { hasLocale } from "@/lib/i18n-config";
+import { localeAlternates } from "@/lib/seo/site";
 import { categoryLucideIcon } from "@/lib/categories-config";
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Categories",
-  description:
-    "كل تشكيلات M.M Bags — شنط السفر، الظهر، المدارس، الحريم، اليد، واللاب توب.",
-};
+export async function generateMetadata({
+  params,
+}: PageProps<"/[locale]/categories">): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === "ar";
+  return {
+    title: isAr ? "كل التشكيلات | M.M Bags" : "All collections | M.M Bags",
+    description: isAr
+      ? "اكتشف كل تشكيلات M.M Bags — شنط السفر، الظهر، المدارس، الحريم، اليد، واللاب توب."
+      : "Browse every M.M Bags collection — travel, backpacks, school, ladies, handbags, and laptop sleeves.",
+    alternates: localeAlternates("/categories"),
+  };
+}
 
 export default async function CategoriesPage({
   params,

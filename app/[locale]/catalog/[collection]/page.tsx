@@ -2,6 +2,15 @@ import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { isCatalogSort } from "@/lib/catalog-shared";
+import {
+  absoluteUrl,
+  localeAlternates,
+} from "@/lib/seo/site";
+import {
+  breadcrumbSchema,
+  collectionPageSchema,
+} from "@/lib/seo/jsonld";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { getCollectionBySlug, getProducts } from "@/lib/queries/catalog";
 import {
   getSubCollections,
@@ -19,7 +28,29 @@ export async function generateMetadata({
   const collection = await getCollectionBySlug(slug);
   if (!collection) return {};
   const name = locale === "ar" ? collection.name_ar : collection.name_en;
-  return { title: name };
+  const isAr = locale === "ar";
+  // Fetch product count for the description; cheap because it's a
+  // count-only query on the collection scope.
+  const scope = await resolveCollectionScope(slug);
+  const products = scope
+    ? await getProducts({ collectionIds: scope.collectionIds })
+    : [];
+  const description = isAr
+    ? `تسوق ${name} من M.M Bags. ${products.length} منتج متاح. شحن لكل مصر.`
+    : `Shop ${name} at M.M Bags. ${products.length} products available. Shipping across Egypt.`;
+  return {
+    title: `${name} | M.M Bags`,
+    description,
+    alternates: localeAlternates(`/catalog/${slug}`),
+    openGraph: {
+      title: `${name} · M.M Bags`,
+      description,
+      url: absoluteUrl(`/${locale}/catalog/${slug}`),
+      type: "website",
+      locale: isAr ? "ar_EG" : "en_US",
+      images: [`/api/og?title=${encodeURIComponent(name)}`],
+    },
+  };
 }
 
 export default async function CollectionPage({
@@ -111,21 +142,46 @@ export default async function CollectionPage({
       ? `/${locale}/catalog/${collection.slug}/compare`
       : undefined;
 
+  // ─── JSON-LD ────────────────────────────────────────────────────
+  const localizedName =
+    locale === "ar" ? collection.name_ar : collection.name_en;
+  const collectionDescription =
+    (locale === "ar"
+      ? collection.description_ar
+      : collection.description_en) ?? localizedName;
+  const pageSchemas = [
+    collectionPageSchema({
+      name: localizedName,
+      description: collectionDescription,
+      url: `/${locale}/catalog/${collection.slug}`,
+      itemCount: products.length,
+    }),
+    breadcrumbSchema(
+      (crumbs ?? []).map((c) => ({
+        name: c.label,
+        url: c.href,
+      })),
+    ),
+  ];
+
   return (
-    <CatalogView
-      locale={locale}
-      collections={filterCollections}
-      products={products}
-      activeCollection={collection}
-      sort={sort}
-      crumbs={crumbs}
-      filterAllHref={filterAllHref}
-      filterAllLabel={filterAllLabel}
-      compareHref={compareHref}
-      compareLabel={{
-        ar: `قارن بين موديلات ${collection.name_ar}`,
-        en: `Compare ${collection.name_en} models`,
-      }}
-    />
+    <>
+      <JsonLd data={pageSchemas} />
+      <CatalogView
+        locale={locale}
+        collections={filterCollections}
+        products={products}
+        activeCollection={collection}
+        sort={sort}
+        crumbs={crumbs}
+        filterAllHref={filterAllHref}
+        filterAllLabel={filterAllLabel}
+        compareHref={compareHref}
+        compareLabel={{
+          ar: `قارن بين موديلات ${collection.name_ar}`,
+          en: `Compare ${collection.name_en} models`,
+        }}
+      />
+    </>
   );
 }

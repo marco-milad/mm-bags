@@ -1,12 +1,29 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { isCatalogSort } from "@/lib/catalog-shared";
+import { localeAlternates } from "@/lib/seo/site";
 import { getProducts } from "@/lib/queries/catalog";
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 import { bucketById } from "@/lib/material-buckets";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: PageProps<"/[locale]/catalog">): Promise<Metadata> {
+  const { locale } = await params;
+  if (!hasLocale(locale)) return {};
+  const isAr = locale === "ar";
+  return {
+    title: isAr ? "كل المنتجات | M.M Bags" : "All products | M.M Bags",
+    description: isAr
+      ? "تسوق كل منتجات M.M Bags — شنط السفر، الظهر، المدارس، الحريم، اليد، واللاب توب. شحن لكل 27 محافظة."
+      : "Shop the full M.M Bags catalog — travel, backpacks, school, ladies, handbags, and laptop sleeves. Ships across Egypt.",
+    alternates: localeAlternates("/catalog"),
+  };
+}
 
 export default async function CatalogPage({
   params,

@@ -1,14 +1,27 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Code2, HandHeart, Tag } from "lucide-react";
 import { hasLocale } from "@/lib/i18n-config";
+import { aboutPageSchema } from "@/lib/seo/jsonld";
+import { absoluteUrl, localeAlternates } from "@/lib/seo/site";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { AnimatedCounter } from "@/components/about/AnimatedCounter";
 
-export const metadata = {
-  title: "About — Marco Milad",
-  description:
-    "M.M Bags — قصة ماركو ميلاد: مطور ورائد أعمال من القاهرة، بنا متجر شنط سفر بجودة حقيقية وسعر عادل.",
-};
+export async function generateMetadata({
+  params,
+}: PageProps<"/[locale]/about">): Promise<Metadata> {
+  const { locale } = await params;
+  if (!hasLocale(locale)) return {};
+  const isAr = locale === "ar";
+  return {
+    title: isAr ? "قصتنا | M.M Bags" : "Our story | M.M Bags",
+    description: isAr
+      ? "M.M Bags — قصة ماركو ميلاد: مطور ورائد أعمال من القاهرة، بنا متجر شنط سفر بجودة حقيقية وسعر عادل."
+      : "M.M Bags — Marco Milad's story. A Cairo-based founder building a bag store with real quality and a fair price.",
+    alternates: localeAlternates("/about"),
+  };
+}
 
 const PROMISES = [
   {
@@ -55,8 +68,16 @@ export default async function AboutPage({ params }: PageProps<"/[locale]"> & {
   const isRTL = locale === "ar";
   const Forward = isRTL ? ArrowLeft : ArrowRight;
 
+  const aboutSchema = aboutPageSchema({
+    url: absoluteUrl(`/${locale}/about`),
+    description: isRTL
+      ? "M.M Bags — قصة ماركو ميلاد: مطور ورائد أعمال من القاهرة، بنا متجر شنط سفر بجودة حقيقية وسعر عادل."
+      : "M.M Bags — Marco Milad's story. A Cairo-based founder building a bag store with real quality and a fair price.",
+  });
+
   return (
     <article>
+      <JsonLd data={aboutSchema} />
       {/* 1. HERO */}
       <section className="relative isolate overflow-hidden bg-[var(--color-primary)] text-white">
         <PhotoBlock

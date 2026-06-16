@@ -1,13 +1,24 @@
+import type { Metadata } from "next";
 import { Clock, Mail, MessageCircle, Share2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { ContactForm } from "@/components/contact/ContactForm";
+import { localeAlternates } from "@/lib/seo/site";
 
-export const metadata = {
-  title: "Contact — M.M Bags",
-  description:
-    "تواصل مع M.M Bags: WhatsApp، البريد الإلكتروني، وحسابات السوشيال ميديا. هنرد عليك خلال 24 ساعة.",
-};
+export async function generateMetadata({
+  params,
+}: PageProps<"/[locale]/contact">): Promise<Metadata> {
+  const { locale } = await params;
+  if (!hasLocale(locale)) return {};
+  const isAr = locale === "ar";
+  return {
+    title: isAr ? "تواصل معنا | M.M Bags" : "Contact us | M.M Bags",
+    description: isAr
+      ? "تواصل مع M.M Bags: WhatsApp، البريد الإلكتروني، وحسابات السوشيال ميديا. هنرد عليك خلال 24 ساعة."
+      : "Get in touch with M.M Bags via WhatsApp, email, or social. We respond within 24 hours.",
+    alternates: localeAlternates("/contact"),
+  };
+}
 
 export default async function ContactPage({ params }: PageProps<"/[locale]">) {
   const { locale } = await params;
