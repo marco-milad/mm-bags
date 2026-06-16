@@ -38,11 +38,21 @@ const APP_URL = (
   process.env.NEXT_PUBLIC_APP_URL ?? "https://mmbags.com"
 ).replace(/\/+$/, "");
 
+/**
+ * Hard cap on the bulk run. Each WhatsApp send costs real money;
+ * each Resend send adds up too. If the backlog is bigger than this,
+ * the admin needs to run the bulk send N times — by design, so a
+ * stuck-pointer can't burn a thousand sends in one click.
+ */
+const MAX_BULK_VARIANTS = 100;
+
 export type DispatchResult = {
   variantId: string;
   attempted: number;
   succeeded: number;
   failed: number;
+  /** Variant skipped because stock is still 0 — see review #19. */
+  skipped?: "out_of_stock";
 };
 
 type Subscription = {
@@ -76,7 +86,7 @@ export async function sendVariantNotificationsForm(
   revalidatePath("/admin");
 }
 
-/** Bulk dispatcher — every variant with pending rows. */
+/** Bulk dispatcher — every variant with pending rows, capped per run. */
 export async function sendAllPendingNotifications(): Promise<void> {
   try {
     await requireAdmin();
@@ -94,7 +104,7 @@ export async function sendAllPendingNotifications(): Promise<void> {
         .map((r) => r.variant_id)
         .filter((v): v is string => Boolean(v)),
     ),
-  );
+  ).slice(0, MAX_BULK_VARIANTS);
   for (const vid of variantIds) {
     await dispatchForVariant(vid);
   }
@@ -105,6 +115,25 @@ export async function sendAllPendingNotifications(): Promise<void> {
 // ─── Core dispatcher ─────────────────────────────────────────────────
 async function dispatchForVariant(variantId: string): Promise<DispatchResult> {
   const admin = getSupabaseAdminClient();
+
+  // Stock gate: don't tell customers the bag is back in stock when
+  // it isn't. The UI's only protection is a tooltip that doesn't
+  // actually stop the action — enforce server-side.
+  const { data: variant } = await admin
+    .from("product_variants")
+    .select("stock_qty")
+    .eq("id", variantId)
+    .maybeSingle();
+  if (!variant || (variant.stock_qty ?? 0) <= 0) {
+    return {
+      variantId,
+      attempted: 0,
+      succeeded: 0,
+      failed: 0,
+      skipped: "out_of_stock",
+    };
+  }
+
   const { data } = await admin
     .from("notification_subscriptions")
     .select(
@@ -148,14 +177,29 @@ async function dispatchForVariant(variantId: string): Promise<DispatchResult> {
   let succeeded = 0;
   let failed = 0;
   for (const sub of subs) {
+    // Atomic claim: try to flip notified=true FIRST. If zero rows
+    // were updated, a concurrent dispatcher already won (or the row
+    // was manually flipped). This collapses the previous "read pending
+    // then send then write" race that allowed double-clicks of Send
+    // to fire two real Twilio messages to every subscriber.
+    const { data: claimed } = await admin
+      .from("notification_subscriptions")
+      .update({ notified: true })
+      .eq("id", sub.id)
+      .eq("notified", false)
+      .select("id")
+      .maybeSingle();
+    if (!claimed) continue;
+
     const ok = await dispatchOne(sub);
     if (ok) {
-      await admin
-        .from("notification_subscriptions")
-        .update({ notified: true })
-        .eq("id", sub.id);
       succeeded += 1;
     } else {
+      // Send failed — release the claim so a later retry can pick it up.
+      await admin
+        .from("notification_subscriptions")
+        .update({ notified: false })
+        .eq("id", sub.id);
       failed += 1;
     }
   }
@@ -199,7 +243,10 @@ async function dispatchOne(sub: Subscription): Promise<boolean> {
     }
     return false;
   } catch (err) {
-    console.warn("[notifications/dispatch]", err);
+    // Don't log the raw err — Twilio/Resend errors can embed the
+    // request URL or auth header.
+    const name = err instanceof Error ? err.name : "unknown";
+    console.warn(`[notifications/dispatch] failed sub=${sub.id} ${name}`);
     return false;
   }
 }

@@ -34,6 +34,19 @@ export function StatusDropdown({
   function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value as OrderStatus;
     if (next === current) return;
+    // Confirm on the only transition that fires a paid WhatsApp send
+    // to the customer. A native <select> can change value on scroll/
+    // keyboard-arrow, and one misclick on a dense table = one
+    // unwanted billable send.
+    if (
+      next === "delivered" &&
+      !window.confirm(
+        "Mark this order delivered? A WhatsApp review request will be sent to the customer.",
+      )
+    ) {
+      e.target.value = current;
+      return;
+    }
     const formData = new FormData();
     formData.set("id", orderId);
     formData.set("status", next);

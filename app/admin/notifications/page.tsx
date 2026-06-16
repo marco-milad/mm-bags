@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Send, Sparkles } from "lucide-react";
 import {
   getWaitlistStats,
   listWaitlistGroups,
@@ -10,6 +9,7 @@ import {
   sendAllPendingNotifications,
   sendVariantNotificationsForm,
 } from "@/lib/admin/notification-actions";
+import { SendButton } from "@/components/admin/notifications/SendButton";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -55,13 +55,11 @@ export default async function NotificationsPage({
         </div>
         {stats.pendingTotal > 0 && (
           <form action={sendAllPendingNotifications}>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-full bg-brass-500 px-4 py-2 text-sm font-semibold text-navy-900 transition hover:bg-brass-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
-            >
-              <Sparkles className="h-4 w-4" />
-              Send all pending ({stats.pendingTotal})
-            </button>
+            <SendButton
+              pendingCount={stats.pendingTotal}
+              variant="bulk"
+              confirmMessage={`Send WhatsApp + email to ${stats.pendingTotal} pending subscribers? Each message costs money — capped at 100 variants per run.`}
+            />
           </form>
         )}
       </header>
@@ -168,19 +166,14 @@ export default async function NotificationsPage({
                   </div>
                   <form action={sendVariantNotificationsForm}>
                     <input type="hidden" name="variantId" value={g.variantId} />
-                    <button
-                      type="submit"
-                      disabled={g.pendingCount === 0}
-                      title={
-                        backInStock
-                          ? `Send to ${g.pendingCount} subscribers`
-                          : "Stock is still 0 — sending anyway will tell them it's back when it isn't"
-                      }
-                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-primary)] bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--color-primary)] transition hover:bg-[var(--color-primary)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                      إرسال إشعار ({g.pendingCount})
-                    </button>
+                    <SendButton
+                      pendingCount={g.pendingCount}
+                      // Server-side dispatcher refuses to send when
+                      // stock=0; the disabled flag here just makes
+                      // the UI honest.
+                      disabled={!backInStock}
+                      confirmMessage={`Send WhatsApp/email to ${g.pendingCount} pending subscribers of ${g.productName} (${g.variantLabel})?`}
+                    />
                   </form>
                 </header>
 

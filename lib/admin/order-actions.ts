@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/admin/auth";
 import { sendWhatsApp } from "@/lib/twilio";
 import { buildPostDeliveryMessage } from "@/lib/reviews/post-delivery";
 import type { Locale } from "@/lib/i18n-config";
@@ -34,6 +35,16 @@ type ShippingAddressShape = {
 };
 
 export async function updateOrderStatus(formData: FormData): Promise<void> {
+  // Server Actions are addressable POST endpoints — the layout guard
+  // doesn't protect them. Without this check any authenticated
+  // visitor could update any order's status and trigger a paid
+  // Twilio send.
+  try {
+    await requireAdmin();
+  } catch {
+    return;
+  }
+
   const parsed = z
     .object({
       id: z.uuid(),
@@ -47,9 +58,8 @@ export async function updateOrderStatus(formData: FormData): Promise<void> {
   const { id, status } = parsed.data;
   const admin = getSupabaseAdminClient();
 
-  // Fetch BEFORE the update so we know whether we're transitioning
-  // INTO delivered (only then do we fire the WhatsApp prompt — avoids
-  // double-sends if the admin re-saves "delivered").
+  // We need the shipping address + items for the WhatsApp send if we
+  // end up transitioning into delivered. Read FIRST.
   const { data: beforeRaw } = await admin
     .from("orders")
     .select(
@@ -67,9 +77,25 @@ export async function updateOrderStatus(formData: FormData): Promise<void> {
     }> | null;
   };
 
-  await admin.from("orders").update({ status }).eq("id", id);
+  // Atomic transition: only one writer can flip `pending → delivered`
+  // because the WHERE clause requires the old status to be different.
+  // This collapses the previous read-then-write race that allowed
+  // double-clicks to fire two WhatsApp messages.
+  let transitionedToDelivered = false;
+  if (status === "delivered") {
+    const { data: updated } = await admin
+      .from("orders")
+      .update({ status })
+      .eq("id", id)
+      .neq("status", "delivered")
+      .select("id")
+      .maybeSingle();
+    transitionedToDelivered = !!updated;
+  } else {
+    await admin.from("orders").update({ status }).eq("id", id);
+  }
 
-  if (status === "delivered" && before.status !== "delivered") {
+  if (transitionedToDelivered) {
     await sendDeliveryWhatsAppBestEffort(id, {
       shipping_address: before.shipping_address,
       items: before.items,
@@ -90,7 +116,10 @@ async function sendDeliveryWhatsAppBestEffort(
 ): Promise<void> {
   const address = (raw.shipping_address ?? {}) as ShippingAddressShape;
   const phone = address.phone?.trim();
-  if (!phone) return;
+  const name = address.name?.trim();
+  // Don't send a "Hi (generic)" greeting — skip rather than send an
+  // anonymous message that looks like spam and risks WABA flagging.
+  if (!phone || !name) return;
   const items = (raw.items ?? []) as Array<{
     product:
       | { slug: string }
@@ -104,7 +133,7 @@ async function sendDeliveryWhatsAppBestEffort(
   const locale: Locale = address.locale === "en" ? "en" : "ar";
   const body = buildPostDeliveryMessage({
     locale,
-    name: address.name?.trim() || (locale === "ar" ? "صاحب الطلب" : "Customer"),
+    name,
     productSlug: firstSlug,
   });
   const res = await sendWhatsApp({ to: phone, body });
@@ -126,6 +155,11 @@ const codSchema = z.object({
 });
 
 export async function saveCodTracking(formData: FormData): Promise<void> {
+  try {
+    await requireAdmin();
+  } catch {
+    return;
+  }
   const parsed = codSchema.safeParse({
     orderId: formData.get("orderId"),
     courierName: formData.get("courierName") || undefined,

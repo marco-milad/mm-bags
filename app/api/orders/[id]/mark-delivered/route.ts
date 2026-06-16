@@ -20,11 +20,14 @@ type ShippingAddressShape = {
  * sends the customer a WhatsApp message asking for a review on the
  * first item of the order.
  *
- * The status update is the durable side-effect; the WhatsApp send is
- * best-effort because Twilio outages shouldn't roll back an inventory-
- * accurate order status. If the order is already `delivered` we no-op
- * the DB write but still attempt the WhatsApp send so admins can
- * re-trigger after fixing a wrong phone.
+ * Idempotent on second-call: if the order is already delivered we
+ * SKIP both the DB write AND the WhatsApp send. The previous version
+ * intentionally re-fired the WhatsApp on every call to let admins
+ * "retry after fixing a wrong phone" — but with real Twilio credentials
+ * that turned every accidental re-POST (cron, double-click, Postman
+ * collection) into a billable duplicate. If you genuinely need to
+ * re-fire after a phone correction, do it through a separate
+ * deliberate endpoint.
  */
 export async function POST(
   _req: Request,
@@ -64,20 +67,31 @@ export async function POST(
     return NextResponse.json({ error: "order_not_found" }, { status: 404 });
   }
 
-  // ── Status flip ──────────────────────────────────────────────────
-  if (order.status !== "delivered") {
-    const { error: updateErr } = await admin
-      .from("orders")
-      .update({ status: "delivered" })
-      .eq("id", orderId);
-    if (updateErr) {
-      return NextResponse.json({ error: updateErr.message }, { status: 500 });
-    }
+  // ── Atomic status flip + idempotency gate ────────────────────────
+  // Use a conditional update so we only proceed with the WhatsApp
+  // send when THIS call actually performed the transition. Concurrent
+  // calls / re-clicks see `updated` as null and skip the send.
+  const { data: updated, error: updateErr } = await admin
+    .from("orders")
+    .update({ status: "delivered" })
+    .eq("id", orderId)
+    .neq("status", "delivered")
+    .select("id")
+    .maybeSingle();
+  if (updateErr) {
+    return NextResponse.json({ error: updateErr.message }, { status: 500 });
+  }
+  // Already delivered (or another concurrent caller won) — no send.
+  if (!updated) {
+    return NextResponse.json({
+      success: true,
+      whatsapp: { attempted: false, skipped: "already_delivered" },
+    });
   }
 
   // ── Review prompt (best-effort) ──────────────────────────────────
   const address = (order.shipping_address as ShippingAddressShape) ?? {};
-  const customerName = address.name?.trim() || "صاحب الطلب";
+  const customerName = address.name?.trim();
   const customerPhone = address.phone?.trim();
   const locale: Locale = address.locale === "en" ? "en" : "ar";
 
@@ -96,10 +110,10 @@ export async function POST(
     .map((it) => (Array.isArray(it.product) ? it.product[0] : it.product))
     .find((p) => p && p.slug);
 
-  let whatsapp: { attempted: boolean; ok?: boolean; error?: string } = {
+  let whatsapp: { attempted: boolean; ok?: boolean } = {
     attempted: false,
   };
-  if (customerPhone && firstProduct) {
+  if (customerPhone && customerName && firstProduct) {
     whatsapp = { attempted: true };
     const body = buildPostDeliveryMessage({
       locale,
@@ -111,9 +125,9 @@ export async function POST(
       whatsapp.ok = true;
     } else {
       whatsapp.ok = false;
-      whatsapp.error = res.error;
-      // We log but don't fail the request — the order status change
-      // already succeeded. The admin can retry the send from the UI.
+      // Log a generic failure server-side without echoing Twilio's
+      // error verbatim — those payloads can leak request context
+      // into Vercel logs.
       console.warn("[mark-delivered] whatsapp failed", res.error);
     }
   }
