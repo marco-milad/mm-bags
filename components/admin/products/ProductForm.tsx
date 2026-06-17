@@ -161,14 +161,12 @@ export function ProductForm({
         <Section title="Pricing">
           <Row>
             <Field id="base_price" label="Base price (EGP) *">
-              <input
+              <NumericInput
                 id="base_price"
                 name="base_price"
-                type="number"
                 required
-                min={0}
-                step="0.01"
                 defaultValue={product?.base_price ?? 0}
+                placeholder="مثال: 1299"
                 className={cn(inputCls, "font-mono")}
               />
             </Field>
@@ -177,13 +175,11 @@ export function ProductForm({
               label="Sale price (EGP)"
               hint="Leave blank for no sale. Must be lower than base price."
             >
-              <input
+              <NumericInput
                 id="sale_price"
                 name="sale_price"
-                type="number"
-                min={0}
-                step="0.01"
                 defaultValue={product?.sale_price ?? ""}
+                placeholder="مثال: 999 (اتركه فاضي لو مفيش خصم)"
                 className={cn(inputCls, "font-mono")}
               />
             </Field>
@@ -233,37 +229,31 @@ export function ProductForm({
           </Row>
           <Row>
             <Field id="weight_kg" label="Weight (kg)">
-              <input
+              <NumericInput
                 id="weight_kg"
                 name="weight_kg"
-                type="number"
-                min={0}
-                step="0.1"
                 defaultValue={product?.weight_kg ?? ""}
+                placeholder="مثال: 2.5"
                 className={cn(inputCls, "font-mono")}
               />
             </Field>
             <Field id="laptop_inches" label="Laptop fit (inches)">
-              <input
+              <NumericInput
                 id="laptop_inches"
                 name="laptop_inches"
-                type="number"
-                min={0}
-                step="0.1"
                 defaultValue={product?.laptop_inches ?? ""}
+                placeholder="مثال: 15.6"
                 className={cn(inputCls, "font-mono")}
               />
             </Field>
           </Row>
           <Row>
             <Field id="capacity_liters" label="Capacity (liters)">
-              <input
+              <NumericInput
                 id="capacity_liters"
                 name="capacity_liters"
-                type="number"
-                min={0}
-                step="0.1"
                 defaultValue={product?.capacity_liters ?? ""}
+                placeholder="مثال: 30"
                 className={cn(inputCls, "font-mono")}
               />
             </Field>
@@ -521,5 +511,59 @@ function Radios({
     </div>
   );
 }
+// Numeric text input that mimics number-type semantics WITHOUT the
+// ugly spinner arrows. inputMode="decimal" still gives mobile users
+// the numeric keypad; the keydown allowlist blocks letters/symbols
+// while preserving navigation, editing, and clipboard shortcuts.
+const ALLOWED_NUMERIC_KEYS = new Set([
+  "Backspace",
+  "Delete",
+  "Tab",
+  "Enter",
+  "Escape",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+]);
+function onNumericKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (e.ctrlKey || e.metaKey) return;
+  if (ALLOWED_NUMERIC_KEYS.has(e.key)) return;
+  if (/^[0-9.,]$/.test(e.key)) return;
+  e.preventDefault();
+}
+function NumericInput({
+  id,
+  name,
+  required,
+  defaultValue,
+  placeholder,
+  className,
+}: {
+  id: string;
+  name: string;
+  required?: boolean;
+  defaultValue?: string | number;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <input
+      id={id}
+      name={name}
+      type="text"
+      inputMode="decimal"
+      pattern="[0-9]*\.?[0-9]*"
+      required={required}
+      defaultValue={defaultValue}
+      placeholder={placeholder}
+      onKeyDown={onNumericKeyDown}
+      className={className}
+    />
+  );
+}
+
 const inputCls =
   "w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:border-[var(--color-accent)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/40";
