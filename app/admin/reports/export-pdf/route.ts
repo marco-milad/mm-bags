@@ -13,7 +13,7 @@ import {
   fmtInt,
   renderDailyPdf,
   renderGenericPdf,
-  type PdfColumn,
+  type GenericColumn,
 } from "@/lib/admin/reports/pdf";
 
 export const runtime = "nodejs";
@@ -64,11 +64,11 @@ export async function GET(request: Request) {
     case "monthly": {
       const month = sp.get("month") ?? new Date().toISOString().slice(0, 7);
       const r = await getMonthlyReport(month);
-      const columns: PdfColumn[] = [
-        { header: { ar: "التاريخ", en: "Date" }, flex: 2 },
-        { header: { ar: "أونلاين", en: "Online" }, flex: 2, numeric: true },
-        { header: { ar: "المحل", en: "POS" }, flex: 2, numeric: true },
-        { header: { ar: "الإجمالي", en: "Total" }, flex: 2.4, numeric: true },
+      const columns: GenericColumn[] = [
+        { header: { ar: "التاريخ", en: "Date" } },
+        { header: { ar: "أونلاين", en: "Online" }, align: "numeric" },
+        { header: { ar: "المحل", en: "POS" }, align: "numeric" },
+        { header: { ar: "الإجمالي", en: "Total" }, align: "numeric" },
       ];
       const rows = r.daily.map((d) => [
         d.date,
@@ -119,11 +119,11 @@ export async function GET(request: Request) {
           ? (sp.get("source") as "online" | "pos")
           : ("both" as const);
       const r = await getBestSellers({ from, to, source, limit: 500 });
-      const columns: PdfColumn[] = [
-        { header: { ar: "#", en: "#" }, flex: 0.8, align: "center" },
-        { header: { ar: "المنتج", en: "Product" }, flex: 5 },
-        { header: { ar: "القطع", en: "Units" }, flex: 1.4, numeric: true },
-        { header: { ar: "الإيراد", en: "Revenue" }, flex: 2.4, numeric: true },
+      const columns: GenericColumn[] = [
+        { header: { ar: "#", en: "#" }, align: "center" },
+        { header: { ar: "المنتج", en: "Product" } },
+        { header: { ar: "القطع", en: "Units" }, align: "numeric" },
+        { header: { ar: "الإيراد", en: "Revenue" }, align: "numeric" },
       ];
       const rows = r.map((row, i) => [
         String(i + 1),
@@ -156,12 +156,12 @@ export async function GET(request: Request) {
     }
     case "stock": {
       const r = await getStockValueReport();
-      const columns: PdfColumn[] = [
-        { header: { ar: "المنتج", en: "Product" }, flex: 4 },
-        { header: { ar: "القطع", en: "Units" }, flex: 1.2, numeric: true },
-        { header: { ar: "متوسط التكلفة", en: "Avg cost" }, flex: 2, numeric: true },
-        { header: { ar: "قيمة المخزون", en: "Stock value" }, flex: 2.2, numeric: true },
-        { header: { ar: "اتباع آخر 30 يوم", en: "Sold 30d" }, flex: 1.6, numeric: true },
+      const columns: GenericColumn[] = [
+        { header: { ar: "المنتج", en: "Product" } },
+        { header: { ar: "القطع", en: "Units" }, align: "numeric" },
+        { header: { ar: "متوسط التكلفة", en: "Avg cost" }, align: "numeric" },
+        { header: { ar: "قيمة المخزون", en: "Stock value" }, align: "numeric" },
+        { header: { ar: "اتباع آخر 30 يوم", en: "Sold 30d" }, align: "numeric" },
       ];
       const rows = r.map((row) => [
         row.productName,
@@ -196,12 +196,12 @@ export async function GET(request: Request) {
     }
     case "suppliers": {
       const r = await getSupplierLedger();
-      const columns: PdfColumn[] = [
-        { header: { ar: "المورد", en: "Supplier" }, flex: 4 },
-        { header: { ar: "أوامر الشراء", en: "POs" }, flex: 1.4, numeric: true },
-        { header: { ar: "المشتريات", en: "Purchased" }, flex: 2, numeric: true },
-        { header: { ar: "المدفوع", en: "Paid" }, flex: 2, numeric: true },
-        { header: { ar: "المستحق", en: "Owed" }, flex: 2, numeric: true },
+      const columns: GenericColumn[] = [
+        { header: { ar: "المورد", en: "Supplier" } },
+        { header: { ar: "أوامر الشراء", en: "POs" }, align: "numeric" },
+        { header: { ar: "المشتريات", en: "Purchased" }, align: "numeric" },
+        { header: { ar: "المدفوع", en: "Paid" }, align: "numeric" },
+        { header: { ar: "المستحق", en: "Owed" }, align: "numeric" },
       ];
       const rows = r.map((row) => [
         row.name,

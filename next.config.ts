@@ -4,6 +4,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseHostname = supabaseUrl ? new URL(supabaseUrl).hostname : undefined;
 
 const nextConfig: NextConfig = {
+  // Keep the chromium binary + puppeteer's native bindings out of the
+  // serverless bundle. They're loaded at runtime by /admin/reports/export-pdf
+  // via the @sparticuz/chromium serverless build; bundling them through
+  // webpack would mangle the native code paths.
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
   images: {
     remotePatterns: [
       ...(supabaseHostname

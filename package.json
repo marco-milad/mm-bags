@@ -6,13 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "postinstall": "patch-package"
+    "lint": "eslint"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-dialog": "^1.1.15",
-    "@react-pdf/renderer": "^4.5.1",
+    "@sparticuz/chromium": "^149.0.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
     "@vercel/og": "^0.11.1",
@@ -20,6 +19,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
+    "puppeteer-core": "^25.1.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.76.1",
@@ -36,7 +36,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "patch-package": "^8.0.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
