@@ -4,6 +4,7 @@ import {
   Banknote,
   Clock,
   CreditCard,
+  FileText,
   Globe,
   ShoppingCart,
   Smartphone,
@@ -46,18 +47,27 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="font-display text-3xl text-[var(--color-text)]">
-          {isAr ? "لوحة التحكم" : "Dashboard"}
-        </h1>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          {new Date().toLocaleDateString(isAr ? "ar-EG" : "en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl text-[var(--color-text)]">
+            {isAr ? "لوحة التحكم" : "Dashboard"}
+          </h1>
+          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+            {new Date().toLocaleDateString(isAr ? "ar-EG" : "en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+        </div>
+        <a
+          href="/admin/reports/export-pdf?report=dashboard"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          {isAr ? "تصدير تقرير PDF" : "Export PDF report"}
+        </a>
       </header>
 
       {/* ── Row 1: Today's stats ──────────────────────────────────── */}

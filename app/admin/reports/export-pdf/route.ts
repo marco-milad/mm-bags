@@ -7,11 +7,20 @@ import {
   getStockValueReport,
   getSupplierLedger,
 } from "@/lib/queries/admin-reports";
+import {
+  getLowStockVariants,
+  getMonthlyRevenue,
+  getOverduePurchaseOrders,
+  getRecentOrders,
+  getRecentPosSales,
+  getTodayStats,
+} from "@/lib/queries/admin-dashboard";
 import { getAdminLocale } from "@/lib/admin/locale";
 import {
   fmtEGP,
   fmtInt,
   renderDailyPdf,
+  renderDashboardPdf,
   renderGenericPdf,
   type GenericColumn,
 } from "@/lib/admin/reports/pdf";
@@ -54,6 +63,32 @@ export async function GET(request: Request) {
   let filename = "report.pdf";
 
   switch (report) {
+    case "dashboard": {
+      // Full /admin overview — every panel the admin sees on the
+      // dashboard, captured in one printable document. Limits match
+      // the page itself (5 recent rows + 5 alerts + 30-day overdue).
+      const [stats, monthly, recentOrders, recentPos, lowStock, overdue] =
+        await Promise.all([
+          getTodayStats(),
+          getMonthlyRevenue(),
+          getRecentOrders(5),
+          getRecentPosSales(5),
+          getLowStockVariants(5, 12),
+          getOverduePurchaseOrders(30, 5),
+        ]);
+      pdf = await renderDashboardPdf({
+        stats,
+        monthly,
+        recentOrders,
+        recentPos,
+        lowStock,
+        overdue,
+        adminName,
+        locale,
+      });
+      filename = `dashboard-${new Date().toISOString().slice(0, 10)}.pdf`;
+      break;
+    }
     case "daily": {
       const date = sp.get("date") ?? new Date().toISOString().slice(0, 10);
       const detailed = await getDailyDetailedReport(date);

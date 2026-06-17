@@ -4,6 +4,14 @@ import type {
   DailyOnlineOrderRow,
   DailyPosSaleRow,
 } from "@/lib/queries/admin-reports";
+import type {
+  TodayStats,
+  DailyRevenuePoint,
+  RecentOrder,
+  RecentPosSale,
+  LowStockVariant,
+  OverduePurchaseOrder,
+} from "@/lib/queries/admin-dashboard";
 import {
   orderStatusLabel,
   paymentMethodLabel,
@@ -626,6 +634,280 @@ function genericBody(opts: GenericPdfOpts): string {
   `;
 }
 
+// ─── Dashboard overview ─────────────────────────────────────────────
+// Everything the admin sees on /admin in one printable document:
+// today's KPIs, this month's daily revenue, recent online + POS
+// activity, low-stock alerts, overdue purchase orders.
+
+export type DashboardPdfOpts = {
+  stats: TodayStats;
+  monthly: DailyRevenuePoint[];
+  recentOrders: RecentOrder[];
+  recentPos: RecentPosSale[];
+  lowStock: LowStockVariant[];
+  overdue: OverduePurchaseOrder[];
+  adminName: string;
+  locale: Locale;
+};
+
+function relDaysAgo(iso: string, locale: Locale): string {
+  if (!iso) return "—";
+  const days = Math.floor(
+    (Date.now() - new Date(iso).getTime()) / 86400_000,
+  );
+  if (days <= 0) return locale === "ar" ? "اليوم" : "today";
+  return locale === "ar" ? `${fmtInt(days, locale)} يوم` : `${days}d ago`;
+}
+
+function dashboardBody(opts: DashboardPdfOpts): string {
+  const { stats, monthly, recentOrders, recentPos, lowStock, overdue, locale } =
+    opts;
+  const isAr = locale === "ar";
+
+  // Today's KPI band — same five tiles as the dashboard page.
+  const kpis = [
+    {
+      label: isAr ? "إجمالي إيراد اليوم" : "Today's revenue",
+      value: fmtEGP(stats.totalRevenue, locale),
+      sub: isAr ? "أونلاين + محل" : "Online + POS",
+      primary: true,
+    },
+    {
+      label: isAr ? "مبيعات أونلاين" : "Online sales",
+      value: fmtEGP(stats.online.revenue, locale),
+      sub: isAr
+        ? `${fmtInt(stats.online.count, locale)} طلب`
+        : `${stats.online.count} orders`,
+    },
+    {
+      label: isAr ? "مبيعات المحل" : "Store sales",
+      value: fmtEGP(stats.pos.revenue, locale),
+      sub: isAr
+        ? `${fmtInt(stats.pos.count, locale)} بيعة`
+        : `${stats.pos.count} sales`,
+    },
+    {
+      label: isAr ? "طلبات معلقة" : "Pending orders",
+      value: fmtInt(stats.pendingOrders, locale),
+      sub: isAr ? "بانتظار التجهيز" : "Awaiting fulfilment",
+    },
+    {
+      label: isAr ? "تقييمات منتظرة" : "Pending reviews",
+      value: fmtInt(stats.pendingReviews, locale),
+      sub: isAr ? "بانتظار الموافقة" : "Awaiting approval",
+    },
+  ];
+
+  const kpiHtml = kpis
+    .map(
+      (k) => `
+    <div class="stat">
+      <p class="stat-label">${esc(k.label)}</p>
+      <p class="stat-value${k.primary ? " primary" : ""}">${esc(k.value)}</p>
+      <p class="stat-sub">${esc(k.sub)}</p>
+    </div>`,
+    )
+    .join("");
+
+  // Monthly revenue — full daily breakdown + month total. The dashboard
+  // shows it as a chart; here it's a compact table that prints cleanly.
+  const totalMonthOnline = monthly.reduce((s, d) => s + d.online, 0);
+  const totalMonthPos = monthly.reduce((s, d) => s + d.pos, 0);
+  const totalMonth = totalMonthOnline + totalMonthPos;
+  const peakDay = monthly.reduce<DailyRevenuePoint | null>(
+    (best, d) =>
+      d.online + d.pos > (best ? best.online + best.pos : -1) ? d : best,
+    null,
+  );
+  const monthlyRowsHtml = monthly
+    .map(
+      (d) => `<tr>
+      <td class="ctr mono">${esc(d.date)}</td>
+      <td class="num mono">${esc(fmtEGP(d.online, locale))}</td>
+      <td class="num mono">${esc(fmtEGP(d.pos, locale))}</td>
+      <td class="num mono">${esc(fmtEGP(d.online + d.pos, locale))}</td>
+    </tr>`,
+    )
+    .join("");
+
+  // Recent online orders — match what the dashboard page shows.
+  const recentOrdersBody =
+    recentOrders.length === 0
+      ? `<tr><td colspan="5" class="empty">${esc(
+          isAr ? "لا توجد طلبات أونلاين بعد." : "No online orders yet.",
+        )}</td></tr>`
+      : recentOrders
+          .map((o) => {
+            const addr = o.shipping_address as { name?: string } | null;
+            const name = addr?.name?.trim() || (isAr ? "زائر" : "guest");
+            return `<tr>
+              <td class="mono">${esc(o.order_number ?? o.id.slice(0, 8))}</td>
+              <td>${esc(name)}</td>
+              <td><span class="badge">${esc(orderStatusLabel(o.status ?? "pending", locale))}</span></td>
+              <td class="ctr mono">${esc(relDaysAgo(o.created_at ?? "", locale))}</td>
+              <td class="num mono">${esc(fmtEGP(Number(o.total ?? 0), locale))}</td>
+            </tr>`;
+          })
+          .join("");
+
+  // Recent POS sales.
+  const recentPosBody =
+    recentPos.length === 0
+      ? `<tr><td colspan="4" class="empty">${esc(
+          isAr ? "لا توجد مبيعات محل بعد." : "No POS sales yet.",
+        )}</td></tr>`
+      : recentPos
+          .map(
+            (s) => `<tr>
+              <td class="mono">${esc(s.sale_number ?? s.id.slice(0, 8))}</td>
+              <td>${esc(paymentMethodLabel(s.payment_method, locale))}</td>
+              <td class="ctr mono">${esc(fmtClock(s.created_at ?? "", locale))}</td>
+              <td class="num mono">${esc(fmtEGP(Number(s.total ?? 0), locale))}</td>
+            </tr>`,
+          )
+          .join("");
+
+  // Low-stock alerts.
+  const lowStockBody =
+    lowStock.length === 0
+      ? `<tr><td colspan="4" class="empty">${esc(
+          isAr
+            ? "كل الفاريانتس فوق حد المخزون المنخفض."
+            : "All variants above the low-stock threshold.",
+        )}</td></tr>`
+      : lowStock
+          .map((v) => {
+            const variantDesc = [
+              v.colorAr,
+              v.sizeInches ? `${v.sizeInches}"` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ") || (isAr ? "افتراضي" : "default");
+            return `<tr>
+              <td>${esc(v.productName)}</td>
+              <td>${esc(variantDesc)}</td>
+              <td class="num mono">${esc(fmtInt(v.stockQty, locale))}</td>
+              <td>${esc(
+                v.stockQty === 0
+                  ? isAr
+                    ? "نفذ"
+                    : "Out"
+                  : isAr
+                    ? "منخفض"
+                    : "Low",
+              )}</td>
+            </tr>`;
+          })
+          .join("");
+
+  // Overdue purchase orders.
+  const overdueBody =
+    overdue.length === 0
+      ? `<tr><td colspan="4" class="empty">${esc(
+          isAr
+            ? "لا توجد أرصدة موردين متأخرة أكتر من 30 يوم."
+            : "No outstanding supplier balances older than 30 days.",
+        )}</td></tr>`
+      : overdue
+          .map(
+            (po) => `<tr>
+              <td>${esc(po.supplier_name ?? (isAr ? "(مورد غير معروف)" : "(unknown supplier)"))}</td>
+              <td class="ctr mono">${esc(relDaysAgo(po.created_at ?? "", locale))}</td>
+              <td class="num mono">${esc(fmtEGP(Number(po.total_cost ?? 0), locale))}</td>
+              <td class="num mono" style="color:#c0392b;">${esc(fmtEGP(Number(po.amount_owed ?? 0), locale))}</td>
+            </tr>`,
+          )
+          .join("");
+
+  const peakSub =
+    peakDay && totalMonth > 0
+      ? isAr
+        ? `أعلى يوم: ${peakDay.date} (${fmtEGP(peakDay.online + peakDay.pos, locale)})`
+        : `Peak day: ${peakDay.date} (${fmtEGP(peakDay.online + peakDay.pos, locale)})`
+      : "";
+
+  return `
+    <div class="brand">
+      <div class="brand-name">M.M Bags</div>
+      <div class="brand-tag">TRAVEL · IN · STYLE</div>
+      <div class="brand-rule"></div>
+    </div>
+
+    <h1 class="report-title">${esc(isAr ? "تقرير لوحة التحكم" : "Dashboard overview")}</h1>
+    <p class="report-subtitle">${esc(fmtFullDate(new Date().toISOString(), locale))}</p>
+
+    <h2 class="section-header">${esc(isAr ? "ملخص اليوم" : "Today at a glance")}</h2>
+    <div class="summary-grid" style="grid-template-columns: repeat(5, 1fr);">${kpiHtml}</div>
+
+    <h2 class="section-header">${esc(isAr ? "إيراد الشهر — التفصيل اليومي" : "This month — daily breakdown")}</h2>
+    ${
+      peakSub
+        ? `<p class="report-subtitle" style="text-align:${isAr ? "right" : "left"}; margin:0 0 6px;">${esc(peakSub)}</p>`
+        : ""
+    }
+    <table class="data">
+      <thead><tr>
+        <th class="ctr">${esc(isAr ? "التاريخ" : "Date")}</th>
+        <th class="num">${esc(isAr ? "أونلاين" : "Online")}</th>
+        <th class="num">${esc(isAr ? "المحل" : "POS")}</th>
+        <th class="num">${esc(isAr ? "الإجمالي" : "Total")}</th>
+      </tr></thead>
+      <tbody>${monthlyRowsHtml}</tbody>
+      <tfoot><tr>
+        <td>${esc(isAr ? "إجمالي الشهر" : "Month total")}</td>
+        <td class="num">${esc(fmtEGP(totalMonthOnline, locale))}</td>
+        <td class="num">${esc(fmtEGP(totalMonthPos, locale))}</td>
+        <td class="num">${esc(fmtEGP(totalMonth, locale))}</td>
+      </tr></tfoot>
+    </table>
+
+    <h2 class="section-header">${esc(isAr ? "آخر الطلبات أونلاين" : "Recent online orders")}</h2>
+    <table class="data">
+      <thead><tr>
+        <th>${esc(isAr ? "رقم الطلب" : "Order #")}</th>
+        <th>${esc(isAr ? "العميل" : "Customer")}</th>
+        <th>${esc(isAr ? "الحالة" : "Status")}</th>
+        <th class="ctr">${esc(isAr ? "وقت" : "When")}</th>
+        <th class="num">${esc(isAr ? "الإجمالي" : "Total")}</th>
+      </tr></thead>
+      <tbody>${recentOrdersBody}</tbody>
+    </table>
+
+    <h2 class="section-header">${esc(isAr ? "آخر مبيعات المحل" : "Recent POS sales")}</h2>
+    <table class="data">
+      <thead><tr>
+        <th>${esc(isAr ? "رقم البيعة" : "Sale #")}</th>
+        <th>${esc(isAr ? "طريقة الدفع" : "Payment")}</th>
+        <th class="ctr">${esc(isAr ? "وقت" : "Time")}</th>
+        <th class="num">${esc(isAr ? "الإجمالي" : "Total")}</th>
+      </tr></thead>
+      <tbody>${recentPosBody}</tbody>
+    </table>
+
+    <h2 class="section-header">${esc(isAr ? "تنبيهات المخزون المنخفض" : "Low-stock alerts")}</h2>
+    <table class="data">
+      <thead><tr>
+        <th>${esc(isAr ? "المنتج" : "Product")}</th>
+        <th>${esc(isAr ? "الفاريانت" : "Variant")}</th>
+        <th class="num">${esc(isAr ? "القطع" : "Units")}</th>
+        <th>${esc(isAr ? "الحالة" : "Status")}</th>
+      </tr></thead>
+      <tbody>${lowStockBody}</tbody>
+    </table>
+
+    <h2 class="section-header">${esc(isAr ? "أوامر شراء متأخرة" : "Overdue purchase orders")}</h2>
+    <table class="data">
+      <thead><tr>
+        <th>${esc(isAr ? "المورد" : "Supplier")}</th>
+        <th class="ctr">${esc(isAr ? "متأخر" : "Overdue")}</th>
+        <th class="num">${esc(isAr ? "إجمالي الأمر" : "PO total")}</th>
+        <th class="num">${esc(isAr ? "المستحق" : "Owed")}</th>
+      </tr></thead>
+      <tbody>${overdueBody}</tbody>
+    </table>
+  `;
+}
+
 // ─── Public render functions (route calls these) ────────────────────
 
 async function htmlToPdf(html: string, footer: string): Promise<Buffer> {
@@ -688,6 +970,22 @@ export async function renderGenericPdf(opts: GenericPdfOpts): Promise<Buffer> {
     locale: opts.locale,
     title: opts.locale === "ar" ? opts.title.ar : opts.title.en,
     bodyHtml: genericBody(opts),
+  });
+  const footer = footerTemplate({
+    adminName: opts.adminName,
+    locale: opts.locale,
+  });
+  return htmlToPdf(html, footer);
+}
+
+export async function renderDashboardPdf(
+  opts: DashboardPdfOpts,
+): Promise<Buffer> {
+  const html = pageShell({
+    locale: opts.locale,
+    title:
+      opts.locale === "ar" ? "تقرير لوحة التحكم" : "Dashboard overview",
+    bodyHtml: dashboardBody(opts),
   });
   const footer = footerTemplate({
     adminName: opts.adminName,
