@@ -53,7 +53,10 @@ const MAX_IMAGES_PERSIST = 30;
  * `existing` is the row's current `images[]`. For new-product inserts
  * pass `[]` — there's nothing legacy to preserve.
  */
-export function resolveImagesForSave(
+// NOT exported — `"use server"` files can only export async actions.
+// Keep this helper module-internal; saveProduct + reorderProductImages
+// are the only callers anyway.
+function resolveImagesForSave(
   rawJson: string | undefined,
   existing: ReadonlyArray<string>,
 ): string[] | undefined {
