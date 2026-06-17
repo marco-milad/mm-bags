@@ -105,9 +105,15 @@ export function CatalogView({
       {products.length === 0 ? (
         <EmptyState locale={locale} hasFilter={!!activeCollection} />
       ) : (
-        <ul className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+        // `auto-rows-fr` makes every row the height of the tallest card
+        // in that row, and `h-full` on the <li> propagates that height
+        // down so the card stretches to fill its grid cell. Together
+        // with the square image aspect inside ProductCard, this gives
+        // a clean, uniform grid regardless of source orientation or
+        // whether a product has spec chips / sale badge / low-stock line.
+        <ul className="mt-8 grid auto-rows-fr grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-3 md:gap-x-6 md:gap-y-8 lg:grid-cols-4 lg:gap-x-6 lg:gap-y-10">
           {products.map((product) => (
-            <li key={product.id}>
+            <li key={product.id} className="h-full">
               <ProductCard product={product} locale={locale} />
             </li>
           ))}

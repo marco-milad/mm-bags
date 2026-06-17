@@ -60,15 +60,20 @@ export function ProductCard({
   return (
     <Link
       href={`/${locale}/products/${product.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-xl bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] transition hover:shadow-lg"
+      className="group relative flex h-full flex-col overflow-hidden rounded-xl bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] transition hover:shadow-lg hover:ring-[var(--color-accent)]"
     >
       {primaryImage ? (
+        // Square aspect on the card image regardless of the product's
+        // native orientation — uniform card heights are the dominant
+        // visual signal in a grid, and `fit=contain` still letterboxes
+        // portrait/landscape sources cleanly against bg-white. The
+        // detail page keeps the native aspect for hero imagery.
         <ImageContainer
           src={primaryImage}
           secondarySrc={secondaryImage ?? null}
           alt={name}
           fit={product.image_fit}
-          aspect={product.image_aspect}
+          aspect="square"
           sizes={sizes}
         >
           <WishlistButton
