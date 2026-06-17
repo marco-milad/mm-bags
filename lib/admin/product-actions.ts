@@ -58,6 +58,9 @@ const HEX_REGEX = /^#[0-9a-fA-F]{6}$/;
 const COLOR_HEX_DEFAULT_SENTINEL = "#000000";
 
 // ─── Product schema ─────────────────────────────────────────────────
+// Numeric bounds also guard the DB columns from overflow: products
+// uses numeric(12,2) for prices, numeric(6,2) for weight, etc.
+// (see migration `widen_numeric_columns_for_overflow_fix`).
 const productSchema = z
   .object({
     id: z.string().optional(),
@@ -72,15 +75,35 @@ const productSchema = z
     name_en: z.string().trim().min(1).max(200),
     description_ar: optionalTrimmedString(4000),
     description_en: optionalTrimmedString(4000),
-    base_price: z.coerce.number().nonnegative(),
-    sale_price: optionalNumber(z.coerce.number().nonnegative()),
+    base_price: z.coerce
+      .number()
+      .min(1, "السعر لازم يكون من 1 جنيه على الأقل")
+      .max(999999, "السعر لازم يكون أقل من 999,999 جنيه"),
+    sale_price: optionalNumber(
+      z.coerce.number().max(999999, "سعر التخفيض لازم يكون أقل من 999,999 جنيه"),
+    ),
     material_type: optionalTrimmedString(60),
     wheel_type: optionalTrimmedString(60),
     lock_type: optionalTrimmedString(60),
     dimensions: optionalTrimmedString(100),
-    weight_kg: optionalNumber(z.coerce.number().nonnegative()),
-    laptop_inches: optionalNumber(z.coerce.number().nonnegative()),
-    capacity_liters: optionalNumber(z.coerce.number().nonnegative()),
+    weight_kg: optionalNumber(
+      z.coerce
+        .number()
+        .min(0.1, "الوزن لازم يكون من 0.1 كجم على الأقل")
+        .max(999, "الوزن لازم يكون أقل من 999 كجم"),
+    ),
+    laptop_inches: optionalNumber(
+      z.coerce
+        .number()
+        .min(10, "مقاس اللاب لازم يكون من 10 بوصة على الأقل")
+        .max(20, "مقاس اللاب لازم يكون أقل من 20 بوصة"),
+    ),
+    capacity_liters: optionalNumber(
+      z.coerce
+        .number()
+        .min(1, "السعة لازم تكون من 1 لتر على الأقل")
+        .max(999, "السعة لازم تكون أقل من 999 لتر"),
+    ),
     is_water_resistant: z.coerce.boolean().optional(),
     is_expandable: z.coerce.boolean().optional(),
     image_fit: z.enum(["cover", "contain"]).optional(),
@@ -96,14 +119,20 @@ const productSchema = z
       d.sale_price === 0 ||
       d.sale_price < d.base_price,
     {
-      message: "Sale price must be lower than base price",
+      message: "سعر التخفيض لازم يكون أقل من السعر الأصلي",
       path: ["sale_price"],
     },
   );
 
 export type ProductActionResult =
   | { ok: true; id?: string }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      /** Per-field error messages keyed by Zod path (e.g. "base_price").
+          The form renders these inline under the matching <Field>. */
+      fieldErrors?: Record<string, string>;
+    };
 
 /**
  * Create or update a product.
@@ -161,10 +190,22 @@ export async function saveProduct(
 
   const parsed = productSchema.safeParse(raw);
   if (!parsed.success) {
+    // Collect first error per field so the UI can render inline
+    // messages. Keep the top-level `error` string as the first issue
+    // so the existing banner still surfaces something useful for
+    // form-wide problems (e.g. when zod refine targets a field
+    // not currently rendered).
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const key = issue.path[0];
+      if (typeof key === "string" && !(key in fieldErrors)) {
+        fieldErrors[key] = issue.message;
+      }
+    }
     return {
       ok: false,
-      error:
-        parsed.error.issues[0]?.message ?? "Invalid input",
+      error: parsed.error.issues[0]?.message ?? "Invalid input",
+      fieldErrors,
     };
   }
   const { id, images_json, tags, collection_id, ...rest } = parsed.data;

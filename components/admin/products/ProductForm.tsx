@@ -65,10 +65,18 @@ export function ProductForm({
     initialDeleteState,
   );
 
+  // Per-field error map from the last save attempt. Empty when the
+  // form has not been submitted yet or the submission succeeded.
+  const fieldErrors =
+    saveState && !saveState.ok ? (saveState.fieldErrors ?? {}) : {};
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+
   return (
     <div className="space-y-6">
       {saveState && !saveState.ok && (
-        <Banner kind="error">{saveState.error}</Banner>
+        <Banner kind="error">
+          {hasFieldErrors ? "يرجى تصحيح الأخطاء بالأسفل" : saveState.error}
+        </Banner>
       )}
       {deleteState && !deleteState.ok && (
         <Banner kind="error">{deleteState.error}</Banner>
@@ -160,7 +168,11 @@ export function ProductForm({
 
         <Section title="Pricing">
           <Row>
-            <Field id="base_price" label="Base price (EGP) *">
+            <Field
+              id="base_price"
+              label="Base price (EGP) *"
+              error={fieldErrors.base_price}
+            >
               <NumericInput
                 id="base_price"
                 name="base_price"
@@ -174,6 +186,7 @@ export function ProductForm({
               id="sale_price"
               label="Sale price (EGP)"
               hint="Leave blank for no sale. Must be lower than base price."
+              error={fieldErrors.sale_price}
             >
               <NumericInput
                 id="sale_price"
@@ -228,7 +241,11 @@ export function ProductForm({
             </Field>
           </Row>
           <Row>
-            <Field id="weight_kg" label="Weight (kg)">
+            <Field
+              id="weight_kg"
+              label="Weight (kg)"
+              error={fieldErrors.weight_kg}
+            >
               <NumericInput
                 id="weight_kg"
                 name="weight_kg"
@@ -237,7 +254,11 @@ export function ProductForm({
                 className={cn(inputCls, "font-mono")}
               />
             </Field>
-            <Field id="laptop_inches" label="Laptop fit (inches)">
+            <Field
+              id="laptop_inches"
+              label="Laptop fit (inches)"
+              error={fieldErrors.laptop_inches}
+            >
               <NumericInput
                 id="laptop_inches"
                 name="laptop_inches"
@@ -248,7 +269,11 @@ export function ProductForm({
             </Field>
           </Row>
           <Row>
-            <Field id="capacity_liters" label="Capacity (liters)">
+            <Field
+              id="capacity_liters"
+              label="Capacity (liters)"
+              error={fieldErrors.capacity_liters}
+            >
               <NumericInput
                 id="capacity_liters"
                 name="capacity_liters"
@@ -434,16 +459,22 @@ function Field({
   id,
   label,
   hint,
+  error,
   children,
 }: {
   id: string;
   label: string;
   hint?: string;
+  /** Inline validation message shown in red beneath the field. */
+  error?: string;
   children: React.ReactNode;
 }) {
-  // Hint sits OUTSIDE the <label> so screen readers don't read it
-  // as part of the accessible name on every focus.
+  // Hint + error sit OUTSIDE the <label> so screen readers don't read
+  // them as part of the accessible name on every focus.
   const hintId = hint ? `${id}-hint` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const describedBy =
+    [errorId, hintId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="block text-sm">
       <label
@@ -452,7 +483,17 @@ function Field({
       >
         {label}
       </label>
-      <div aria-describedby={hintId}>{children}</div>
+      <div aria-describedby={describedBy}>{children}</div>
+      {error && (
+        <p
+          id={errorId}
+          role="alert"
+          dir="rtl"
+          className="mt-1 text-[12px] text-[var(--color-error)]"
+        >
+          {error}
+        </p>
+      )}
       {hint && (
         <p
           id={hintId}
