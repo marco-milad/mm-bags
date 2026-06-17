@@ -27,6 +27,60 @@ const SUPABASE_PRODUCTS_PREFIX =
   (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "") +
   "/storage/v1/object/public/products/";
 
+/** Generous defence-in-depth cap on persisted images. The ImageManager
+ *  UI enforces a smaller limit on NEW uploads; the higher number here
+ *  exists so legacy rows that predate the UI cap (e.g. a 14-image
+ *  Shopify import) don't get silently truncated when an admin saves a
+ *  field unrelated to images. */
+const MAX_IMAGES_PERSIST = 30;
+
+/**
+ * Validate the image list submitted from the ImageManager hidden field
+ * and decide what (if anything) to write back to the row.
+ *
+ * Returns:
+ *   - `undefined` → leave the existing `images[]` untouched. Used when
+ *     the form omitted the field entirely, the JSON was malformed, or
+ *     the parsed payload wasn't an array. NEVER overwrite the row in
+ *     these cases — the historical bug here was a strict URL filter
+ *     stripping every legacy entry and falling through to `[]`, which
+ *     destroyed several products' images on a routine field save.
+ *   - `[]` → admin deliberately cleared every image via the UI. Honour it.
+ *   - `string[]` → validated list. A URL is kept if it matches the
+ *     bucket origin OR it was already in the row's `images[]` (so
+ *     legacy off-bucket URLs from older imports survive a re-save).
+ *
+ * `existing` is the row's current `images[]`. For new-product inserts
+ * pass `[]` — there's nothing legacy to preserve.
+ */
+export function resolveImagesForSave(
+  rawJson: string | undefined,
+  existing: ReadonlyArray<string>,
+): string[] | undefined {
+  if (rawJson === undefined) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(parsed)) return undefined;
+  if (parsed.length === 0) return [];
+
+  const existingSet = new Set<string>(existing);
+  return parsed
+    .filter(
+      (u): u is string =>
+        typeof u === "string" &&
+        u.length > 0 &&
+        u.length <= 2048 &&
+        (existingSet.has(u) ||
+          !SUPABASE_PRODUCTS_PREFIX ||
+          u.startsWith(SUPABASE_PRODUCTS_PREFIX)),
+    )
+    .slice(0, MAX_IMAGES_PERSIST);
+}
+
 /** Treat blank strings as "absent" so optional numeric fields can be
     cleared back to null instead of silently saving 0. */
 const optionalNumber = (validator: z.ZodType<number>) =>
@@ -215,36 +269,27 @@ export async function saveProduct(
     .map((t) => t.trim())
     .filter(Boolean);
 
-  // Image URLs — bucket-origin allow-list + per-URL length cap. The
-  // form's hidden input has its own max length on the schema, but we
-  // still validate every entry here so a crafted POST can't smuggle
-  // off-site URLs into the gallery.
-  let images: string[] = [];
-  if (images_json) {
-    try {
-      const parsedImages = JSON.parse(images_json);
-      if (Array.isArray(parsedImages)) {
-        images = parsedImages
-          .filter(
-            (u): u is string =>
-              typeof u === "string" &&
-              u.length > 0 &&
-              u.length <= 2048 &&
-              (!SUPABASE_PRODUCTS_PREFIX ||
-                u.startsWith(SUPABASE_PRODUCTS_PREFIX)),
-          )
-          .slice(0, 10);
-      }
-    } catch {
-      images = [];
-    }
-  }
+  const admin = getSupabaseAdminClient();
 
-  const payload = {
+  // Pull the row's CURRENT images[] before validating the submission.
+  // The validator needs them as an allow-list so legacy off-bucket URLs
+  // (e.g. cdn.shopify.com from the original CK / Milano imports) aren't
+  // silently dropped on a re-save. New inserts get an empty existing set.
+  let existingImages: string[] = [];
+  if (id) {
+    const { data: imgRow } = await admin
+      .from("products")
+      .select("images")
+      .eq("id", id)
+      .maybeSingle();
+    existingImages = (imgRow?.images as string[] | null) ?? [];
+  }
+  const resolvedImages = resolveImagesForSave(images_json, existingImages);
+
+  const basePayload = {
     ...rest,
     collection_id: collection_id || null,
     tags: tagList,
-    images,
     // sale_price = 0 means "no sale" by convention; null it out.
     sale_price:
       rest.sale_price && rest.sale_price > 0 ? rest.sale_price : null,
@@ -267,9 +312,16 @@ export async function saveProduct(
     updated_at: new Date().toISOString(),
   };
 
-  const admin = getSupabaseAdminClient();
-
   if (id) {
+    // UPDATE path: only touch `images` when the validator returned a
+    // value. `undefined` means the form omitted the field or sent
+    // malformed JSON — preserve whatever's already in the row instead
+    // of stomping it with an empty array.
+    const updatePayload =
+      resolvedImages !== undefined
+        ? { ...basePayload, images: resolvedImages }
+        : basePayload;
+
     // Fetch the OLD slug so we can revalidate both old and new
     // storefront URLs on rename.
     const { data: prevRow } = await admin
@@ -280,7 +332,7 @@ export async function saveProduct(
 
     const { error } = await admin
       .from("products")
-      .update(payload)
+      .update(updatePayload)
       .eq("id", id);
     if (error) {
       if (error.code === "23505")
@@ -289,9 +341,9 @@ export async function saveProduct(
     }
     revalidatePath("/admin/products");
     revalidatePath(`/admin/products/${id}/edit`);
-    revalidatePath(`/ar/products/${payload.slug}`);
-    revalidatePath(`/en/products/${payload.slug}`);
-    if (prevRow?.slug && prevRow.slug !== payload.slug) {
+    revalidatePath(`/ar/products/${basePayload.slug}`);
+    revalidatePath(`/en/products/${basePayload.slug}`);
+    if (prevRow?.slug && prevRow.slug !== basePayload.slug) {
       revalidatePath(`/ar/products/${prevRow.slug}`);
       revalidatePath(`/en/products/${prevRow.slug}`);
     }
@@ -308,9 +360,11 @@ export async function saveProduct(
     .maybeSingle();
   const nextSortOrder = ((topRow?.sort_order ?? 0) as number) + 1;
 
+  // New product: no row exists to "preserve" — undefined collapses to [].
+  const insertImages = resolvedImages ?? [];
   const { data: created, error } = await admin
     .from("products")
-    .insert({ ...payload, sort_order: nextSortOrder })
+    .insert({ ...basePayload, images: insertImages, sort_order: nextSortOrder })
     .select("id")
     .single();
   if (error || !created) {
@@ -406,26 +460,25 @@ export async function reorderProductImages(
   const images_json = formData.get("images_json");
   if (typeof id !== "string" || typeof images_json !== "string") return;
   if (images_json.length > 20_000) return; // hard cap to dodge OOM
-  let images: string[] = [];
-  try {
-    const parsed = JSON.parse(images_json);
-    if (Array.isArray(parsed)) {
-      images = parsed
-        .filter(
-          (u): u is string =>
-            typeof u === "string" &&
-            u.length > 0 &&
-            u.length <= 2048 &&
-            (!SUPABASE_PRODUCTS_PREFIX ||
-              u.startsWith(SUPABASE_PRODUCTS_PREFIX)),
-        )
-        .slice(0, 10);
-    }
-  } catch {
-    return;
-  }
+
   const admin = getSupabaseAdminClient();
-  await admin.from("products").update({ images }).eq("id", id);
+  // Fetch current images so legacy off-bucket URLs (still possibly in
+  // the row from earlier imports) survive a reorder/delete pass. Same
+  // allow-list logic as saveProduct().
+  const { data: imgRow } = await admin
+    .from("products")
+    .select("images")
+    .eq("id", id)
+    .maybeSingle();
+  const existingImages = (imgRow?.images as string[] | null) ?? [];
+
+  const resolved = resolveImagesForSave(images_json, existingImages);
+  // Reorder/delete must have an explicit list — undefined means the
+  // payload was malformed, in which case we leave the row alone rather
+  // than blanking it.
+  if (resolved === undefined) return;
+
+  await admin.from("products").update({ images: resolved }).eq("id", id);
   revalidatePath(`/admin/products/${id}/edit`);
 }
 
