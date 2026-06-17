@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AdminSidebar } from "@/components/admin/Sidebar";
 import { getCurrentRole } from "@/lib/admin/staff-actions";
+import { getAdminLocale, isAdminRTL } from "@/lib/admin/locale";
 import "../globals.css";
 
 export const dynamic = "force-dynamic";
@@ -10,11 +11,13 @@ export const dynamic = "force-dynamic";
  * Admin shell. Wraps every /admin route with:
  *   - Auth + role guard (signed-in admin or staff with role=admin)
  *   - Fixed sidebar (260px on md+, slide-over on mobile)
- *   - A scrollable main content area pushed right of the sidebar
+ *   - A scrollable main content area pushed away from the sidebar
  *
  * The shell uses its own <html> tag because the public storefront's
- * RootLayout adds locale-specific fonts and an RTL direction; admin
- * is LTR English with a system font stack.
+ * RootLayout adds locale-specific fonts and an RTL direction. The
+ * admin lang/dir come from a cookie (`admin_locale`) and default to
+ * Arabic. The sidebar pins to the inline-start, so in AR it sits on
+ * the right and in EN on the left.
  */
 export default async function AdminLayout({
   children,
@@ -30,26 +33,26 @@ export default async function AdminLayout({
     redirect("/ar/auth/login?next=/admin");
   }
 
-  // Resolve the effective role — admin via env/metadata, OR an active
-  // staff row (cashier / manager / admin). Non-staff users get punted
-  // back to the storefront.
   const effective = await getCurrentRole();
   if (!effective) {
     redirect("/ar");
   }
 
+  const locale = await getAdminLocale();
+  const rtl = isAdminRTL(locale);
+
   return (
-    <html lang="en" dir="ltr">
+    <html lang={locale} dir={rtl ? "rtl" : "ltr"}>
       <body className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] antialiased">
         <AdminSidebar
           userEmail={user.email ?? "(no email)"}
           role={effective.role}
+          locale={locale}
         />
 
-        {/* Main content area sits flush to the right of the 64-unit
-            (256px) sidebar on md+; full-width on mobile. The sidebar
-            renders its own mobile hamburger in the top-left. */}
-        <main className="min-h-screen md:pl-64">
+        {/* Inline-start padding pushes the main column off the sidebar
+            regardless of direction (ps-64 = padding-inline-start). */}
+        <main className="min-h-screen md:ps-64">
           <div className="mx-auto max-w-7xl px-6 py-8 pt-14 md:px-10 md:pt-8">
             {children}
           </div>

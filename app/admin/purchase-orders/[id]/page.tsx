@@ -7,20 +7,49 @@ import {
   recordPaymentForm,
 } from "@/lib/admin/supplier-actions";
 import { cn, formatPriceEGP } from "@/lib/utils";
+import { getAdminLocale, type AdminLocale } from "@/lib/admin/locale";
 import type { PurchaseOrderStatus } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_META: Record<PurchaseOrderStatus, { label: string; cls: string }> = {
-  pending: { label: "Pending", cls: "bg-[var(--color-warning)]/15 text-[var(--color-warning)]" },
-  received: { label: "Received", cls: "bg-[var(--color-accent)]/15 text-[var(--color-accent-dark)]" },
-  partial: { label: "Partial paid", cls: "bg-[var(--color-primary)]/15 text-[var(--color-primary)]" },
-  paid: { label: "Paid", cls: "bg-[var(--color-success)]/15 text-[var(--color-success)]" },
+const STATUS_META: Record<
+  PurchaseOrderStatus,
+  { label_en: string; label_ar: string; cls: string }
+> = {
+  pending: {
+    label_en: "Pending",
+    label_ar: "في الانتظار",
+    cls: "bg-[var(--color-warning)]/15 text-[var(--color-warning)]",
+  },
+  received: {
+    label_en: "Received",
+    label_ar: "تم الاستلام",
+    cls: "bg-[var(--color-accent)]/15 text-[var(--color-accent-dark)]",
+  },
+  partial: {
+    label_en: "Partial paid",
+    label_ar: "مدفوع جزئيًا",
+    cls: "bg-[var(--color-primary)]/15 text-[var(--color-primary)]",
+  },
+  paid: {
+    label_en: "Paid",
+    label_ar: "مدفوع",
+    cls: "bg-[var(--color-success)]/15 text-[var(--color-success)]",
+  },
 };
+
+function statusLabel(status: PurchaseOrderStatus, locale: AdminLocale): string {
+  return locale === "ar"
+    ? STATUS_META[status].label_ar
+    : STATUS_META[status].label_en;
+}
 
 export default async function PurchaseOrderDetailPage({
   params,
 }: PageProps<"/admin/purchase-orders/[id]">) {
+  const locale = await getAdminLocale();
+  const isAr = locale === "ar";
+
   const { id } = await params;
   const po = await getPurchaseOrderDetail(id);
   if (!po) notFound();
@@ -37,16 +66,20 @@ export default async function PurchaseOrderDetailPage({
         className="inline-flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
       >
         <ArrowLeft className="h-3 w-3" />
-        Back to purchase orders
+        {isAr ? "الرجوع لأوامر الشراء" : "Back to purchase orders"}
       </Link>
 
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl text-[var(--color-text)]">
-            {po.supplier_name ?? "(no supplier)"}
+            {po.supplier_name ?? (isAr ? "(بدون مورد)" : "(no supplier)")}
           </h1>
           <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            Created {new Date(po.created_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+            {isAr ? "تم الإنشاء " : "Created "}
+            {new Date(po.created_at).toLocaleString(
+              isAr ? "ar-EG" : "en-US",
+              { dateStyle: "medium", timeStyle: "short" },
+            )}
           </p>
         </div>
         <span
@@ -55,20 +88,23 @@ export default async function PurchaseOrderDetailPage({
             meta.cls,
           )}
         >
-          {meta.label}
+          {statusLabel(status, locale)}
         </span>
       </header>
 
       {/* Totals */}
       <section className="grid gap-3 md:grid-cols-3">
-        <Card label="Total cost" value={formatPriceEGP(po.total_cost ?? 0)} />
         <Card
-          label="Paid"
+          label={isAr ? "إجمالي التكلفة" : "Total cost"}
+          value={formatPriceEGP(po.total_cost ?? 0)}
+        />
+        <Card
+          label={isAr ? "المدفوع" : "Paid"}
           value={formatPriceEGP(po.amount_paid ?? 0)}
           tone="success"
         />
         <Card
-          label="Owed"
+          label={isAr ? "المستحق" : "Owed"}
           value={formatPriceEGP(po.amount_owed ?? 0)}
           tone={(po.amount_owed ?? 0) > 0 ? "error" : "muted"}
         />
@@ -84,7 +120,9 @@ export default async function PurchaseOrderDetailPage({
               className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-primary)]/90"
             >
               <CheckCircle2 className="h-4 w-4" />
-              Mark received (adds to stock)
+              {isAr
+                ? "تم الاستلام (يضاف للمخزون)"
+                : "Mark received (adds to stock)"}
             </button>
           </form>
         )}
@@ -98,14 +136,14 @@ export default async function PurchaseOrderDetailPage({
               name="amount"
               required
               inputMode="decimal"
-              placeholder="Amount paid (EGP)"
+              placeholder={isAr ? "المبلغ المدفوع (ج.م)" : "Amount paid (EGP)"}
               className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-end font-mono text-sm focus:border-[var(--color-accent)] focus:outline-none"
             />
             <button
               type="submit"
               className="rounded-full border border-[var(--color-success)]/40 bg-[var(--color-success)]/10 px-4 py-2 text-sm font-semibold text-[var(--color-success)] transition hover:bg-[var(--color-success)]/20"
             >
-              Record payment
+              {isAr ? "تسجيل الدفع" : "Record payment"}
             </button>
           </form>
         )}
@@ -116,17 +154,19 @@ export default async function PurchaseOrderDetailPage({
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
             <tr>
-              <Th>Product</Th>
-              <Th>Variant</Th>
-              <Th className="text-end">Qty</Th>
-              <Th className="text-end">Unit cost</Th>
-              <Th className="text-end">Total</Th>
+              <Th>{isAr ? "المنتج" : "Product"}</Th>
+              <Th>{isAr ? "الفاريانت" : "Variant"}</Th>
+              <Th className="text-end">{isAr ? "الكمية" : "Qty"}</Th>
+              <Th className="text-end">{isAr ? "سعر الوحدة" : "Unit cost"}</Th>
+              <Th className="text-end">{isAr ? "الإجمالي" : "Total"}</Th>
             </tr>
           </thead>
           <tbody>
             {po.items.map((it) => (
               <tr key={it.id} className="border-t border-[var(--color-border)]">
-                <td className="px-3 py-2">{it.product_name ?? "(deleted)"}</td>
+                <td className="px-3 py-2">
+                  {it.product_name ?? (isAr ? "(محذوف)" : "(deleted)")}
+                </td>
                 <td className="px-3 py-2 text-[12px] text-[var(--color-text-secondary)]">
                   {it.variant_label ?? "—"}
                 </td>
@@ -146,7 +186,7 @@ export default async function PurchaseOrderDetailPage({
       {po.notes && (
         <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-sm">
           <p className="mb-1 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Notes
+            {isAr ? "ملاحظات" : "Notes"}
           </p>
           <p className="text-[var(--color-text)] whitespace-pre-wrap">
             {po.notes}

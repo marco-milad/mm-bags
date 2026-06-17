@@ -13,6 +13,7 @@ import {
   saveVariant,
   type VariantActionResult,
 } from "@/lib/admin/product-actions";
+import type { AdminLocale } from "@/lib/admin/locale";
 import type { ProductVariant } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
@@ -38,18 +39,23 @@ import { cn } from "@/lib/utils";
 export function VariantsManager({
   productId,
   variants,
+  locale,
 }: {
   productId: string;
   variants: ProductVariant[];
+  locale: AdminLocale;
 }) {
+  const isAr = locale === "ar";
   return (
     <section className="space-y-3">
       <header className="flex items-baseline justify-between gap-2">
         <h2 className="font-display text-lg text-[var(--color-text)]">
-          Variants
+          {isAr ? "الفاريانتس" : "Variants"}
         </h2>
         <p className="text-xs text-[var(--color-text-secondary)]">
-          {variants.length} variant{variants.length === 1 ? "" : "s"}
+          {isAr
+            ? `${variants.length} فاريانت`
+            : `${variants.length} variant${variants.length === 1 ? "" : "s"}`}
         </p>
       </header>
 
@@ -57,23 +63,28 @@ export function VariantsManager({
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
             <tr>
-              <Th>Color AR</Th>
-              <Th>Color EN</Th>
-              <Th>Color</Th>
-              <Th className="text-end">Size (in)</Th>
-              <Th>Size label AR</Th>
-              <Th className="text-end">Stock</Th>
-              <Th className="text-end">Override</Th>
-              <Th>SKU</Th>
-              <Th>Set</Th>
-              <Th aria-label="Actions"></Th>
+              <Th>{isAr ? "اللون (عربي)" : "Color AR"}</Th>
+              <Th>{isAr ? "اللون (إنجليزي)" : "Color EN"}</Th>
+              <Th>{isAr ? "اللون" : "Color"}</Th>
+              <Th className="text-end">{isAr ? "المقاس (بوصة)" : "Size (in)"}</Th>
+              <Th>{isAr ? "وصف المقاس (عربي)" : "Size label AR"}</Th>
+              <Th className="text-end">{isAr ? "المخزون" : "Stock"}</Th>
+              <Th className="text-end">{isAr ? "سعر مختلف" : "Override"}</Th>
+              <Th>{isAr ? "SKU" : "SKU"}</Th>
+              <Th>{isAr ? "طقم" : "Set"}</Th>
+              <Th aria-label={isAr ? "إجراءات" : "Actions"}></Th>
             </tr>
           </thead>
           <tbody>
             {variants.map((v) => (
-              <VariantRow key={v.id} productId={productId} variant={v} />
+              <VariantRow
+                key={v.id}
+                productId={productId}
+                variant={v}
+                isAr={isAr}
+              />
             ))}
-            <AddVariantRow productId={productId} />
+            <AddVariantRow productId={productId} isAr={isAr} />
           </tbody>
         </table>
       </div>
@@ -87,9 +98,11 @@ const cellInputCls =
 function VariantRow({
   productId,
   variant,
+  isAr,
 }: {
   productId: string;
   variant: ProductVariant;
+  isAr: boolean;
 }) {
   const formId = `v-${variant.id}`;
   // Track whether the row has a color set — pre-checked when the
@@ -124,7 +137,7 @@ function VariantRow({
             dir="rtl"
             defaultValue={variant.color_ar ?? ""}
             form={formId}
-            aria-label="Color (Arabic)"
+            aria-label={isAr ? "اللون (عربي)" : "Color (Arabic)"}
             className={cellInputCls}
           />
         </td>
@@ -133,7 +146,7 @@ function VariantRow({
             name="color_en"
             defaultValue={variant.color_en ?? ""}
             form={formId}
-            aria-label="Color (English)"
+            aria-label={isAr ? "اللون (إنجليزي)" : "Color (English)"}
             className={cellInputCls}
           />
         </td>
@@ -145,7 +158,7 @@ function VariantRow({
               onChange={(e) => setHasColor(e.target.checked)}
               form={formId}
               name="color_hex_use"
-              aria-label="Use color"
+              aria-label={isAr ? "استخدم لون" : "Use color"}
               className="h-3.5 w-3.5 cursor-pointer accent-[var(--color-primary)]"
             />
             <input
@@ -154,8 +167,8 @@ function VariantRow({
               defaultValue={variant.color_hex ?? "#000000"}
               disabled={!hasColor}
               form={formId}
-              aria-label="Color hex"
-              title="Color hex"
+              aria-label={isAr ? "كود اللون" : "Color hex"}
+              title={isAr ? "كود اللون" : "Color hex"}
               className="h-7 w-7 cursor-pointer rounded border border-[var(--color-border)] bg-transparent disabled:opacity-40"
             />
           </div>
@@ -168,7 +181,7 @@ function VariantRow({
             step={1}
             defaultValue={variant.size_inches ?? ""}
             form={formId}
-            aria-label="Size in inches"
+            aria-label={isAr ? "المقاس بالبوصة" : "Size in inches"}
             className={cn(cellInputCls, "w-16 text-end")}
           />
         </td>
@@ -178,7 +191,7 @@ function VariantRow({
             dir="rtl"
             defaultValue={variant.size_label_ar ?? ""}
             form={formId}
-            aria-label="Size label (Arabic)"
+            aria-label={isAr ? "وصف المقاس (عربي)" : "Size label (Arabic)"}
             className={cellInputCls}
           />
         </td>
@@ -191,7 +204,7 @@ function VariantRow({
             required
             defaultValue={variant.stock_qty}
             form={formId}
-            aria-label="Stock quantity"
+            aria-label={isAr ? "كمية المخزون" : "Stock quantity"}
             className={cn(cellInputCls, "w-16 text-end")}
           />
         </td>
@@ -203,7 +216,7 @@ function VariantRow({
             step="0.01"
             defaultValue={variant.price_override ?? ""}
             form={formId}
-            aria-label="Price override"
+            aria-label={isAr ? "سعر مختلف" : "Price override"}
             className={cn(cellInputCls, "w-20 text-end")}
           />
         </td>
@@ -222,23 +235,28 @@ function VariantRow({
             type="checkbox"
             defaultChecked={variant.is_set}
             form={formId}
-            aria-label="Is a set"
+            aria-label={isAr ? "طقم" : "Is a set"}
             className="h-4 w-4 cursor-pointer accent-[var(--color-primary)]"
           />
         </td>
         <td className="px-2 py-1.5 text-end">
           <div className="flex justify-end gap-1">
-            <RowSaveButton formId={formId} />
+            <RowSaveButton formId={formId} isAr={isAr} />
             {/* Delete is a SEPARATE sibling form (not nested). */}
             <form
               action={deleteVariant}
               onSubmit={(e) => {
-                if (!confirm("Delete this variant?")) e.preventDefault();
+                if (
+                  !confirm(
+                    isAr ? "تأكيد حذف الفاريانت؟" : "Delete this variant?",
+                  )
+                )
+                  e.preventDefault();
               }}
             >
               <input type="hidden" name="id" value={variant.id} />
               <input type="hidden" name="product_id" value={productId} />
-              <RowDeleteButton />
+              <RowDeleteButton isAr={isAr} />
             </form>
           </div>
         </td>
@@ -259,7 +277,13 @@ function VariantRow({
   );
 }
 
-function AddVariantRow({ productId }: { productId: string }) {
+function AddVariantRow({
+  productId,
+  isAr,
+}: {
+  productId: string;
+  isAr: boolean;
+}) {
   const [hasColor, setHasColor] = useState(false);
   const [state, action] = useActionState<VariantActionResult, FormData>(
     async (_prev: VariantActionResult, fd: FormData) => saveVariant(_prev, fd),
@@ -300,7 +324,7 @@ function AddVariantRow({ productId }: { productId: string }) {
             dir="rtl"
             placeholder="أسود"
             form={formId}
-            aria-label="Color (Arabic)"
+            aria-label={isAr ? "اللون (عربي)" : "Color (Arabic)"}
             className={cellInputCls}
           />
         </td>
@@ -309,7 +333,7 @@ function AddVariantRow({ productId }: { productId: string }) {
             name="color_en"
             placeholder="Black"
             form={formId}
-            aria-label="Color (English)"
+            aria-label={isAr ? "اللون (إنجليزي)" : "Color (English)"}
             className={cellInputCls}
           />
         </td>
@@ -321,7 +345,7 @@ function AddVariantRow({ productId }: { productId: string }) {
               onChange={(e) => setHasColor(e.target.checked)}
               form={formId}
               name="color_hex_use"
-              aria-label="Use color"
+              aria-label={isAr ? "استخدم لون" : "Use color"}
               className="h-3.5 w-3.5 cursor-pointer accent-[var(--color-primary)]"
             />
             <input
@@ -330,8 +354,8 @@ function AddVariantRow({ productId }: { productId: string }) {
               defaultValue="#000000"
               disabled={!hasColor}
               form={formId}
-              aria-label="Color hex"
-              title="Color hex"
+              aria-label={isAr ? "كود اللون" : "Color hex"}
+              title={isAr ? "كود اللون" : "Color hex"}
               className="h-7 w-7 cursor-pointer rounded border border-[var(--color-border)] bg-transparent disabled:opacity-40"
             />
           </div>
@@ -344,7 +368,7 @@ function AddVariantRow({ productId }: { productId: string }) {
             step={1}
             placeholder="24"
             form={formId}
-            aria-label="Size in inches"
+            aria-label={isAr ? "المقاس بالبوصة" : "Size in inches"}
             className={cn(cellInputCls, "w-16 text-end")}
           />
         </td>
@@ -353,7 +377,7 @@ function AddVariantRow({ productId }: { productId: string }) {
             name="size_label_ar"
             dir="rtl"
             form={formId}
-            aria-label="Size label (Arabic)"
+            aria-label={isAr ? "وصف المقاس (عربي)" : "Size label (Arabic)"}
             className={cellInputCls}
           />
         </td>
@@ -366,7 +390,7 @@ function AddVariantRow({ productId }: { productId: string }) {
             required
             defaultValue={0}
             form={formId}
-            aria-label="Stock quantity"
+            aria-label={isAr ? "كمية المخزون" : "Stock quantity"}
             className={cn(cellInputCls, "w-16 text-end")}
           />
         </td>
@@ -377,7 +401,7 @@ function AddVariantRow({ productId }: { productId: string }) {
             min={0}
             step="0.01"
             form={formId}
-            aria-label="Price override"
+            aria-label={isAr ? "سعر مختلف" : "Price override"}
             className={cn(cellInputCls, "w-20 text-end")}
           />
         </td>
@@ -395,12 +419,12 @@ function AddVariantRow({ productId }: { productId: string }) {
             name="is_set"
             type="checkbox"
             form={formId}
-            aria-label="Is a set"
+            aria-label={isAr ? "طقم" : "Is a set"}
             className="h-4 w-4 cursor-pointer accent-[var(--color-primary)]"
           />
         </td>
         <td className="px-2 py-1.5 text-end">
-          <AddSubmitButton formId={formId} />
+          <AddSubmitButton formId={formId} isAr={isAr} />
         </td>
       </tr>
       {state && !state.ok && (
@@ -419,7 +443,7 @@ function AddVariantRow({ productId }: { productId: string }) {
   );
 }
 
-function RowSaveButton({ formId }: { formId: string }) {
+function RowSaveButton({ formId, isAr }: { formId: string; isAr: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -429,18 +453,18 @@ function RowSaveButton({ formId }: { formId: string }) {
       className="inline-flex items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-[10px] font-semibold text-[var(--color-text)] hover:border-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] disabled:opacity-60"
     >
       {pending && <Loader2 className="h-3 w-3 animate-spin" />}
-      Save
+      {isAr ? "حفظ" : "Save"}
     </button>
   );
 }
 
-function RowDeleteButton() {
+function RowDeleteButton({ isAr }: { isAr: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
-      aria-label="Delete variant"
+      aria-label={isAr ? "حذف الفاريانت" : "Delete variant"}
       className="grid h-7 w-7 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-error)] hover:text-[var(--color-error)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-error)] disabled:opacity-60"
     >
       {pending ? (
@@ -452,7 +476,7 @@ function RowDeleteButton() {
   );
 }
 
-function AddSubmitButton({ formId }: { formId: string }) {
+function AddSubmitButton({ formId, isAr }: { formId: string; isAr: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -466,7 +490,7 @@ function AddSubmitButton({ formId }: { formId: string }) {
       ) : (
         <Plus className="h-3 w-3" />
       )}
-      Add
+      {isAr ? "إضافة" : "Add"}
     </button>
   );
 }

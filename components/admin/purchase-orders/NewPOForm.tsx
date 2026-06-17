@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { createPurchaseOrder } from "@/lib/admin/supplier-actions";
 import type { VariantOption } from "@/lib/queries/suppliers-admin";
 import type { Supplier } from "@/lib/supabase/types";
+import type { AdminLocale } from "@/lib/admin/locale";
 import { formatPriceEGP } from "@/lib/utils";
 
 type Line = {
@@ -35,11 +36,15 @@ export function NewPOForm({
   suppliers,
   variants,
   prefillVariantId,
+  locale,
 }: {
   suppliers: Supplier[];
   variants: VariantOption[];
   prefillVariantId?: string;
+  locale: AdminLocale;
 }) {
+  const isAr = locale === "ar";
+
   const [supplierId, setSupplierId] = useState(
     suppliers.find((s) => s.is_active)?.id ?? "",
   );
@@ -144,7 +149,7 @@ export function NewPOForm({
       <div className="grid gap-3 md:grid-cols-2">
         <label className="block text-sm">
           <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Supplier *
+            {isAr ? "المورد *" : "Supplier *"}
           </span>
           <select
             value={supplierId}
@@ -152,7 +157,7 @@ export function NewPOForm({
             required
             className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none"
           >
-            <option value="">Select supplier</option>
+            <option value="">{isAr ? "اختر المورد" : "Select supplier"}</option>
             {suppliers
               .filter((s) => s.is_active)
               .map((s) => (
@@ -165,7 +170,7 @@ export function NewPOForm({
 
         <label className="block text-sm">
           <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Amount paid now (EGP)
+            {isAr ? "المبلغ المدفوع دلوقتي (ج.م)" : "Amount paid now (EGP)"}
           </span>
           <input
             inputMode="decimal"
@@ -179,13 +184,15 @@ export function NewPOForm({
 
       <div>
         <label className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-          Add items
+          {isAr ? "إضافة أصناف" : "Add items"}
         </label>
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search products / variants..."
+          placeholder={
+            isAr ? "ابحث عن المنتجات / الفاريانتس..." : "Search products / variants..."
+          }
           className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none"
         />
         {query.trim() && (
@@ -203,14 +210,14 @@ export function NewPOForm({
                     {v.variantLabel}
                   </span>
                   <span className="font-mono text-[11px] text-[var(--color-text-secondary)]">
-                    stock: {v.stockQty}
+                    {isAr ? `المخزون: ${v.stockQty}` : `stock: ${v.stockQty}`}
                   </span>
                 </button>
               </li>
             ))}
             {filtered.length === 0 && (
               <li className="px-3 py-3 text-center text-xs text-[var(--color-text-secondary)]">
-                No matches.
+                {isAr ? "مفيش نتائج." : "No matches."}
               </li>
             )}
           </ul>
@@ -222,11 +229,11 @@ export function NewPOForm({
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
             <tr>
-              <Th>Product</Th>
-              <Th>Variant</Th>
-              <Th className="text-end">Qty</Th>
-              <Th className="text-end">Unit cost</Th>
-              <Th className="text-end">Line total</Th>
+              <Th>{isAr ? "المنتج" : "Product"}</Th>
+              <Th>{isAr ? "الفاريانت" : "Variant"}</Th>
+              <Th className="text-end">{isAr ? "الكمية" : "Qty"}</Th>
+              <Th className="text-end">{isAr ? "سعر الوحدة" : "Unit cost"}</Th>
+              <Th className="text-end">{isAr ? "إجمالي السطر" : "Line total"}</Th>
               <Th></Th>
             </tr>
           </thead>
@@ -247,6 +254,7 @@ export function NewPOForm({
                         qty: Math.max(1, Number(e.target.value) || 1),
                       })
                     }
+                    aria-label={isAr ? "الكمية" : "Qty"}
                     className="w-20 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-end font-mono text-sm focus:border-[var(--color-accent)] focus:outline-none"
                   />
                 </td>
@@ -259,6 +267,7 @@ export function NewPOForm({
                         unitCost: Math.max(0, Number(e.target.value) || 0),
                       })
                     }
+                    aria-label={isAr ? "سعر الوحدة" : "Unit cost"}
                     className="w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-end font-mono text-sm focus:border-[var(--color-accent)] focus:outline-none"
                   />
                 </td>
@@ -269,7 +278,7 @@ export function NewPOForm({
                   <button
                     type="button"
                     onClick={() => removeLine(l.variantId)}
-                    aria-label="Remove"
+                    aria-label={isAr ? "حذف" : "Remove"}
                     className="grid h-7 w-7 place-items-center rounded-md border border-[var(--color-border)] text-[var(--color-text-secondary)] transition hover:border-[var(--color-error)] hover:text-[var(--color-error)]"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -280,7 +289,9 @@ export function NewPOForm({
             {lines.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
-                  Add at least one item to create the order.
+                  {isAr
+                    ? "أضِف صنف واحد على الأقل علشان تعمل الأمر."
+                    : "Add at least one item to create the order."}
                 </td>
               </tr>
             )}
@@ -290,7 +301,7 @@ export function NewPOForm({
 
       <label className="block text-sm">
         <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-          Notes
+          {isAr ? "ملاحظات" : "Notes"}
         </span>
         <textarea
           rows={2}
@@ -301,14 +312,17 @@ export function NewPOForm({
       </label>
 
       <div className="grid gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm md:grid-cols-3">
-        <Stat label="Total cost" value={formatPriceEGP(totalCost)} />
         <Stat
-          label="Paid now"
+          label={isAr ? "إجمالي التكلفة" : "Total cost"}
+          value={formatPriceEGP(totalCost)}
+        />
+        <Stat
+          label={isAr ? "المدفوع دلوقتي" : "Paid now"}
           value={formatPriceEGP(paidNum)}
           tone="success"
         />
         <Stat
-          label="Owed"
+          label={isAr ? "المستحق" : "Owed"}
           value={formatPriceEGP(owed)}
           tone={owed > 0 ? "error" : "muted"}
         />
@@ -330,7 +344,7 @@ export function NewPOForm({
           className="inline-flex items-center gap-2 rounded-full bg-brass-500 px-6 py-2.5 text-sm font-semibold text-navy-900 transition hover:bg-brass-600 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-          Create purchase order
+          {isAr ? "إنشاء أمر الشراء" : "Create purchase order"}
         </button>
       </div>
     </form>

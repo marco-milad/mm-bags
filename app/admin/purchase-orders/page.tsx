@@ -5,20 +5,49 @@ import {
   listSuppliers,
 } from "@/lib/queries/suppliers-admin";
 import type { PurchaseOrderStatus } from "@/lib/supabase/types";
+import { getAdminLocale, type AdminLocale } from "@/lib/admin/locale";
 import { cn, formatPriceEGP } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_META: Record<PurchaseOrderStatus, { label: string; cls: string }> = {
-  pending: { label: "Pending", cls: "bg-[var(--color-warning)]/15 text-[var(--color-warning)]" },
-  received: { label: "Received", cls: "bg-[var(--color-accent)]/15 text-[var(--color-accent-dark)]" },
-  partial: { label: "Partial paid", cls: "bg-[var(--color-primary)]/15 text-[var(--color-primary)]" },
-  paid: { label: "Paid", cls: "bg-[var(--color-success)]/15 text-[var(--color-success)]" },
+const STATUS_META: Record<
+  PurchaseOrderStatus,
+  { label_en: string; label_ar: string; cls: string }
+> = {
+  pending: {
+    label_en: "Pending",
+    label_ar: "في الانتظار",
+    cls: "bg-[var(--color-warning)]/15 text-[var(--color-warning)]",
+  },
+  received: {
+    label_en: "Received",
+    label_ar: "تم الاستلام",
+    cls: "bg-[var(--color-accent)]/15 text-[var(--color-accent-dark)]",
+  },
+  partial: {
+    label_en: "Partial paid",
+    label_ar: "مدفوع جزئيًا",
+    cls: "bg-[var(--color-primary)]/15 text-[var(--color-primary)]",
+  },
+  paid: {
+    label_en: "Paid",
+    label_ar: "مدفوع",
+    cls: "bg-[var(--color-success)]/15 text-[var(--color-success)]",
+  },
 };
+
+function statusLabel(status: PurchaseOrderStatus, locale: AdminLocale): string {
+  return locale === "ar"
+    ? STATUS_META[status].label_ar
+    : STATUS_META[status].label_en;
+}
 
 export default async function PurchaseOrdersPage({
   searchParams,
 }: PageProps<"/admin/purchase-orders">) {
+  const locale = await getAdminLocale();
+  const isAr = locale === "ar";
+
   const sp = await searchParams;
   const status =
     sp?.status === "pending" ||
@@ -40,11 +69,12 @@ export default async function PurchaseOrdersPage({
       <header className="flex items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl text-[var(--color-text)]">
-            Purchase orders · أوامر الشراء
+            {isAr ? "أوامر الشراء" : "Purchase orders"}
           </h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            Restock orders to suppliers. Marking received bumps stock and
-            writes a purchase_in movement per item.
+            {isAr
+              ? "أوامر شراء للموردين. لما تعلم \"تم الاستلام\" بيتزود المخزون وبيتسجل حركة شراء لكل صنف."
+              : "Restock orders to suppliers. Marking received bumps stock and writes a purchase_in movement per item."}
           </p>
         </div>
         <Link
@@ -52,7 +82,7 @@ export default async function PurchaseOrdersPage({
           className="inline-flex items-center gap-1.5 rounded-full bg-brass-500 px-4 py-2 text-sm font-semibold text-navy-900 transition hover:bg-brass-600"
         >
           <Plus className="h-4 w-4" />
-          New PO
+          {isAr ? "أمر شراء جديد" : "New PO"}
         </Link>
       </header>
 
@@ -66,7 +96,7 @@ export default async function PurchaseOrdersPage({
           defaultValue={supplierId ?? ""}
           className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
         >
-          <option value="">All suppliers</option>
+          <option value="">{isAr ? "كل الموردين" : "All suppliers"}</option>
           {suppliers.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -78,10 +108,10 @@ export default async function PurchaseOrdersPage({
           defaultValue={status ?? ""}
           className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
         >
-          <option value="">All statuses</option>
+          <option value="">{isAr ? "كل الحالات" : "All statuses"}</option>
           {(Object.keys(STATUS_META) as PurchaseOrderStatus[]).map((s) => (
             <option key={s} value={s}>
-              {STATUS_META[s].label}
+              {statusLabel(s, locale)}
             </option>
           ))}
         </select>
@@ -89,7 +119,7 @@ export default async function PurchaseOrdersPage({
           type="submit"
           className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white"
         >
-          Apply
+          {isAr ? "تطبيق" : "Apply"}
         </button>
       </form>
 
@@ -97,13 +127,13 @@ export default async function PurchaseOrdersPage({
         <table className="w-full min-w-[820px] text-sm">
           <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
             <tr>
-              <Th>Date</Th>
-              <Th>Supplier</Th>
-              <Th className="text-end">Items</Th>
-              <Th className="text-end">Total</Th>
-              <Th className="text-end">Paid</Th>
-              <Th className="text-end">Owed</Th>
-              <Th>Status</Th>
+              <Th>{isAr ? "التاريخ" : "Date"}</Th>
+              <Th>{isAr ? "المورد" : "Supplier"}</Th>
+              <Th className="text-end">{isAr ? "الأصناف" : "Items"}</Th>
+              <Th className="text-end">{isAr ? "الإجمالي" : "Total"}</Th>
+              <Th className="text-end">{isAr ? "المدفوع" : "Paid"}</Th>
+              <Th className="text-end">{isAr ? "المستحق" : "Owed"}</Th>
+              <Th>{isAr ? "الحالة" : "Status"}</Th>
               <Th></Th>
             </tr>
           </thead>
@@ -116,9 +146,10 @@ export default async function PurchaseOrdersPage({
                   className="border-t border-[var(--color-border)] hover:bg-[var(--color-surface)]/50"
                 >
                   <td className="whitespace-nowrap px-3 py-2 text-[11px] text-[var(--color-text-secondary)]">
-                    {new Date(po.created_at).toLocaleDateString("en-US", {
-                      dateStyle: "medium",
-                    })}
+                    {new Date(po.created_at).toLocaleDateString(
+                      isAr ? "ar-EG" : "en-US",
+                      { dateStyle: "medium" },
+                    )}
                   </td>
                   <td className="px-3 py-2 text-[var(--color-text)]">
                     {po.supplier_name ?? "—"}
@@ -150,7 +181,7 @@ export default async function PurchaseOrdersPage({
                         STATUS_META[status].cls,
                       )}
                     >
-                      {STATUS_META[status].label}
+                      {statusLabel(status, locale)}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-end">
@@ -158,7 +189,7 @@ export default async function PurchaseOrdersPage({
                       href={`/admin/purchase-orders/${po.id}`}
                       className="text-xs text-[var(--color-primary)] underline-offset-4 hover:underline"
                     >
-                      Open
+                      {isAr ? "فتح" : "Open"}
                     </Link>
                   </td>
                 </tr>
@@ -167,7 +198,9 @@ export default async function PurchaseOrdersPage({
             {orders.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
-                  No purchase orders match the current filters.
+                  {isAr
+                    ? "مفيش أوامر شراء مطابقة للفلاتر الحالية."
+                    : "No purchase orders match the current filters."}
                 </td>
               </tr>
             )}

@@ -7,6 +7,7 @@ import {
   sendBroadcast,
   type BroadcastResult,
 } from "@/lib/admin/newsletter-actions";
+import type { AdminLocale } from "@/lib/admin/locale";
 
 /**
  * Broadcast send form. Shows AR + EN subject and body inputs side-by-side,
@@ -16,12 +17,19 @@ import {
  * Uses useActionState + useFormStatus — once the action returns the result
  * banner stays sticky so the admin can read the sent/failed split.
  */
-export function BroadcastForm({ activeCount }: { activeCount: number }) {
+export function BroadcastForm({
+  activeCount,
+  locale,
+}: {
+  activeCount: number;
+  locale: AdminLocale;
+}) {
   const [previewLocale, setPreviewLocale] = useState<"ar" | "en" | null>(null);
   const [subjectAr, setSubjectAr] = useState("");
   const [subjectEn, setSubjectEn] = useState("");
   const [bodyAr, setBodyAr] = useState("");
   const [bodyEn, setBodyEn] = useState("");
+  const isAr = locale === "ar";
 
   const initialState: BroadcastResult = { ok: true, sent: 0, failed: 0 };
   const [state, action] = useActionState(sendBroadcast, initialState);
@@ -33,18 +41,19 @@ export function BroadcastForm({ activeCount }: { activeCount: number }) {
     >
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-lg text-[var(--color-text)]">
-          Broadcast email
+          {isAr ? "رسالة جماعية" : "Broadcast email"}
         </h2>
         <p className="text-xs text-[var(--color-text-secondary)]">
-          Sends to {activeCount} active subscriber{activeCount === 1 ? "" : "s"}{" "}
-          via Resend, each in their preferred locale.
+          {isAr
+            ? `هترسل لـ ${activeCount} مشترك نشط عبر Resend، كل واحد بلغته.`
+            : `Sends to ${activeCount} active subscriber${activeCount === 1 ? "" : "s"} via Resend, each in their preferred locale.`}
         </p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">
         <fieldset className="space-y-2 rounded-lg border border-dashed border-[var(--color-border)] p-3">
           <legend className="px-1 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Arabic
+            {isAr ? "عربي" : "Arabic"}
           </legend>
           <input
             name="subjectAr"
@@ -53,7 +62,7 @@ export function BroadcastForm({ activeCount }: { activeCount: number }) {
             value={subjectAr}
             onChange={(e) => setSubjectAr(e.target.value)}
             placeholder="موضوع الرسالة"
-            aria-label="Arabic subject"
+            aria-label={isAr ? "موضوع عربي" : "Arabic subject"}
             className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:border-[var(--color-accent)]"
           />
           <textarea
@@ -64,14 +73,14 @@ export function BroadcastForm({ activeCount }: { activeCount: number }) {
             value={bodyAr}
             onChange={(e) => setBodyAr(e.target.value)}
             placeholder="اكتب الرسالة هنا..."
-            aria-label="Arabic body"
+            aria-label={isAr ? "نص عربي" : "Arabic body"}
             className="w-full resize-y rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:border-[var(--color-accent)]"
           />
         </fieldset>
 
         <fieldset className="space-y-2 rounded-lg border border-dashed border-[var(--color-border)] p-3">
           <legend className="px-1 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-            English
+            {isAr ? "إنجليزي" : "English"}
           </legend>
           <input
             name="subjectEn"
@@ -79,7 +88,7 @@ export function BroadcastForm({ activeCount }: { activeCount: number }) {
             value={subjectEn}
             onChange={(e) => setSubjectEn(e.target.value)}
             placeholder="Subject"
-            aria-label="English subject"
+            aria-label={isAr ? "موضوع إنجليزي" : "English subject"}
             className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:border-[var(--color-accent)]"
           />
           <textarea
@@ -89,7 +98,7 @@ export function BroadcastForm({ activeCount }: { activeCount: number }) {
             value={bodyEn}
             onChange={(e) => setBodyEn(e.target.value)}
             placeholder="Write your message here..."
-            aria-label="English body"
+            aria-label={isAr ? "نص إنجليزي" : "English body"}
             className="w-full resize-y rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:border-[var(--color-accent)]"
           />
         </fieldset>
@@ -102,21 +111,33 @@ export function BroadcastForm({ activeCount }: { activeCount: number }) {
           onClick={() => setPreviewLocale(previewLocale === "ar" ? null : "ar")}
           className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-medium text-[var(--color-text)] hover:border-[var(--color-accent)]"
         >
-          {previewLocale === "ar" ? "Hide AR preview" : "Preview AR"}
+          {previewLocale === "ar"
+            ? isAr
+              ? "إخفاء معاينة العربي"
+              : "Hide AR preview"
+            : isAr
+              ? "معاينة العربي"
+              : "Preview AR"}
         </button>
         <button
           type="button"
           onClick={() => setPreviewLocale(previewLocale === "en" ? null : "en")}
           className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-medium text-[var(--color-text)] hover:border-[var(--color-accent)]"
         >
-          {previewLocale === "en" ? "Hide EN preview" : "Preview EN"}
+          {previewLocale === "en"
+            ? isAr
+              ? "إخفاء معاينة الإنجليزي"
+              : "Hide EN preview"
+            : isAr
+              ? "معاينة الإنجليزي"
+              : "Preview EN"}
         </button>
       </div>
 
       {previewLocale && (
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
           <p className="mb-2 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Preview — {previewLocale.toUpperCase()}
+            {isAr ? "معاينة" : "Preview"} — {previewLocale.toUpperCase()}
           </p>
           <p
             className="mb-1 font-semibold text-[var(--color-text)]"
@@ -147,30 +168,39 @@ export function BroadcastForm({ activeCount }: { activeCount: number }) {
           role="status"
           className="rounded-md border border-[var(--color-success)]/40 bg-[var(--color-success)]/10 px-3 py-2 text-sm text-[var(--color-success)]"
         >
-          ✅ Sent to {state.sent} subscriber{state.sent === 1 ? "" : "s"}.
-          {state.failed > 0 && ` ${state.failed} failed.`}
+          {isAr
+            ? `✅ تم الإرسال لـ ${state.sent} مشترك.`
+            : `✅ Sent to ${state.sent} subscriber${state.sent === 1 ? "" : "s"}.`}
+          {state.failed > 0 &&
+            (isAr ? ` ${state.failed} فشل.` : ` ${state.failed} failed.`)}
         </p>
       )}
 
-      <SubmitButton />
+      <SubmitButton isAr={isAr} />
     </form>
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ isAr }: { isAr: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
       onClick={(e) => {
-        if (!confirm("Send broadcast email to ALL active subscribers?"))
+        if (
+          !confirm(
+            isAr
+              ? "إرسال الرسالة الجماعية لكل المشتركين النشطين؟"
+              : "Send broadcast email to ALL active subscribers?",
+          )
+        )
           e.preventDefault();
       }}
       className="inline-flex items-center gap-2 rounded-full bg-brass-500 px-6 py-2.5 text-sm font-semibold text-navy-900 transition hover:bg-brass-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-      Send broadcast
+      {isAr ? "إرسال الرسالة" : "Send broadcast"}
     </button>
   );
 }

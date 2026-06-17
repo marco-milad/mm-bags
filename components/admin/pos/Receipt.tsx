@@ -2,6 +2,8 @@
 
 import { Printer, X } from "lucide-react";
 import type { CompleteSaleResult } from "@/lib/pos/actions";
+import type { AdminLocale } from "@/lib/admin/locale";
+import { paymentMethodLabel } from "@/lib/admin/labels";
 import { formatPriceEGP } from "@/lib/utils";
 
 type ReceiptSale = Extract<CompleteSaleResult, { ok: true }>["sale"];
@@ -19,29 +21,35 @@ type ReceiptSale = Extract<CompleteSaleResult, { ok: true }>["sale"];
  */
 export function ReceiptModal({
   sale,
+  locale,
   onClose,
 }: {
   sale: ReceiptSale;
+  locale: AdminLocale;
   onClose: () => void;
 }) {
-  const dateLabel = new Date(sale.createdAt).toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const isAr = locale === "ar";
+  const dateLabel = new Date(sale.createdAt).toLocaleString(
+    isAr ? "ar-EG" : "en-US",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    },
+  );
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Sale receipt"
+      aria-label={isAr ? "إيصال البيع" : "Sale receipt"}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-[var(--color-bg)] shadow-2xl">
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
-          className="absolute right-3 top-3 rounded-full p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]"
+          aria-label={isAr ? "إغلاق" : "Close"}
+          className="absolute end-3 top-3 rounded-full p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]"
         >
           <X className="h-4 w-4" />
         </button>
@@ -60,7 +68,8 @@ export function ReceiptModal({
             </p>
             {sale.cashierName && (
               <p className="text-[11px] text-[var(--color-text-secondary)]">
-                Cashier: {sale.cashierName}
+                {isAr ? "الكاشير: " : "Cashier: "}
+                {sale.cashierName}
               </p>
             )}
           </header>
@@ -91,23 +100,36 @@ export function ReceiptModal({
           </ul>
 
           <dl className="border-t border-dashed border-[var(--color-border)] pt-3 text-sm">
-            <Row label="Subtotal" value={formatPriceEGP(sale.subtotal)} />
+            <Row
+              label={isAr ? "المجموع الفرعي" : "Subtotal"}
+              value={formatPriceEGP(sale.subtotal)}
+            />
             {sale.discount > 0 && (
-              <Row label="Discount" value={`- ${formatPriceEGP(sale.discount)}`} />
+              <Row
+                label={isAr ? "الخصم" : "Discount"}
+                value={`- ${formatPriceEGP(sale.discount)}`}
+              />
             )}
             <Row
-              label="Total"
+              label={isAr ? "الإجمالي" : "Total"}
               value={formatPriceEGP(sale.total)}
               strong
             />
-            <Row label="Payment" value={prettyPayment(sale.paymentMethod)} />
+            <Row
+              label={isAr ? "الدفع" : "Payment"}
+              value={paymentMethodLabel(sale.paymentMethod, locale)}
+            />
             {sale.paymentRef && (
-              <Row label="Ref" value={sale.paymentRef} mono />
+              <Row
+                label={isAr ? "المرجع" : "Ref"}
+                value={sale.paymentRef}
+                mono
+              />
             )}
           </dl>
 
           <p className="mt-5 text-center text-sm text-[var(--color-text)]">
-            شكراً لتسوقك معنا 🧳
+            {isAr ? "شكراً لتسوقك معنا 🧳" : "Thank you for shopping with us 🧳"}
           </p>
         </div>
 
@@ -117,7 +139,7 @@ export function ReceiptModal({
             onClick={onClose}
             className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-xs font-medium text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
           >
-            New sale
+            {isAr ? "بيعة جديدة" : "New sale"}
           </button>
           <button
             type="button"
@@ -125,7 +147,7 @@ export function ReceiptModal({
             className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--color-primary)]/90"
           >
             <Printer className="h-3.5 w-3.5" />
-            Print
+            {isAr ? "طباعة" : "Print"}
           </button>
         </footer>
       </div>
@@ -161,15 +183,4 @@ function Row({
       </dd>
     </div>
   );
-}
-
-function prettyPayment(m: string): string {
-  return (
-    {
-      cash: "Cash",
-      "e-wallet": "E-wallet",
-      instapay: "Instapay",
-      card: "Card",
-    } as Record<string, string>
-  )[m] ?? m;
 }

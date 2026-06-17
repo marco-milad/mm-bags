@@ -1,24 +1,30 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getAdminOrderDetail } from "@/lib/queries/admin-orders";
 import { saveCodTracking } from "@/lib/admin/order-actions";
 import { StatusDropdown } from "@/components/admin/orders/StatusDropdown";
 import { PrintInvoiceButton } from "@/components/admin/orders/PrintButton";
+import { getAdminLocale } from "@/lib/admin/locale";
+import {
+  orderStatusLabel,
+  paymentMethodLabel,
+  paymentStatusLabel,
+} from "@/lib/admin/labels";
 import type { OrderStatus } from "@/lib/supabase/types";
 import { cn, formatPriceEGP } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_META: Record<OrderStatus, { label: string; cls: string }> = {
-  pending: { label: "Pending", cls: "bg-[var(--color-warning)]/15 text-[var(--color-warning)]" },
-  confirmed: { label: "Confirmed", cls: "bg-[var(--color-accent)]/15 text-[var(--color-accent-dark)]" },
-  processing: { label: "Processing", cls: "bg-[var(--color-accent)]/15 text-[var(--color-accent-dark)]" },
-  shipped: { label: "Shipped", cls: "bg-[var(--color-primary)]/15 text-[var(--color-primary)]" },
-  out_for_delivery: { label: "Out for delivery", cls: "bg-[var(--color-primary)]/15 text-[var(--color-primary)]" },
-  delivered: { label: "Delivered", cls: "bg-[var(--color-success)]/15 text-[var(--color-success)]" },
-  cancelled: { label: "Cancelled", cls: "bg-[var(--color-error)]/15 text-[var(--color-error)]" },
+const STATUS_CLS: Record<OrderStatus, string> = {
+  pending: "bg-[var(--color-warning)]/15 text-[var(--color-warning)]",
+  confirmed: "bg-[var(--color-accent)]/15 text-[var(--color-accent-dark)]",
+  processing: "bg-[var(--color-accent)]/15 text-[var(--color-accent-dark)]",
+  shipped: "bg-[var(--color-primary)]/15 text-[var(--color-primary)]",
+  out_for_delivery: "bg-[var(--color-primary)]/15 text-[var(--color-primary)]",
+  delivered: "bg-[var(--color-success)]/15 text-[var(--color-success)]",
+  cancelled: "bg-[var(--color-error)]/15 text-[var(--color-error)]",
 };
 
 const STATUS_FLOW: ReadonlyArray<OrderStatus> = [
@@ -33,6 +39,8 @@ const STATUS_FLOW: ReadonlyArray<OrderStatus> = [
 export default async function OrderDetailPage({
   params,
 }: PageProps<"/admin/orders/[id]">) {
+  const locale = await getAdminLocale();
+  const isAr = locale === "ar";
   const { id } = await params;
   const order = await getAdminOrderDetail(id);
   if (!order) notFound();
@@ -40,6 +48,7 @@ export default async function OrderDetailPage({
   const status = order.status ?? "pending";
   const cod = order.cod_tracking;
   const customer = order.customer;
+  const BackArrow = isAr ? ArrowRight : ArrowLeft;
 
   return (
     <div className="space-y-6">
@@ -48,10 +57,10 @@ export default async function OrderDetailPage({
           href="/admin/orders"
           className="inline-flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
         >
-          <ArrowLeft className="h-3 w-3" />
-          Back to orders
+          <BackArrow className="h-3 w-3" />
+          {isAr ? "رجوع للطلبات" : "Back to orders"}
         </Link>
-        <PrintInvoiceButton />
+        <PrintInvoiceButton locale={locale} />
       </div>
 
       {/* The invoice container — the print stylesheet isolates this
@@ -64,23 +73,26 @@ export default async function OrderDetailPage({
               {order.order_number}
             </p>
             <h1 className="font-display text-2xl text-[var(--color-text)]">
-              {customer.name ?? "(guest)"}
+              {customer.name ?? (isAr ? "(زائر)" : "(guest)")}
             </h1>
             <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-              Placed{" "}
-              {new Date(order.created_at).toLocaleString("en-US", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })}
+              {isAr ? "تم الطلب " : "Placed "}
+              {new Date(order.created_at).toLocaleString(
+                isAr ? "ar-EG" : "en-US",
+                {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                },
+              )}
             </p>
           </div>
           <span
             className={cn(
               "rounded-full px-3 py-1 font-mono text-[11px] uppercase tracking-wider",
-              STATUS_META[status].cls,
+              STATUS_CLS[status],
             )}
           >
-            {STATUS_META[status].label}
+            {orderStatusLabel(status, locale)}
           </span>
         </header>
 
@@ -89,30 +101,47 @@ export default async function OrderDetailPage({
           {/* Customer panel */}
           <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
             <p className="mb-3 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-              Customer
+              {isAr ? "العميل" : "Customer"}
             </p>
             <dl className="space-y-2 text-sm">
-              <DL label="Name" value={customer.name ?? "(guest)"} />
-              <DL label="Phone" value={customer.phone ?? "—"} mono />
               <DL
-                label="Email"
+                label={isAr ? "الاسم" : "Name"}
+                value={customer.name ?? (isAr ? "(زائر)" : "(guest)")}
+              />
+              <DL
+                label={isAr ? "الموبايل" : "Phone"}
+                value={customer.phone ?? "—"}
+                mono
+              />
+              <DL
+                label={isAr ? "البريد" : "Email"}
                 value={customer.email ?? order.guest_email ?? "—"}
                 mono
               />
               <DL
-                label="Governorate"
+                label={isAr ? "المحافظة" : "Governorate"}
                 value={customer.governorate ?? "—"}
               />
               <DL
-                label="City"
+                label={isAr ? "المدينة" : "City"}
                 value={customer.city ?? "—"}
               />
               <DL
-                label="Street"
+                label={isAr ? "الشارع" : "Street"}
                 value={customer.street ?? "—"}
               />
-              {customer.building && <DL label="Building" value={customer.building} />}
-              {customer.notes && <DL label="Notes" value={customer.notes} />}
+              {customer.building && (
+                <DL
+                  label={isAr ? "العقار" : "Building"}
+                  value={customer.building}
+                />
+              )}
+              {customer.notes && (
+                <DL
+                  label={isAr ? "ملاحظات" : "Notes"}
+                  value={customer.notes}
+                />
+              )}
             </dl>
           </section>
 
@@ -122,10 +151,10 @@ export default async function OrderDetailPage({
               <table className="w-full text-sm">
                 <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
                   <tr>
-                    <Th>Item</Th>
-                    <Th className="text-end">Unit</Th>
-                    <Th className="text-end">Qty</Th>
-                    <Th className="text-end">Total</Th>
+                    <Th>{isAr ? "المنتج" : "Item"}</Th>
+                    <Th className="text-end">{isAr ? "السعر" : "Unit"}</Th>
+                    <Th className="text-end">{isAr ? "الكمية" : "Qty"}</Th>
+                    <Th className="text-end">{isAr ? "الإجمالي" : "Total"}</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -172,37 +201,40 @@ export default async function OrderDetailPage({
             </div>
 
             {/* Totals */}
-            <dl className="ml-auto w-full max-w-xs space-y-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-sm">
-              <DL label="Subtotal" value={formatPriceEGP(order.subtotal)} />
+            <dl className="ms-auto w-full max-w-xs space-y-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-sm">
               <DL
-                label="Shipping"
+                label={isAr ? "الإجمالي قبل الشحن" : "Subtotal"}
+                value={formatPriceEGP(order.subtotal)}
+              />
+              <DL
+                label={isAr ? "الشحن" : "Shipping"}
                 value={formatPriceEGP(order.shipping_fee ?? 0)}
               />
               {(order.discount_amount ?? 0) > 0 && (
                 <DL
-                  label="Discount"
+                  label={isAr ? "خصم" : "Discount"}
                   value={`- ${formatPriceEGP(order.discount_amount ?? 0)}`}
                 />
               )}
               {(order.loyalty_discount ?? 0) > 0 && (
                 <DL
-                  label="Loyalty"
+                  label={isAr ? "نقاط الولاء" : "Loyalty"}
                   value={`- ${formatPriceEGP(order.loyalty_discount ?? 0)}`}
                 />
               )}
               <div className="my-1 border-t border-dashed border-[var(--color-border)]" />
               <DL
-                label="Total"
+                label={isAr ? "الإجمالي" : "Total"}
                 value={formatPriceEGP(order.total)}
                 strong
               />
               <DL
-                label="Payment"
-                value={order.payment_method.toUpperCase()}
+                label={isAr ? "طريقة الدفع" : "Payment"}
+                value={paymentMethodLabel(order.payment_method, locale)}
               />
               <DL
-                label="Status"
-                value={(order.payment_status ?? "pending").toUpperCase()}
+                label={isAr ? "حالة الدفع" : "Status"}
+                value={paymentStatusLabel(order.payment_status, locale)}
               />
             </dl>
           </section>
@@ -211,7 +243,7 @@ export default async function OrderDetailPage({
         {/* Status timeline */}
         <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5 print:hidden">
           <p className="mb-3 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Status timeline
+            {isAr ? "مسار الحالة" : "Status timeline"}
           </p>
           <ol className="flex flex-wrap items-center gap-2">
             {STATUS_FLOW.map((s, idx) => {
@@ -231,7 +263,7 @@ export default async function OrderDetailPage({
                           : "bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]",
                     )}
                   >
-                    {STATUS_META[s].label}
+                    {orderStatusLabel(s, locale)}
                   </span>
                   {idx < STATUS_FLOW.length - 1 && (
                     <span
@@ -250,27 +282,31 @@ export default async function OrderDetailPage({
           </ol>
           {order.status === "cancelled" && (
             <p className="mt-3 inline-flex items-center rounded-full bg-[var(--color-error)]/15 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--color-error)]">
-              Cancelled
+              {orderStatusLabel("cancelled", locale)}
             </p>
           )}
           <div className="mt-4">
             <span className="me-3 text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-              Update status
+              {isAr ? "تحديث الحالة" : "Update status"}
             </span>
-            <StatusDropdown orderId={order.id} current={status} />
+            <StatusDropdown
+              orderId={order.id}
+              current={status}
+              locale={locale}
+            />
           </div>
         </section>
 
         {/* COD tracking */}
         <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5 print:hidden">
           <p className="mb-3 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-            COD tracking
+            {isAr ? "تتبع الشحن (COD)" : "COD tracking"}
           </p>
           <form action={saveCodTracking} className="grid gap-3 md:grid-cols-2">
             <input type="hidden" name="orderId" value={order.id} />
             <label className="text-sm">
               <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-                Courier
+                {isAr ? "شركة الشحن" : "Courier"}
               </span>
               <input
                 name="courierName"
@@ -280,7 +316,7 @@ export default async function OrderDetailPage({
             </label>
             <label className="text-sm">
               <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-                Tracking #
+                {isAr ? "رقم التتبع" : "Tracking #"}
               </span>
               <input
                 name="trackingNumber"
@@ -290,7 +326,7 @@ export default async function OrderDetailPage({
             </label>
             <label className="text-sm">
               <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-                Current status
+                {isAr ? "الحالة الحالية" : "Current status"}
               </span>
               <input
                 name="currentStatus"
@@ -300,7 +336,7 @@ export default async function OrderDetailPage({
             </label>
             <label className="text-sm">
               <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-                Current location
+                {isAr ? "المكان الحالي" : "Current location"}
               </span>
               <input
                 name="currentLocation"
@@ -313,7 +349,7 @@ export default async function OrderDetailPage({
                 type="submit"
                 className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white"
               >
-                Save tracking
+                {isAr ? "حفظ التتبع" : "Save tracking"}
               </button>
             </div>
           </form>

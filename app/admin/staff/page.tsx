@@ -5,6 +5,7 @@ import {
   getCurrentRole,
   updateStaff,
 } from "@/lib/admin/staff-actions";
+import { getAdminLocale } from "@/lib/admin/locale";
 import type { Staff, StaffRole } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,8 @@ export const dynamic = "force-dynamic";
  * new accounts).
  */
 export default async function StaffPage() {
+  const locale = await getAdminLocale();
+  const isAr = locale === "ar";
   const role = await getCurrentRole();
   if (!role || role.role !== "admin") {
     redirect("/admin");
@@ -37,25 +40,26 @@ export default async function StaffPage() {
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-3xl text-[var(--color-text)]">
-          Staff · الموظفين
+          {isAr ? "الموظفين" : "Staff"}
         </h1>
         <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          Cashier-only sees POS. Manager sees POS + orders + stock + reports.
-          Admin sees everything.
+          {isAr
+            ? "الكاشير بيشوف نقطة البيع بس. المدير بيشوف نقطة البيع + الطلبات + المخزون + التقارير. الأدمن بيشوف كل حاجة."
+            : "Cashier-only sees POS. Manager sees POS + orders + stock + reports. Admin sees everything."}
         </p>
       </header>
 
-      <AddStaffForm />
+      <AddStaffForm locale={locale} />
 
       <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
             <tr>
-              <Th>Name</Th>
-              <Th>Phone</Th>
-              <Th>Role</Th>
-              <Th>Status</Th>
-              <Th>Created</Th>
+              <Th>{isAr ? "الاسم" : "Name"}</Th>
+              <Th>{isAr ? "التليفون" : "Phone"}</Th>
+              <Th>{isAr ? "الدور" : "Role"}</Th>
+              <Th>{isAr ? "الحالة" : "Status"}</Th>
+              <Th>{isAr ? "تاريخ الإنشاء" : "Created"}</Th>
               <Th></Th>
             </tr>
           </thead>
@@ -77,15 +81,15 @@ export default async function StaffPage() {
                       defaultValue={s.role as StaffRole}
                       className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-xs"
                     >
-                      <option value="cashier">Cashier</option>
-                      <option value="manager">Manager</option>
-                      <option value="admin">Admin</option>
+                      <option value="cashier">{isAr ? "كاشير" : "Cashier"}</option>
+                      <option value="manager">{isAr ? "مدير" : "Manager"}</option>
+                      <option value="admin">{isAr ? "أدمن" : "Admin"}</option>
                     </select>
                     <button
                       type="submit"
                       className="rounded-md border border-[var(--color-border)] px-2 py-1 text-[10px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-text)]"
                     >
-                      Save
+                      {isAr ? "حفظ" : "Save"}
                     </button>
                   </form>
                 </td>
@@ -97,13 +101,22 @@ export default async function StaffPage() {
                         : "rounded-full bg-[var(--color-surface-2)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]"
                     }
                   >
-                    {s.is_active ? "Active" : "Disabled"}
+                    {s.is_active
+                      ? isAr
+                        ? "نشط"
+                        : "Active"
+                      : isAr
+                        ? "معطل"
+                        : "Disabled"}
                   </span>
                 </td>
                 <td className="px-3 py-2 text-[11px] text-[var(--color-text-secondary)]">
-                  {new Date(s.created_at).toLocaleDateString("en-US", {
-                    dateStyle: "medium",
-                  })}
+                  {new Date(s.created_at).toLocaleDateString(
+                    isAr ? "ar-EG" : "en-US",
+                    {
+                      dateStyle: "medium",
+                    },
+                  )}
                 </td>
                 <td className="px-3 py-2 text-end">
                   <form action={updateStaff} className="inline">
@@ -117,7 +130,13 @@ export default async function StaffPage() {
                       type="submit"
                       className="text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:text-[var(--color-text)] hover:underline"
                     >
-                      {s.is_active ? "Deactivate" : "Activate"}
+                      {s.is_active
+                        ? isAr
+                          ? "إلغاء التفعيل"
+                          : "Deactivate"
+                        : isAr
+                          ? "تفعيل"
+                          : "Activate"}
                     </button>
                   </form>
                 </td>
@@ -129,7 +148,9 @@ export default async function StaffPage() {
                   colSpan={6}
                   className="px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]"
                 >
-                  No staff yet. Add the first cashier or manager above.
+                  {isAr
+                    ? "لا يوجد موظفين بعد. أضف أول كاشير أو مدير من فوق."
+                    : "No staff yet. Add the first cashier or manager above."}
                 </td>
               </tr>
             )}

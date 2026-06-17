@@ -2,6 +2,7 @@
 
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { useFormStatus } from "react-dom";
+import type { AdminLocale } from "@/lib/admin/locale";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,13 +23,16 @@ export function SendButton({
   disabled,
   variant = "default",
   confirmMessage,
+  locale,
 }: {
   pendingCount: number;
   disabled?: boolean;
   variant?: "default" | "bulk";
   confirmMessage: string;
+  locale: AdminLocale;
 }) {
   const { pending } = useFormStatus();
+  const isAr = locale === "ar";
 
   function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (pending || disabled || pendingCount === 0) return;
@@ -48,7 +52,9 @@ export function SendButton({
         ) : (
           <Sparkles className="h-4 w-4" />
         )}
-        Send all pending ({pendingCount})
+        {isAr
+          ? `إرسال كل المعلق (${pendingCount})`
+          : `Send all pending (${pendingCount})`}
       </button>
     );
   }
@@ -67,7 +73,9 @@ export function SendButton({
       ) : (
         <Send className="h-3.5 w-3.5" />
       )}
-      إرسال إشعار ({pendingCount})
+      {isAr
+        ? `إرسال إشعار (${pendingCount})`
+        : `Send notifications (${pendingCount})`}
     </button>
   );
 }

@@ -22,6 +22,8 @@ import {
 import type { ProductVariant } from "@/lib/supabase/types";
 import { completeSale, type CompleteSaleResult } from "@/lib/pos/actions";
 import { calcTotals, POS_PAYMENT_METHODS } from "@/lib/pos/schema";
+import type { AdminLocale } from "@/lib/admin/locale";
+import { paymentMethodLabel } from "@/lib/admin/labels";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { ReceiptModal } from "./Receipt";
 
@@ -47,14 +49,14 @@ type Status =
 
 type DiscountMode = "amount" | "percent";
 
-const PAYMENT_META: Record<
+const PAYMENT_ICONS: Record<
   (typeof POS_PAYMENT_METHODS)[number],
-  { Icon: typeof Banknote; label: string; emoji: string }
+  { Icon: typeof Banknote; emoji: string }
 > = {
-  cash: { Icon: Banknote, label: "نقدي / Cash", emoji: "💵" },
-  "e-wallet": { Icon: Wallet, label: "محفظة إلكترونية / E-wallet", emoji: "📱" },
-  instapay: { Icon: Smartphone, label: "إنستا باي / Instapay", emoji: "💳" },
-  card: { Icon: CreditCard, label: "كارت / Card", emoji: "💳" },
+  cash: { Icon: Banknote, emoji: "💵" },
+  "e-wallet": { Icon: Wallet, emoji: "📱" },
+  instapay: { Icon: Smartphone, emoji: "💳" },
+  card: { Icon: CreditCard, emoji: "💳" },
 };
 
 /**
@@ -75,10 +77,14 @@ const PAYMENT_META: Record<
 export function POSScreen({
   products,
   cashierName,
+  locale,
 }: {
   products: ProductWithVariants[];
   cashierName: string | null;
+  locale: AdminLocale;
 }) {
+  const isAr = locale === "ar";
+
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [pickerProduct, setPickerProduct] =
@@ -154,9 +160,11 @@ export function POSScreen({
         {
           variantId: v.id,
           productId: p.id,
-          name: p.name_ar || p.name_en,
+          name: isAr ? p.name_ar || p.name_en : p.name_en || p.name_ar,
           image: p.images?.[0] ?? null,
-          color: v.color_ar ?? v.color_en ?? null,
+          color: isAr
+            ? v.color_ar ?? v.color_en ?? null
+            : v.color_en ?? v.color_ar ?? null,
           size: v.size_inches ? `${v.size_inches}"` : v.size_label_ar ?? null,
           unitPrice,
           qty: 1,
@@ -242,15 +250,20 @@ export function POSScreen({
           <div className="relative">
             <Search
               aria-hidden
-              className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-secondary)]"
+              className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-secondary)]"
             />
             <input
               type="search"
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="ابحث باسم المنتج أو السلاج..."
-              className="h-11 w-full rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] pl-11 pr-4 text-sm shadow-sm transition focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30"
+              placeholder={
+                isAr
+                  ? "ابحث باسم المنتج أو السلاج..."
+                  : "Search by product name or slug..."
+              }
+              aria-label={isAr ? "بحث المنتجات" : "Search products"}
+              className="h-11 w-full rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] ps-11 pe-4 text-sm shadow-sm transition focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30"
             />
           </div>
 
@@ -260,6 +273,9 @@ export function POSScreen({
               const stock = productTotalStock(p);
               const price = effectivePrice(p);
               const oos = stock === 0;
+              const displayName = isAr
+                ? p.name_ar || p.name_en
+                : p.name_en || p.name_ar;
               return (
                 <li key={p.id}>
                   <button
@@ -275,7 +291,7 @@ export function POSScreen({
                       {p.images?.[0] && (
                         <Image
                           src={p.images[0]}
-                          alt={p.name_ar}
+                          alt={displayName}
                           fill
                           sizes="(min-width: 1024px) 15vw, 25vw"
                           className="object-cover"
@@ -283,13 +299,13 @@ export function POSScreen({
                       )}
                       {oos && (
                         <span className="absolute inset-x-0 bottom-0 bg-[var(--color-primary)]/85 py-1 text-center text-[10px] font-medium text-white">
-                          نفذ
+                          {isAr ? "نفذ" : "Out of stock"}
                         </span>
                       )}
                     </div>
                     <div className="flex flex-1 flex-col gap-1 p-2">
                       <p className="line-clamp-2 text-xs font-medium text-[var(--color-text)]">
-                        {p.name_ar}
+                        {displayName}
                       </p>
                       <p className="mt-auto font-mono text-[11px] font-semibold text-[var(--color-primary)]">
                         {formatPriceEGP(price)}
@@ -302,7 +318,7 @@ export function POSScreen({
           </ul>
           {visibleProducts.length === 0 && (
             <p className="rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-8 text-center text-xs text-[var(--color-text-secondary)]">
-              مفيش منتجات مطابقة.
+              {isAr ? "مفيش منتجات مطابقة." : "No matching products."}
             </p>
           )}
 
@@ -310,7 +326,9 @@ export function POSScreen({
           <div className="mt-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
             <header className="mb-2 flex items-center justify-between">
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[var(--color-text-secondary)]">
-                Cart · {cart.length} item{cart.length === 1 ? "" : "s"}
+                {isAr
+                  ? `السلة · ${cart.length} ${cart.length === 1 ? "صنف" : "أصناف"}`
+                  : `Cart · ${cart.length} item${cart.length === 1 ? "" : "s"}`}
               </p>
               {cart.length > 0 && (
                 <button
@@ -318,13 +336,15 @@ export function POSScreen({
                   onClick={clearCart}
                   className="text-[11px] text-[var(--color-text-secondary)] underline-offset-4 hover:text-[var(--color-error)] hover:underline"
                 >
-                  Clear
+                  {isAr ? "تفريغ" : "Clear"}
                 </button>
               )}
             </header>
             {cart.length === 0 ? (
               <p className="py-6 text-center text-xs text-[var(--color-text-secondary)]">
-                ابدأ بإضافة منتجات من فوق.
+                {isAr
+                  ? "ابدأ بإضافة منتجات من فوق."
+                  : "Start by adding products above."}
               </p>
             ) : (
               <ul className="divide-y divide-[var(--color-border)]">
@@ -352,18 +372,26 @@ export function POSScreen({
                         {[c.color, c.size].filter(Boolean).join(" · ")}
                       </span>
                     </span>
-                    <QtyButton onClick={() => changeQty(c.variantId, -1)} icon={Minus} />
+                    <QtyButton
+                      onClick={() => changeQty(c.variantId, -1)}
+                      icon={Minus}
+                      label={isAr ? "نقص الكمية" : "Decrease quantity"}
+                    />
                     <span className="w-6 text-center font-mono text-sm">
                       {c.qty}
                     </span>
-                    <QtyButton onClick={() => changeQty(c.variantId, +1)} icon={Plus} />
+                    <QtyButton
+                      onClick={() => changeQty(c.variantId, +1)}
+                      icon={Plus}
+                      label={isAr ? "زود الكمية" : "Increase quantity"}
+                    />
                     <span className="w-20 text-end font-mono text-xs font-semibold text-[var(--color-primary)]">
                       {formatPriceEGP(c.qty * c.unitPrice)}
                     </span>
                     <button
                       type="button"
                       onClick={() => removeLine(c.variantId)}
-                      aria-label="Remove"
+                      aria-label={isAr ? "حذف" : "Remove"}
                       className="rounded p-1 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-error)]"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -378,9 +406,9 @@ export function POSScreen({
                 {/* Discount */}
                 <div className="mt-3 flex items-center gap-2 border-t border-dashed border-[var(--color-border)] pt-3">
                   <span className="text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-                    Discount
+                    {isAr ? "خصم" : "Discount"}
                   </span>
-                  <div className="ml-auto inline-flex overflow-hidden rounded-md border border-[var(--color-border)] text-[11px]">
+                  <div className="ms-auto inline-flex overflow-hidden rounded-md border border-[var(--color-border)] text-[11px]">
                     {(["amount", "percent"] as DiscountMode[]).map((m) => (
                       <button
                         key={m}
@@ -393,7 +421,7 @@ export function POSScreen({
                             : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]",
                         )}
                       >
-                        {m === "amount" ? "EGP" : "%"}
+                        {m === "amount" ? (isAr ? "ج.م" : "EGP") : "%"}
                       </button>
                     ))}
                   </div>
@@ -403,21 +431,24 @@ export function POSScreen({
                     onChange={(e) => setDiscountValue(e.target.value)}
                     placeholder="0"
                     className="w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-end font-mono text-sm focus:border-[var(--color-accent)] focus:outline-none"
-                    aria-label="Discount value"
+                    aria-label={isAr ? "قيمة الخصم" : "Discount value"}
                   />
                 </div>
 
                 {/* Totals */}
                 <dl className="mt-3 space-y-1 border-t border-dashed border-[var(--color-border)] pt-3 text-sm">
-                  <Row label="Subtotal" value={formatPriceEGP(totals.subtotal)} />
+                  <Row
+                    label={isAr ? "المجموع الفرعي" : "Subtotal"}
+                    value={formatPriceEGP(totals.subtotal)}
+                  />
                   {totals.discount > 0 && (
                     <Row
-                      label="Discount"
+                      label={isAr ? "الخصم" : "Discount"}
                       value={`- ${formatPriceEGP(totals.discount)}`}
                     />
                   )}
                   <Row
-                    label="TOTAL"
+                    label={isAr ? "الإجمالي" : "TOTAL"}
                     value={formatPriceEGP(totals.total)}
                     strong
                   />
@@ -431,19 +462,25 @@ export function POSScreen({
         <aside className="flex flex-col gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 lg:sticky lg:top-4 lg:self-start">
           {cashierName && (
             <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-              Cashier · {cashierName}
+              {isAr ? "الكاشير · " : "Cashier · "}
+              {cashierName}
             </p>
           )}
 
           <div>
             <p className="mb-2 text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-              Payment method
+              {isAr ? "طريقة الدفع" : "Payment method"}
             </p>
             <ul className="grid grid-cols-2 gap-2">
               {POS_PAYMENT_METHODS.map((m) => {
-                const meta = PAYMENT_META[m];
+                const meta = PAYMENT_ICONS[m];
                 const isActive = paymentMethod === m;
                 const Icon = meta.Icon;
+                const primaryLabel = paymentMethodLabel(m, locale);
+                const secondaryLabel = paymentMethodLabel(
+                  m,
+                  isAr ? "en" : "ar",
+                );
                 return (
                   <li key={m}>
                     <button
@@ -460,14 +497,14 @@ export function POSScreen({
                         {meta.emoji}
                       </span>
                       <span className="flex-1 leading-tight">
-                        {meta.label.split(" / ")[0]}
+                        {primaryLabel}
                         <span
                           className={cn(
                             "block text-[10px]",
                             isActive ? "text-white/70" : "text-[var(--color-text-secondary)]",
                           )}
                         >
-                          {meta.label.split(" / ")[1]}
+                          {secondaryLabel}
                         </span>
                       </span>
                       {isActive && <Icon className="h-4 w-4" />}
@@ -481,7 +518,7 @@ export function POSScreen({
           {paymentMethod === "cash" ? (
             <div>
               <label className="block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-                Cash tendered
+                {isAr ? "المبلغ المقدّم نقدًا" : "Cash tendered"}
               </label>
               <input
                 inputMode="decimal"
@@ -491,19 +528,20 @@ export function POSScreen({
                 className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-end font-mono text-base focus:border-[var(--color-accent)] focus:outline-none"
               />
               <p className="mt-1 text-end font-mono text-xs text-[var(--color-text-secondary)]">
-                Change: {formatPriceEGP(cashChange)}
+                {isAr ? "الباقي: " : "Change: "}
+                {formatPriceEGP(cashChange)}
               </p>
             </div>
           ) : (
             <div>
               <label className="block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-                Payment reference
+                {isAr ? "رقم مرجع الدفع" : "Payment reference"}
               </label>
               <input
                 type="text"
                 value={paymentRef}
                 onChange={(e) => setPaymentRef(e.target.value)}
-                placeholder="Txn / ref no."
+                placeholder={isAr ? "رقم العملية / المرجع" : "Txn / ref no."}
                 className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none"
               />
             </div>
@@ -511,19 +549,20 @@ export function POSScreen({
 
           <div>
             <label className="block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-              Notes
+              {isAr ? "ملاحظات" : "Notes"}
             </label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              aria-label={isAr ? "ملاحظات" : "Notes"}
               className="mt-1 w-full resize-none rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none"
             />
           </div>
 
           <div className="mt-auto rounded-lg bg-[var(--color-bg)] p-4">
             <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-              Grand total
+              {isAr ? "الإجمالي النهائي" : "Grand total"}
             </p>
             <p className="font-mono text-3xl font-semibold text-[var(--color-primary)]">
               {formatPriceEGP(totals.total)}
@@ -546,7 +585,7 @@ export function POSScreen({
             className="inline-flex items-center justify-center gap-2 rounded-full bg-brass-500 px-6 py-3 text-sm font-semibold text-navy-900 transition hover:bg-brass-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            إتمام البيع
+            {isAr ? "إتمام البيع" : "Complete sale"}
           </button>
         </aside>
       </div>
@@ -555,6 +594,7 @@ export function POSScreen({
       {pickerProduct && (
         <VariantPicker
           product={pickerProduct}
+          locale={locale}
           onPick={(v) => addVariantToCart(pickerProduct, v)}
           onClose={() => setPickerProduct(null)}
         />
@@ -562,7 +602,11 @@ export function POSScreen({
 
       {/* ─── Receipt modal ───────────────────────────────────────── */}
       {status.kind === "success" && (
-        <ReceiptModal sale={status.sale} onClose={startNewSale} />
+        <ReceiptModal
+          sale={status.sale}
+          locale={locale}
+          onClose={startNewSale}
+        />
       )}
     </>
   );
@@ -570,13 +614,19 @@ export function POSScreen({
 
 function VariantPicker({
   product,
+  locale,
   onPick,
   onClose,
 }: {
   product: ProductWithVariants;
+  locale: AdminLocale;
   onPick: (v: ProductVariant) => void;
   onClose: () => void;
 }) {
+  const isAr = locale === "ar";
+  const headerName = isAr
+    ? product.name_ar || product.name_en
+    : product.name_en || product.name_ar;
   return (
     <div
       role="dialog"
@@ -587,17 +637,17 @@ function VariantPicker({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
-          className="absolute right-3 top-3 rounded-full p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]"
+          aria-label={isAr ? "إغلاق" : "Close"}
+          className="absolute end-3 top-3 rounded-full p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]"
         >
           <X className="h-4 w-4" />
         </button>
         <header className="border-b border-[var(--color-border)] px-5 py-4">
           <p className="font-display text-lg text-[var(--color-text)]">
-            {product.name_ar}
+            {headerName}
           </p>
           <p className="text-xs text-[var(--color-text-secondary)]">
-            اختر اللون / المقاس
+            {isAr ? "اختر اللون / المقاس" : "Pick colour / size"}
           </p>
         </header>
         <ul className="max-h-[60vh] divide-y divide-[var(--color-border)] overflow-y-auto">
@@ -606,6 +656,9 @@ function VariantPicker({
             const oos = stock === 0;
             const price =
               v.price_override ?? effectivePrice(product);
+            const colorLabel = isAr
+              ? v.color_ar ?? v.color_en ?? "—"
+              : v.color_en ?? v.color_ar ?? "—";
             return (
               <li key={v.id}>
                 <button
@@ -624,11 +677,17 @@ function VariantPicker({
                     />
                   )}
                   <span className="flex-1 text-sm text-[var(--color-text)]">
-                    {v.color_ar ?? v.color_en ?? "—"}
+                    {colorLabel}
                     {v.size_inches ? ` · ${v.size_inches}"` : ""}
                   </span>
                   <span className="font-mono text-xs text-[var(--color-text-secondary)]">
-                    {oos ? "نفذ" : `${stock} pcs`}
+                    {oos
+                      ? isAr
+                        ? "نفذ"
+                        : "Out"
+                      : isAr
+                        ? `${stock} قطعة`
+                        : `${stock} pcs`}
                   </span>
                   <span className="font-mono text-sm font-semibold text-[var(--color-primary)]">
                     {formatPriceEGP(price)}
@@ -646,14 +705,17 @@ function VariantPicker({
 function QtyButton({
   onClick,
   icon: Icon,
+  label,
 }: {
   onClick: () => void;
   icon: typeof Minus;
+  label: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={label}
       className="grid h-6 w-6 place-items-center rounded-md border border-[var(--color-border)] text-[var(--color-text-secondary)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-text)]"
     >
       <Icon className="h-3 w-3" />

@@ -11,6 +11,7 @@ import {
   toggleProductActive,
   toggleProductInStore,
 } from "@/lib/admin/product-actions";
+import { getAdminLocale } from "@/lib/admin/locale";
 import { cn, formatPriceEGP } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,9 @@ export const dynamic = "force-dynamic";
 export default async function ProductsPage({
   searchParams,
 }: PageProps<"/admin/products">) {
+  const locale = await getAdminLocale();
+  const isAr = locale === "ar";
+
   const sp = await searchParams;
   const filters: ListAdminProductFilters = {
     collectionId:
@@ -43,10 +47,12 @@ export default async function ProductsPage({
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl text-[var(--color-text)]">
-            Products · المنتجات
+            {isAr ? "المنتجات" : "Products"}
           </h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            Inventory + visibility + variant management.
+            {isAr
+              ? "المخزون والظهور وإدارة الفاريانتس."
+              : "Inventory + visibility + variant management."}
           </p>
         </div>
         <Link
@@ -54,7 +60,7 @@ export default async function ProductsPage({
           className="inline-flex items-center gap-1.5 rounded-full bg-brass-500 px-4 py-2 text-sm font-semibold text-navy-900 transition hover:bg-brass-600"
         >
           <Plus className="h-4 w-4" />
-          New product
+          {isAr ? "منتج جديد" : "New product"}
         </Link>
       </header>
 
@@ -65,26 +71,26 @@ export default async function ProductsPage({
       >
         <label className="text-xs">
           <span className="mb-1 block uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Search
+            {isAr ? "بحث" : "Search"}
           </span>
           <input
             type="search"
             name="q"
             defaultValue={filters.q ?? ""}
-            placeholder="Name or slug"
+            placeholder={isAr ? "الاسم أو الرابط" : "Name or slug"}
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none"
           />
         </label>
         <label className="text-xs">
           <span className="mb-1 block uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Collection
+            {isAr ? "المجموعة" : "Collection"}
           </span>
           <select
             name="collection"
             defaultValue={filters.collectionId ?? ""}
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
           >
-            <option value="">All</option>
+            <option value="">{isAr ? "الكل" : "All"}</option>
             {collections.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name_ar} · {c.name_en}
@@ -94,49 +100,51 @@ export default async function ProductsPage({
         </label>
         <label className="text-xs">
           <span className="mb-1 block uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Active
+            {isAr ? "الحالة" : "Active"}
           </span>
           <select
             name="active"
             defaultValue={filters.isActive ?? ""}
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
           >
-            <option value="">Any</option>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
+            <option value="">{isAr ? "أي" : "Any"}</option>
+            <option value="true">{isAr ? "مفعّل" : "Active"}</option>
+            <option value="false">{isAr ? "متوقف" : "Inactive"}</option>
           </select>
         </label>
         <label className="text-xs">
           <span className="mb-1 block uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Stock
+            {isAr ? "المخزون" : "Stock"}
           </span>
           <select
             name="stock"
             defaultValue={filters.stock ?? ""}
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
           >
-            <option value="">Any</option>
-            <option value="ok">In stock</option>
-            <option value="low">Low</option>
-            <option value="out">Out</option>
+            <option value="">{isAr ? "أي" : "Any"}</option>
+            <option value="ok">{isAr ? "متوفر" : "In stock"}</option>
+            <option value="low">{isAr ? "منخفض" : "Low"}</option>
+            <option value="out">{isAr ? "نفد" : "Out"}</option>
           </select>
         </label>
         <button
           type="submit"
           className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white"
         >
-          Apply
+          {isAr ? "تطبيق" : "Apply"}
         </button>
         <Link
           href="/admin/products"
           className="text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
         >
-          Reset
+          {isAr ? "إعادة تعيين" : "Reset"}
         </Link>
       </form>
 
       <p className="text-xs text-[var(--color-text-secondary)]">
-        {products.length} product{products.length === 1 ? "" : "s"}
+        {isAr
+          ? `${products.length} منتج`
+          : `${products.length} product${products.length === 1 ? "" : "s"}`}
       </p>
 
       {/* listAdminProducts caps at 1000 rows. Surface the truncation so
@@ -146,7 +154,9 @@ export default async function ProductsPage({
           role="alert"
           className="rounded-md border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/10 px-3 py-2 text-xs text-[var(--color-warning)]"
         >
-          Showing first 1000 products — apply a filter to see the rest.
+          {isAr
+            ? "بنعرض أول 1000 منتج — استخدم فلتر علشان تشوف الباقي."
+            : "Showing first 1000 products — apply a filter to see the rest."}
         </p>
       )}
 
@@ -154,14 +164,14 @@ export default async function ProductsPage({
         <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
             <tr>
-              <Th aria-label="Thumbnail" />
-              <Th>Name</Th>
-              <Th>Collection</Th>
-              <Th className="text-end">Price</Th>
-              <Th className="text-end">Stock</Th>
-              <Th>Store</Th>
-              <Th>Online</Th>
-              <Th aria-label="Actions" />
+              <Th aria-label={isAr ? "صورة مصغّرة" : "Thumbnail"} />
+              <Th>{isAr ? "الاسم" : "Name"}</Th>
+              <Th>{isAr ? "المجموعة" : "Collection"}</Th>
+              <Th className="text-end">{isAr ? "السعر" : "Price"}</Th>
+              <Th className="text-end">{isAr ? "المخزون" : "Stock"}</Th>
+              <Th>{isAr ? "المحل" : "Store"}</Th>
+              <Th>{isAr ? "أونلاين" : "Online"}</Th>
+              <Th aria-label={isAr ? "إجراءات" : "Actions"} />
             </tr>
           </thead>
           <tbody>
@@ -219,7 +229,8 @@ export default async function ProductsPage({
                       <input type="hidden" name="id" value={p.id} />
                       <ToggleSwitch
                         checked={p.show_in_store}
-                        label="Available at POS"
+                        label={isAr ? "متاح في المحل" : "Available at POS"}
+                        isAr={isAr}
                       />
                     </form>
                   </td>
@@ -228,7 +239,8 @@ export default async function ProductsPage({
                       <input type="hidden" name="id" value={p.id} />
                       <ToggleSwitch
                         checked={p.is_active}
-                        label="Visible on website"
+                        label={isAr ? "ظاهر على الموقع" : "Visible on website"}
+                        isAr={isAr}
                       />
                     </form>
                   </td>
@@ -237,7 +249,7 @@ export default async function ProductsPage({
                       href={`/admin/products/${p.id}/edit`}
                       className="text-xs text-[var(--color-primary)] underline-offset-4 hover:underline"
                     >
-                      Edit
+                      {isAr ? "تعديل" : "Edit"}
                     </Link>
                   </td>
                 </tr>
@@ -246,7 +258,9 @@ export default async function ProductsPage({
             {products.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
-                  No products match the current filters.
+                  {isAr
+                    ? "مفيش منتجات مطابقة للفلاتر الحالية."
+                    : "No products match the current filters."}
                 </td>
               </tr>
             )}
@@ -279,15 +293,20 @@ function StockBadge({ qty }: { qty: number }) {
 function ToggleSwitch({
   checked,
   label,
+  isAr,
 }: {
   checked: boolean;
   label: string;
+  isAr: boolean;
 }) {
+  const onWord = isAr ? "مفعّل" : "on";
+  const offWord = isAr ? "متوقف" : "off";
+  const clickHint = isAr ? "اضغط للتبديل" : "click to toggle";
   return (
     <button
       type="submit"
       aria-pressed={checked ? "true" : "false"}
-      aria-label={`${label}: ${checked ? "on" : "off"} — click to toggle`}
+      aria-label={`${label}: ${checked ? onWord : offWord} — ${clickHint}`}
       className={cn(
         "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2",
         checked

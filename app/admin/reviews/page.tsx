@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { ReviewStars } from "@/components/reviews/ReviewStars";
 import { ReviewActions } from "./ReviewActions";
+import { getAdminLocale } from "@/lib/admin/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,9 @@ type PendingReview = {
  * admin sees the queue size before scanning rows.
  */
 export default async function AdminReviewsPage() {
+  const locale = await getAdminLocale();
+  const isAr = locale === "ar";
+
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("reviews")
@@ -49,22 +53,26 @@ export default async function AdminReviewsPage() {
     <section>
       <div className="mb-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="font-display text-3xl">Reviews</h1>
+          <h1 className="font-display text-3xl">
+            {isAr ? "التقييمات" : "Reviews"}
+          </h1>
           <span className="inline-flex items-center rounded-full bg-brass-500/15 px-3 py-0.5 font-mono text-xs font-semibold text-brass-700">
-            {pending.length} pending
+            {isAr ? `${pending.length} في الانتظار` : `${pending.length} pending`}
           </span>
         </div>
         <Link
           href="/admin"
           className="text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
         >
-          ← Dashboard
+          {isAr ? "→ لوحة التحكم" : "← Dashboard"}
         </Link>
       </div>
 
       {pending.length === 0 ? (
         <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-10 text-center text-sm text-[var(--color-text-secondary)]">
-          No pending reviews. New submissions land here for approval.
+          {isAr
+            ? "لا توجد تقييمات في الانتظار. الجديد بيوصل هنا للموافقة."
+            : "No pending reviews. New submissions land here for approval."}
         </p>
       ) : (
         <ul className="space-y-4">
@@ -81,25 +89,28 @@ export default async function AdminReviewsPage() {
                   target="_blank"
                   className="font-mono text-[10px] uppercase tracking-[0.25em] text-[var(--color-accent-dark)] underline-offset-4 hover:underline"
                 >
-                  {r.product.name_en}
+                  {isAr ? r.product.name_ar : r.product.name_en}
                 </Link>
               )}
 
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <ReviewStars value={r.rating} size="sm" />
                 <p className="text-sm font-semibold text-[var(--color-text)]">
-                  {r.guest_name ?? "(anonymous)"}
+                  {r.guest_name ?? (isAr ? "(مجهول)" : "(anonymous)")}
                 </p>
                 {r.governorate && (
                   <span className="text-xs text-[var(--color-text-secondary)]">
                     · {r.governorate}
                   </span>
                 )}
-                <span className="ml-auto text-[11px] text-[var(--color-text-secondary)]">
-                  {new Date(r.created_at).toLocaleString("en-US", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
+                <span className="ms-auto text-[11px] text-[var(--color-text-secondary)]">
+                  {new Date(r.created_at).toLocaleString(
+                    isAr ? "ar-EG" : "en-US",
+                    {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    },
+                  )}
                 </span>
               </div>
 
@@ -136,6 +147,7 @@ export default async function AdminReviewsPage() {
               <ReviewActions
                 reviewId={r.id}
                 productSlug={r.product?.slug ?? null}
+                locale={locale}
               />
             </li>
           ))}

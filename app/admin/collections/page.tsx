@@ -5,10 +5,14 @@ import {
   deleteCollection,
   toggleCollectionActive,
 } from "@/lib/admin/collections-actions";
+import { getAdminLocale } from "@/lib/admin/locale";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCollectionsPage() {
+  const locale = await getAdminLocale();
+  const isAr = locale === "ar";
+
   const admin = getSupabaseAdminClient();
   const { data: collections } = await admin
     .from("collections")
@@ -17,14 +21,19 @@ export default async function AdminCollectionsPage() {
     .order("sort_order", { ascending: true });
 
   const list = collections ?? [];
+  const topLevelCount = list.filter((c) => !c.parent_slug).length;
 
   return (
     <section>
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl">Collections</h1>
+          <h1 className="font-display text-3xl">
+            {isAr ? "التشكيلات" : "Collections"}
+          </h1>
           <p className="text-sm text-[var(--color-text-secondary)]">
-            {list.length} total · {list.filter((c) => !c.parent_slug).length} top-level
+            {isAr
+              ? `${list.length} إجمالي · ${topLevelCount} رئيسية`
+              : `${list.length} total · ${topLevelCount} top-level`}
           </p>
         </div>
         <Link
@@ -32,7 +41,7 @@ export default async function AdminCollectionsPage() {
           className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-light)]"
         >
           <Plus className="h-4 w-4" />
-          New collection
+          {isAr ? "تشكيلة جديدة" : "New collection"}
         </Link>
       </header>
 
@@ -40,12 +49,12 @@ export default async function AdminCollectionsPage() {
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-surface)] text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
             <tr>
-              <th className="px-4 py-3 text-left">Name</th>
-              <th className="px-4 py-3 text-left">Slug</th>
-              <th className="px-4 py-3 text-left">Parent</th>
-              <th className="px-4 py-3 text-left">Order</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+              <th className="px-4 py-3 text-start">{isAr ? "الاسم" : "Name"}</th>
+              <th className="px-4 py-3 text-start">{isAr ? "السلاج" : "Slug"}</th>
+              <th className="px-4 py-3 text-start">{isAr ? "الأب" : "Parent"}</th>
+              <th className="px-4 py-3 text-start">{isAr ? "الترتيب" : "Order"}</th>
+              <th className="px-4 py-3 text-start">{isAr ? "الحالة" : "Status"}</th>
+              <th className="px-4 py-3 text-end">{isAr ? "إجراءات" : "Actions"}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-border)]">
@@ -81,7 +90,13 @@ export default async function AdminCollectionsPage() {
                             : "bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
                         }`}
                       >
-                        {c.is_active ? "Active" : "Hidden"}
+                        {c.is_active
+                          ? isAr
+                            ? "ظاهرة"
+                            : "Active"
+                          : isAr
+                            ? "مخفية"
+                            : "Hidden"}
                       </button>
                     </form>
                   </td>
@@ -89,7 +104,7 @@ export default async function AdminCollectionsPage() {
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`/admin/collections/${c.id}/edit`}
-                        aria-label="Edit"
+                        aria-label={isAr ? "تعديل" : "Edit"}
                         className="rounded-full p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]"
                       >
                         <Edit2 className="h-4 w-4" />
@@ -97,7 +112,7 @@ export default async function AdminCollectionsPage() {
                       <form action={del}>
                         <button
                           type="submit"
-                          aria-label="Delete"
+                          aria-label={isAr ? "حذف" : "Delete"}
                           className="rounded-full p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-error)]"
                         >
                           <Trash2 className="h-4 w-4" />

@@ -7,7 +7,6 @@ import {
   Globe,
   ShoppingCart,
   Smartphone,
-  Star,
   Wallet,
 } from "lucide-react";
 import {
@@ -19,23 +18,16 @@ import {
   getTodayStats,
 } from "@/lib/queries/admin-dashboard";
 import { RevenueChart } from "@/components/admin/dashboard/RevenueChart";
+import { getAdminLocale, type AdminLocale } from "@/lib/admin/locale";
+import { orderStatusLabel, paymentMethodLabel } from "@/lib/admin/labels";
 import { cn, formatPriceEGP } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Admin overview dashboard.
- *
- * Layout, top → bottom:
- *  1. Five today-cards: total / online / POS / pending orders / pending reviews.
- *  2. Stacked monthly revenue chart (online + POS bars per day).
- *  3. Two columns of recent activity (online + POS).
- *  4. Two alert cards (low stock + overdue purchase orders).
- *
- * All data fetched in a single `Promise.all`. Each helper returns
- * narrow shapes — no `select(*)` here, so the round-trip stays cheap.
- */
 export default async function AdminDashboard() {
+  const locale = await getAdminLocale();
+  const isAr = locale === "ar";
+
   const [
     today,
     monthly,
@@ -56,10 +48,10 @@ export default async function AdminDashboard() {
     <div className="space-y-8">
       <header>
         <h1 className="font-display text-3xl text-[var(--color-text)]">
-          Dashboard
+          {isAr ? "لوحة التحكم" : "Dashboard"}
         </h1>
         <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          {new Date().toLocaleDateString("en-US", {
+          {new Date().toLocaleDateString(isAr ? "ar-EG" : "en-US", {
             weekday: "long",
             year: "numeric",
             month: "long",
@@ -70,38 +62,46 @@ export default async function AdminDashboard() {
 
       {/* ── Row 1: Today's stats ──────────────────────────────────── */}
       <section
-        aria-label="Today"
+        aria-label={isAr ? "اليوم" : "Today"}
         className="grid grid-cols-2 gap-3 md:grid-cols-5"
       >
         <StatCard
-          label="إيراد اليوم"
-          sub="Total revenue today"
+          label={isAr ? "إيراد اليوم" : "Today's revenue"}
+          sub={isAr ? "إجمالي إيراد اليوم" : "Total revenue today"}
           value={formatPriceEGP(today.totalRevenue)}
           tone="primary"
           emoji="💰"
         />
         <StatCard
-          label="مبيعات أونلاين"
-          sub={`${today.online.count} orders`}
+          label={isAr ? "مبيعات أونلاين" : "Online sales"}
+          sub={
+            isAr
+              ? `${today.online.count} طلب`
+              : `${today.online.count} orders`
+          }
           value={formatPriceEGP(today.online.revenue)}
           emoji="🛒"
         />
         <StatCard
-          label="مبيعات المحل"
-          sub={`${today.pos.count} sales`}
+          label={isAr ? "مبيعات المحل" : "Store sales"}
+          sub={
+            isAr
+              ? `${today.pos.count} بيعة`
+              : `${today.pos.count} sales`
+          }
           value={formatPriceEGP(today.pos.revenue)}
           emoji="🏪"
         />
         <StatCard
-          label="طلبات معلقة"
-          sub="Awaiting fulfillment"
+          label={isAr ? "طلبات معلقة" : "Pending orders"}
+          sub={isAr ? "بانتظار التجهيز" : "Awaiting fulfillment"}
           value={String(today.pendingOrders)}
           tone={today.pendingOrders > 0 ? "warn" : "muted"}
           emoji="📦"
         />
         <StatCard
-          label="تقييمات منتظرة"
-          sub="Awaiting approval"
+          label={isAr ? "تقييمات منتظرة" : "Pending reviews"}
+          sub={isAr ? "بانتظار الموافقة" : "Awaiting approval"}
           value={String(today.pendingReviews)}
           tone={today.pendingReviews > 0 ? "warn" : "muted"}
           emoji="⭐"
@@ -111,20 +111,22 @@ export default async function AdminDashboard() {
 
       {/* ── Row 2: Monthly chart ──────────────────────────────────── */}
       <section
-        aria-label="This month"
+        aria-label={isAr ? "هذا الشهر" : "This month"}
         className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5"
       >
         <header className="mb-4 flex items-baseline justify-between">
           <div>
             <h2 className="font-display text-lg text-[var(--color-text)]">
-              Revenue this month
+              {isAr ? "الإيراد هذا الشهر" : "Revenue this month"}
             </h2>
             <p className="text-xs text-[var(--color-text-secondary)]">
-              Stacked daily revenue — online + POS
+              {isAr
+                ? "الإيراد اليومي — أونلاين + محل"
+                : "Stacked daily revenue — online + POS"}
             </p>
           </div>
         </header>
-        <RevenueChart data={monthly} />
+        <RevenueChart data={monthly} locale={locale} />
       </section>
 
       {/* ── Row 3: Recent activity (two columns) ──────────────────── */}
@@ -134,17 +136,17 @@ export default async function AdminDashboard() {
           <header className="mb-3 flex items-center gap-2">
             <Globe className="h-4 w-4 text-[var(--color-text-secondary)]" />
             <h2 className="font-display text-base text-[var(--color-text)]">
-              Recent online orders
+              {isAr ? "آخر الطلبات أونلاين" : "Recent online orders"}
             </h2>
             <Link
               href="/admin/orders"
-              className="ml-auto text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
+              className="ms-auto text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
             >
-              View all →
+              {isAr ? "عرض الكل ←" : "View all →"}
             </Link>
           </header>
           {recentOrders.length === 0 ? (
-            <EmptyRow text="No online orders yet." />
+            <EmptyRow text={isAr ? "لا توجد طلبات أونلاين بعد." : "No online orders yet."} />
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">
               {recentOrders.map((o) => {
@@ -158,9 +160,9 @@ export default async function AdminDashboard() {
                       {o.order_number}
                     </span>
                     <span className="flex-1 truncate text-[var(--color-text)]">
-                      {address?.name ?? "(guest)"}
+                      {address?.name ?? (isAr ? "(زائر)" : "(guest)")}
                     </span>
-                    <OrderStatusBadge status={o.status ?? "pending"} />
+                    <OrderStatusBadge status={o.status ?? "pending"} locale={locale} />
                     <span className="font-mono text-xs font-semibold text-[var(--color-primary)]">
                       {formatPriceEGP(o.total)}
                     </span>
@@ -176,17 +178,17 @@ export default async function AdminDashboard() {
           <header className="mb-3 flex items-center gap-2">
             <ShoppingCart className="h-4 w-4 text-[var(--color-text-secondary)]" />
             <h2 className="font-display text-base text-[var(--color-text)]">
-              Recent POS sales
+              {isAr ? "آخر مبيعات المحل" : "Recent POS sales"}
             </h2>
             <Link
               href="/admin/pos"
-              className="ml-auto text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
+              className="ms-auto text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
             >
-              Open POS →
+              {isAr ? "افتح المحل ←" : "Open POS →"}
             </Link>
           </header>
           {recentPos.length === 0 ? (
-            <EmptyRow text="No POS sales yet." />
+            <EmptyRow text={isAr ? "لا توجد مبيعات محل بعد." : "No POS sales yet."} />
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">
               {recentPos.map((s) => (
@@ -198,10 +200,10 @@ export default async function AdminDashboard() {
                     {s.sale_number}
                   </span>
                   <span className="flex-1">
-                    <PaymentMethodChip method={s.payment_method} />
+                    <PaymentMethodChip method={s.payment_method} locale={locale} />
                   </span>
                   <span className="text-[11px] text-[var(--color-text-secondary)]">
-                    {formatClockTime(s.created_at)}
+                    {formatClockTime(s.created_at, locale)}
                   </span>
                   <span className="font-mono text-xs font-semibold text-[var(--color-primary)]">
                     {formatPriceEGP(s.total)}
@@ -220,17 +222,23 @@ export default async function AdminDashboard() {
           <header className="mb-3 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-[var(--color-warning)]" />
             <h2 className="font-display text-base text-[var(--color-text)]">
-              Low stock alerts
+              {isAr ? "تنبيهات المخزون المنخفض" : "Low stock alerts"}
             </h2>
             <Link
               href="/admin/stock"
-              className="ml-auto text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
+              className="ms-auto text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
             >
-              Manage →
+              {isAr ? "إدارة ←" : "Manage →"}
             </Link>
           </header>
           {lowStock.length === 0 ? (
-            <EmptyRow text="All variants above the low-stock threshold." />
+            <EmptyRow
+              text={
+                isAr
+                  ? "كل الفاريانتس فوق حد المخزون المنخفض."
+                  : "All variants above the low-stock threshold."
+              }
+            />
           ) : (
             <ul className="space-y-2">
               {lowStock.map((v) => (
@@ -277,17 +285,23 @@ export default async function AdminDashboard() {
           <header className="mb-3 flex items-center gap-2">
             <Clock className="h-4 w-4 text-[var(--color-text-secondary)]" />
             <h2 className="font-display text-base text-[var(--color-text)]">
-              Overdue purchase orders
+              {isAr ? "أوامر شراء متأخرة" : "Overdue purchase orders"}
             </h2>
             <Link
               href="/admin/purchase-orders"
-              className="ml-auto text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
+              className="ms-auto text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
             >
-              View all →
+              {isAr ? "عرض الكل ←" : "View all →"}
             </Link>
           </header>
           {overdue.length === 0 ? (
-            <EmptyRow text="No outstanding supplier balances older than 30 days." />
+            <EmptyRow
+              text={
+                isAr
+                  ? "لا توجد أرصدة موردين متأخرة أكتر من 30 يوم."
+                  : "No outstanding supplier balances older than 30 days."
+              }
+            />
           ) : (
             <ul className="space-y-2">
               {overdue.map((po) => (
@@ -296,10 +310,10 @@ export default async function AdminDashboard() {
                   className="flex items-center gap-3 rounded-md bg-[var(--color-surface)] px-3 py-2 text-sm"
                 >
                   <span className="flex-1 truncate text-[var(--color-text)]">
-                    {po.supplier_name ?? "(unknown supplier)"}
+                    {po.supplier_name ?? (isAr ? "(مورد غير معروف)" : "(unknown supplier)")}
                   </span>
                   <span className="text-[11px] text-[var(--color-text-secondary)]">
-                    {formatRelativeDays(po.created_at)}
+                    {formatRelativeDays(po.created_at, isAr)}
                   </span>
                   <span className="font-mono text-xs font-semibold text-[var(--color-error)]">
                     {formatPriceEGP(po.amount_owed)}
@@ -314,7 +328,7 @@ export default async function AdminDashboard() {
   );
 }
 
-// ─── Building blocks (kept inline so the page reads top-to-bottom) ───
+// ─── Building blocks ─────────────────────────────────────────────────
 
 function StatCard({
   label,
@@ -331,8 +345,6 @@ function StatCard({
   emoji: string;
   href?: string;
 }) {
-  // Tone variants drive the value color so urgent counts (pending orders,
-  // pending reviews) jump off the row. Muted = "zero, no action needed".
   const valueColor =
     tone === "warn"
       ? "text-[var(--color-warning)]"
@@ -364,9 +376,13 @@ function StatCard({
   );
 }
 
-function OrderStatusBadge({ status }: { status: string }) {
-  // Match the order-status palette used on the storefront's tracking page
-  // so the admin doesn't have to context-switch between two color systems.
+function OrderStatusBadge({
+  status,
+  locale,
+}: {
+  status: string;
+  locale: AdminLocale;
+}) {
   const style: Record<string, string> = {
     pending: "bg-[var(--color-warning)]/15 text-[var(--color-warning)]",
     confirmed: "bg-[var(--color-accent)]/15 text-[var(--color-accent-dark)]",
@@ -384,29 +400,30 @@ function OrderStatusBadge({ status }: { status: string }) {
         style[status] ?? "bg-[var(--color-surface)] text-[var(--color-text-secondary)]",
       )}
     >
-      {status.replace(/_/g, " ")}
+      {orderStatusLabel(status, locale)}
     </span>
   );
 }
 
-function PaymentMethodChip({ method }: { method: string }) {
-  // Icon + label per method. Kept small so the row reads as a single
-  // glanceable line.
-  const meta: Record<
-    string,
-    { Icon: typeof Banknote; label: string }
-  > = {
-    cash: { Icon: Banknote, label: "Cash" },
-    "e-wallet": { Icon: Wallet, label: "E-wallet" },
-    instapay: { Icon: Smartphone, label: "Instapay" },
-    card: { Icon: CreditCard, label: "Card" },
+function PaymentMethodChip({
+  method,
+  locale,
+}: {
+  method: string;
+  locale: AdminLocale;
+}) {
+  const iconMap: Record<string, typeof Banknote> = {
+    cash: Banknote,
+    "e-wallet": Wallet,
+    instapay: Smartphone,
+    card: CreditCard,
+    cod: Banknote,
   };
-  const m = meta[method] ?? { Icon: CreditCard, label: method };
-  const Icon = m.Icon;
+  const Icon = iconMap[method] ?? CreditCard;
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-[var(--color-text)]">
       <Icon className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" />
-      {m.label}
+      {paymentMethodLabel(method, locale)}
     </span>
   );
 }
@@ -419,14 +436,14 @@ function EmptyRow({ text }: { text: string }) {
   );
 }
 
-function formatClockTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", {
+function formatClockTime(iso: string, locale: AdminLocale): string {
+  return new Date(iso).toLocaleTimeString(locale === "ar" ? "ar-EG" : "en-US", {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-function formatRelativeDays(iso: string): string {
+function formatRelativeDays(iso: string, isAr: boolean): string {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400_000);
-  return `${days}d overdue`;
+  return isAr ? `متأخر ${days} يوم` : `${days}d overdue`;
 }

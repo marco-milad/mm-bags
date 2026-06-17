@@ -3,6 +3,7 @@
 import { Check, Loader2, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { approveReview, rejectReview } from "./actions";
+import type { AdminLocale } from "@/lib/admin/locale";
 
 /**
  * Per-row Approve / Reject pair for the admin reviews queue.
@@ -16,13 +17,16 @@ import { approveReview, rejectReview } from "./actions";
 export function ReviewActions({
   reviewId,
   productSlug,
+  locale,
 }: {
   reviewId: string;
   productSlug: string | null;
+  locale: AdminLocale;
 }) {
   const [hidden, setHidden] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const isAr = locale === "ar";
 
   if (hidden) return null;
 
@@ -31,7 +35,7 @@ export function ReviewActions({
     startTransition(async () => {
       const res = await fn();
       if (!res.ok) {
-        setError(res.error ?? "Failed");
+        setError(res.error ?? (isAr ? "فشل" : "Failed"));
         return;
       }
       setHidden(true);
@@ -51,7 +55,7 @@ export function ReviewActions({
         ) : (
           <Check className="h-3.5 w-3.5" />
         )}
-        Approve
+        {isAr ? "موافقة" : "Approve"}
       </button>
       <button
         type="button"
@@ -60,7 +64,7 @@ export function ReviewActions({
         className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] px-4 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-error)] hover:text-[var(--color-error)] disabled:opacity-60"
       >
         <X className="h-3.5 w-3.5" />
-        Reject
+        {isAr ? "رفض" : "Reject"}
       </button>
       {error && (
         <span className="text-xs text-[var(--color-error)]">{error}</span>

@@ -8,18 +8,19 @@ import {
   getSupplierLedger,
 } from "@/lib/queries/admin-reports";
 import { RevenueChart } from "@/components/admin/dashboard/RevenueChart";
+import { getAdminLocale, type AdminLocale } from "@/lib/admin/locale";
 import { cn, formatPriceEGP } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 type Tab = "daily" | "monthly" | "best-sellers" | "stock" | "suppliers";
 
-const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
-  { id: "daily", label: "Daily revenue" },
-  { id: "monthly", label: "Monthly revenue" },
-  { id: "best-sellers", label: "Best sellers" },
-  { id: "stock", label: "Stock value" },
-  { id: "suppliers", label: "Supplier ledger" },
+const TABS: ReadonlyArray<{ id: Tab; label_en: string; label_ar: string }> = [
+  { id: "daily", label_en: "Daily revenue", label_ar: "إيراد يومي" },
+  { id: "monthly", label_en: "Monthly revenue", label_ar: "إيراد شهري" },
+  { id: "best-sellers", label_en: "Best sellers", label_ar: "الأكثر مبيعاً" },
+  { id: "stock", label_en: "Stock value", label_ar: "قيمة المخزون" },
+  { id: "suppliers", label_en: "Supplier ledger", label_ar: "سجل الموردين" },
 ];
 
 /**
@@ -33,6 +34,8 @@ const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
 export default async function ReportsPage({
   searchParams,
 }: PageProps<"/admin/reports">) {
+  const locale = await getAdminLocale();
+  const isAr = locale === "ar";
   const sp = await searchParams;
   const tabParam = typeof sp?.tab === "string" ? sp.tab : "daily";
   const tab: Tab = (TABS.find((t) => t.id === tabParam)?.id ?? "daily") as Tab;
@@ -41,11 +44,12 @@ export default async function ReportsPage({
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-3xl text-[var(--color-text)]">
-          Reports · التقارير
+          {isAr ? "التقارير" : "Reports"}
         </h1>
         <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          Daily / monthly revenue, best-sellers, stock value, supplier ledger.
-          Every report exports as CSV.
+          {isAr
+            ? "إيراد يومي / شهري، الأكثر مبيعاً، قيمة المخزون، سجل الموردين. كل تقرير بيتصدّر CSV."
+            : "Daily / monthly revenue, best-sellers, stock value, supplier ledger. Every report exports as CSV."}
         </p>
       </header>
 
@@ -61,16 +65,22 @@ export default async function ReportsPage({
                 : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]",
             )}
           >
-            {t.label}
+            {isAr ? t.label_ar : t.label_en}
           </Link>
         ))}
       </nav>
 
       {tab === "daily" && (
-        <DailyTab date={typeof sp?.date === "string" ? sp.date : undefined} />
+        <DailyTab
+          date={typeof sp?.date === "string" ? sp.date : undefined}
+          locale={locale}
+        />
       )}
       {tab === "monthly" && (
-        <MonthlyTab month={typeof sp?.month === "string" ? sp.month : undefined} />
+        <MonthlyTab
+          month={typeof sp?.month === "string" ? sp.month : undefined}
+          locale={locale}
+        />
       )}
       {tab === "best-sellers" && (
         <BestSellersTab
@@ -81,16 +91,24 @@ export default async function ReportsPage({
               ? (sp.source as "online" | "pos")
               : "both"
           }
+          locale={locale}
         />
       )}
-      {tab === "stock" && <StockTab />}
-      {tab === "suppliers" && <SuppliersTab />}
+      {tab === "stock" && <StockTab locale={locale} />}
+      {tab === "suppliers" && <SuppliersTab locale={locale} />}
     </div>
   );
 }
 
 // ─── Tab 1: Daily ────────────────────────────────────────────────────
-async function DailyTab({ date }: { date?: string }) {
+async function DailyTab({
+  date,
+  locale,
+}: {
+  date?: string;
+  locale: AdminLocale;
+}) {
+  const isAr = locale === "ar";
   const iso = date ?? new Date().toISOString().slice(0, 10);
   const r = await getDailyReport(iso);
   return (
@@ -99,7 +117,7 @@ async function DailyTab({ date }: { date?: string }) {
         <input type="hidden" name="tab" value="daily" />
         <label className="text-sm">
           <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Date
+            {isAr ? "التاريخ" : "Date"}
           </span>
           <input
             type="date"
@@ -112,25 +130,40 @@ async function DailyTab({ date }: { date?: string }) {
           type="submit"
           className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white"
         >
-          Apply
+          {isAr ? "تطبيق" : "Apply"}
         </button>
-        <ExportLink href={`/admin/reports/export?report=daily&date=${iso}`} />
+        <ExportLink
+          href={`/admin/reports/export?report=daily&date=${iso}`}
+          locale={locale}
+        />
       </form>
 
       <div className="grid gap-3 md:grid-cols-4">
-        <Stat label="Total revenue" value={formatPriceEGP(r.total)} tone="primary" />
         <Stat
-          label="Online"
+          label={isAr ? "إجمالي الإيراد" : "Total revenue"}
+          value={formatPriceEGP(r.total)}
+          tone="primary"
+        />
+        <Stat
+          label={isAr ? "أونلاين" : "Online"}
           value={formatPriceEGP(r.online.revenue)}
-          sub={`${r.online.count} orders · ${r.online.items} items`}
+          sub={
+            isAr
+              ? `${r.online.count} طلب · ${r.online.items} قطعة`
+              : `${r.online.count} orders · ${r.online.items} items`
+          }
         />
         <Stat
-          label="POS"
+          label={isAr ? "المحل" : "POS"}
           value={formatPriceEGP(r.pos.revenue)}
-          sub={`${r.pos.count} sales · ${r.pos.items} items`}
+          sub={
+            isAr
+              ? `${r.pos.count} بيعة · ${r.pos.items} قطعة`
+              : `${r.pos.count} sales · ${r.pos.items} items`
+          }
         />
         <Stat
-          label="Avg order value"
+          label={isAr ? "متوسط الطلب" : "Avg order value"}
           value={formatPriceEGP(r.averageOrderValue)}
         />
       </div>
@@ -139,7 +172,14 @@ async function DailyTab({ date }: { date?: string }) {
 }
 
 // ─── Tab 2: Monthly ──────────────────────────────────────────────────
-async function MonthlyTab({ month }: { month?: string }) {
+async function MonthlyTab({
+  month,
+  locale,
+}: {
+  month?: string;
+  locale: AdminLocale;
+}) {
+  const isAr = locale === "ar";
   const yyyymm = month ?? new Date().toISOString().slice(0, 7);
   const r = await getMonthlyReport(yyyymm);
   return (
@@ -148,7 +188,7 @@ async function MonthlyTab({ month }: { month?: string }) {
         <input type="hidden" name="tab" value="monthly" />
         <label className="text-sm">
           <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Month
+            {isAr ? "الشهر" : "Month"}
           </span>
           <input
             type="month"
@@ -161,22 +201,27 @@ async function MonthlyTab({ month }: { month?: string }) {
           type="submit"
           className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white"
         >
-          Apply
+          {isAr ? "تطبيق" : "Apply"}
         </button>
         <ExportLink
           href={`/admin/reports/export?report=monthly&month=${yyyymm}`}
+          locale={locale}
         />
       </form>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Stat label="This month" value={formatPriceEGP(r.total)} tone="primary" />
         <Stat
-          label="Previous month"
+          label={isAr ? "الشهر ده" : "This month"}
+          value={formatPriceEGP(r.total)}
+          tone="primary"
+        />
+        <Stat
+          label={isAr ? "الشهر اللي فات" : "Previous month"}
           value={formatPriceEGP(r.previousTotal)}
           tone="muted"
         />
         <Stat
-          label="vs Previous"
+          label={isAr ? "مقارنة بالسابق" : "vs Previous"}
           value={
             r.deltaPct === null
               ? "—"
@@ -194,9 +239,9 @@ async function MonthlyTab({ month }: { month?: string }) {
 
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
         <p className="mb-3 text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-          Daily breakdown
+          {isAr ? "التفصيل اليومي" : "Daily breakdown"}
         </p>
-        <RevenueChart data={r.daily} />
+        <RevenueChart data={r.daily} locale={locale} />
       </div>
     </section>
   );
@@ -207,11 +252,14 @@ async function BestSellersTab({
   from,
   to,
   source,
+  locale,
 }: {
   from?: string;
   to?: string;
   source: "online" | "pos" | "both";
+  locale: AdminLocale;
 }) {
+  const isAr = locale === "ar";
   const today = new Date().toISOString().slice(0, 10);
   const defaultFrom = new Date(Date.now() - 30 * 86400_000)
     .toISOString()
@@ -230,7 +278,7 @@ async function BestSellersTab({
         <input type="hidden" name="tab" value="best-sellers" />
         <label className="text-sm">
           <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-            From
+            {isAr ? "من" : "From"}
           </span>
           <input
             type="date"
@@ -241,7 +289,7 @@ async function BestSellersTab({
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-            To
+            {isAr ? "إلى" : "To"}
           </span>
           <input
             type="date"
@@ -252,26 +300,27 @@ async function BestSellersTab({
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Source
+            {isAr ? "المصدر" : "Source"}
           </span>
           <select
             name="source"
             defaultValue={source}
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
           >
-            <option value="both">Both</option>
-            <option value="online">Online only</option>
-            <option value="pos">POS only</option>
+            <option value="both">{isAr ? "الاتنين" : "Both"}</option>
+            <option value="online">{isAr ? "أونلاين فقط" : "Online only"}</option>
+            <option value="pos">{isAr ? "المحل فقط" : "POS only"}</option>
           </select>
         </label>
         <button
           type="submit"
           className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white"
         >
-          Apply
+          {isAr ? "تطبيق" : "Apply"}
         </button>
         <ExportLink
           href={`/admin/reports/export?report=best-sellers&from=${fromISO}&to=${toISO}&source=${source}`}
+          locale={locale}
         />
       </form>
 
@@ -280,9 +329,9 @@ async function BestSellersTab({
           <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
             <tr>
               <Th>#</Th>
-              <Th>Product</Th>
-              <Th className="text-end">Units</Th>
-              <Th className="text-end">Revenue</Th>
+              <Th>{isAr ? "المنتج" : "Product"}</Th>
+              <Th className="text-end">{isAr ? "القطع" : "Units"}</Th>
+              <Th className="text-end">{isAr ? "الإيراد" : "Revenue"}</Th>
             </tr>
           </thead>
           <tbody>
@@ -315,7 +364,7 @@ async function BestSellersTab({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
-                  No sales in this window.
+                  {isAr ? "لا يوجد مبيعات في الفترة دي." : "No sales in this window."}
                 </td>
               </tr>
             )}
@@ -327,29 +376,30 @@ async function BestSellersTab({
 }
 
 // ─── Tab 4: Stock value ──────────────────────────────────────────────
-async function StockTab() {
+async function StockTab({ locale }: { locale: AdminLocale }) {
+  const isAr = locale === "ar";
   const rows = await getStockValueReport();
   const totalValue = rows.reduce((s, r) => s + r.stockValue, 0);
   return (
     <section className="space-y-4">
       <div className="flex items-end justify-between gap-2">
         <Stat
-          label="Total inventory value"
+          label={isAr ? "إجمالي قيمة المخزون" : "Total inventory value"}
           value={formatPriceEGP(totalValue)}
           tone="primary"
         />
-        <ExportLink href="/admin/reports/export?report=stock" />
+        <ExportLink href="/admin/reports/export?report=stock" locale={locale} />
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
             <tr>
-              <Th>Product</Th>
-              <Th className="text-end">Units</Th>
-              <Th className="text-end">Avg cost</Th>
-              <Th className="text-end">Stock value</Th>
-              <Th className="text-end">Sold last 30d</Th>
+              <Th>{isAr ? "المنتج" : "Product"}</Th>
+              <Th className="text-end">{isAr ? "القطع" : "Units"}</Th>
+              <Th className="text-end">{isAr ? "متوسط التكلفة" : "Avg cost"}</Th>
+              <Th className="text-end">{isAr ? "قيمة المخزون" : "Stock value"}</Th>
+              <Th className="text-end">{isAr ? "اتباع آخر 30 يوم" : "Sold last 30d"}</Th>
             </tr>
           </thead>
           <tbody>
@@ -378,29 +428,33 @@ async function StockTab() {
 }
 
 // ─── Tab 5: Supplier ledger ──────────────────────────────────────────
-async function SuppliersTab() {
+async function SuppliersTab({ locale }: { locale: AdminLocale }) {
+  const isAr = locale === "ar";
   const rows = await getSupplierLedger();
   const owedTotal = rows.reduce((s, r) => s + r.totalOwed, 0);
   return (
     <section className="space-y-4">
       <div className="flex items-end justify-between gap-2">
         <Stat
-          label="Total owed to suppliers"
+          label={isAr ? "إجمالي المستحق للموردين" : "Total owed to suppliers"}
           value={formatPriceEGP(owedTotal)}
           tone={owedTotal > 0 ? "error" : "muted"}
         />
-        <ExportLink href="/admin/reports/export?report=suppliers" />
+        <ExportLink
+          href="/admin/reports/export?report=suppliers"
+          locale={locale}
+        />
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
             <tr>
-              <Th>Supplier</Th>
-              <Th className="text-end">POs</Th>
-              <Th className="text-end">Purchased</Th>
-              <Th className="text-end">Paid</Th>
-              <Th className="text-end">Owed</Th>
+              <Th>{isAr ? "المورد" : "Supplier"}</Th>
+              <Th className="text-end">{isAr ? "أوامر الشراء" : "POs"}</Th>
+              <Th className="text-end">{isAr ? "المشتريات" : "Purchased"}</Th>
+              <Th className="text-end">{isAr ? "المدفوع" : "Paid"}</Th>
+              <Th className="text-end">{isAr ? "المستحق" : "Owed"}</Th>
             </tr>
           </thead>
           <tbody>
@@ -475,14 +529,15 @@ function Stat({
   );
 }
 
-function ExportLink({ href }: { href: string }) {
+function ExportLink({ href, locale }: { href: string; locale: AdminLocale }) {
+  const isAr = locale === "ar";
   return (
     <a
       href={href}
       className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
     >
       <Download className="h-3.5 w-3.5" />
-      Export CSV
+      {isAr ? "تصدير CSV" : "Export CSV"}
     </a>
   );
 }

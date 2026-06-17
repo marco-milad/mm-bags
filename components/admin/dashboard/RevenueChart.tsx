@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { DailyRevenuePoint } from "@/lib/queries/admin-dashboard";
+import type { AdminLocale } from "@/lib/admin/locale";
 
 /**
  * Stacked monthly revenue chart. Online and POS share each day's bar so
@@ -24,7 +25,19 @@ import type { DailyRevenuePoint } from "@/lib/queries/admin-dashboard";
  * the chart sits at 280px so the screen still fits in a 13" laptop
  * viewport above the fold.
  */
-export function RevenueChart({ data }: { data: DailyRevenuePoint[] }) {
+export function RevenueChart({
+  data,
+  locale,
+}: {
+  data: DailyRevenuePoint[];
+  locale: AdminLocale;
+}) {
+  const isAr = locale === "ar";
+  const onlineLabel = isAr ? "أونلاين" : "Online";
+  const posLabel = isAr ? "المحل" : "POS";
+  const egpLabel = isAr ? "جنيه" : "EGP";
+  const numberLocale = isAr ? "ar-EG" : "en-US";
+
   return (
     <div className="h-[280px] w-full">
       <ResponsiveContainer>
@@ -65,14 +78,14 @@ export function RevenueChart({ data }: { data: DailyRevenuePoint[] }) {
             // — our data is always number, but the type system doesn't
             // know that.
             formatter={(value, name) => [
-              `${Math.round(Number(value ?? 0)).toLocaleString("en-US")} EGP`,
-              name === "online" ? "Online" : "POS",
+              `${Math.round(Number(value ?? 0)).toLocaleString(numberLocale)} ${egpLabel}`,
+              name === "online" ? onlineLabel : posLabel,
             ]}
           />
           <Legend
             wrapperStyle={{ fontSize: 12 }}
             formatter={(value: string) =>
-              value === "online" ? "Online" : "POS"
+              value === "online" ? onlineLabel : posLabel
             }
           />
           <Bar

@@ -10,21 +10,36 @@ import {
 } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { reorderProductImages } from "@/lib/admin/product-actions";
+import type { AdminLocale } from "@/lib/admin/locale";
 
 const MAX_IMAGES = 10;
 
 /** Map server-side error codes to admin-friendly messages. */
-const UPLOAD_ERROR_MSG: Record<string, string> = {
-  file_too_large: "File over 5 MB",
-  file_type: "Only JPG, PNG, or WebP",
-  file_missing: "No file received",
-  file_empty: "File was empty",
-  forbidden: "You don't have permission to upload",
-  unauthorized: "Sign in to upload",
-  csrf: "Refresh the page and retry",
-  invalid_body: "Bad request — refresh and retry",
-  upload_failed: "Storage error — please retry",
-  server_error: "Server error — please retry",
+const UPLOAD_ERROR_MSG: Record<"ar" | "en", Record<string, string>> = {
+  ar: {
+    file_too_large: "الملف أكبر من 5 ميجا",
+    file_type: "JPG أو PNG أو WebP فقط",
+    file_missing: "مفيش ملف اتبعت",
+    file_empty: "الملف فاضي",
+    forbidden: "مفيش صلاحية للرفع",
+    unauthorized: "سجّل دخول قبل الرفع",
+    csrf: "حدّث الصفحة وحاول تاني",
+    invalid_body: "طلب غير سليم — حدّث الصفحة وحاول",
+    upload_failed: "خطأ في التخزين — حاول تاني",
+    server_error: "خطأ في السيرفر — حاول تاني",
+  },
+  en: {
+    file_too_large: "File over 5 MB",
+    file_type: "Only JPG, PNG, or WebP",
+    file_missing: "No file received",
+    file_empty: "File was empty",
+    forbidden: "You don't have permission to upload",
+    unauthorized: "Sign in to upload",
+    csrf: "Refresh the page and retry",
+    invalid_body: "Bad request — refresh and retry",
+    upload_failed: "Storage error — please retry",
+    server_error: "Server error — please retry",
+  },
 };
 
 /**
@@ -48,11 +63,15 @@ export function ImageManager({
   productId,
   initial,
   hiddenName = "images_json",
+  locale,
 }: {
   productId?: string;
   initial: string[];
   hiddenName?: string;
+  locale: AdminLocale;
 }) {
+  const isAr = locale === "ar";
+  const errorTable = UPLOAD_ERROR_MSG[isAr ? "ar" : "en"];
   const [images, setImages] = useState<string[]>(initial);
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -99,7 +118,9 @@ export function ImageManager({
             body: fd,
           });
         } catch {
-          failures.push(`${file.name}: network error`);
+          failures.push(
+            `${file.name}: ${isAr ? "خطأ في الشبكة" : "network error"}`,
+          );
           continue;
         }
         const json = (await res.json().catch(() => ({}))) as {
@@ -108,7 +129,7 @@ export function ImageManager({
         };
         if (!res.ok || !json.url) {
           const code = json.error ?? `${res.status}`;
-          failures.push(`${file.name}: ${UPLOAD_ERROR_MSG[code] ?? code}`);
+          failures.push(`${file.name}: ${errorTable[code] ?? code}`);
           continue;
         }
         collected.push(json.url);
@@ -119,7 +140,11 @@ export function ImageManager({
       const reports: string[] = [];
       if (failures.length > 0) reports.push(...failures);
       if (skipped > 0) {
-        reports.push(`Skipped ${skipped} file(s) — ${MAX_IMAGES}-image limit`);
+        reports.push(
+          isAr
+            ? `تم تخطي ${skipped} ملف — الحد الأقصى ${MAX_IMAGES} صور`
+            : `Skipped ${skipped} file(s) — ${MAX_IMAGES}-image limit`,
+        );
       }
       setErrors(reports);
     } finally {
@@ -145,7 +170,7 @@ export function ImageManager({
 
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-          Images ({images.length}/{MAX_IMAGES})
+          {isAr ? "الصور" : "Images"} ({images.length}/{MAX_IMAGES})
         </p>
         {persistPending && (
           <span
@@ -153,14 +178,16 @@ export function ImageManager({
             aria-live="polite"
             className="text-[11px] text-[var(--color-text-secondary)]"
           >
-            saving order…
+            {isAr ? "جاري حفظ الترتيب…" : "saving order…"}
           </span>
         )}
       </div>
 
       {images.length === 0 && !uploading && (
         <p className="rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-6 text-center text-xs text-[var(--color-text-secondary)]">
-          No images yet. Upload the first one — it becomes the primary.
+          {isAr
+            ? "مفيش صور لسه. ارفع أول صورة — هتبقى هي الأساسية."
+            : "No images yet. Upload the first one — it becomes the primary."}
         </p>
       )}
 
@@ -173,14 +200,18 @@ export function ImageManager({
             <div className="relative aspect-square w-full">
               <Image
                 src={url}
-                alt={`Product image ${idx + 1}${idx === 0 ? " (primary)" : ""}`}
+                alt={
+                  isAr
+                    ? `صورة المنتج ${idx + 1}${idx === 0 ? " (أساسية)" : ""}`
+                    : `Product image ${idx + 1}${idx === 0 ? " (primary)" : ""}`
+                }
                 fill
                 sizes="200px"
                 className="object-cover"
               />
               {idx === 0 && (
-                <span className="absolute left-1 top-1 rounded bg-[var(--color-primary)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-white">
-                  Primary
+                <span className="absolute start-1 top-1 rounded bg-[var(--color-primary)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-white">
+                  {isAr ? "أساسية" : "Primary"}
                 </span>
               )}
             </div>
@@ -188,7 +219,11 @@ export function ImageManager({
               <button
                 type="button"
                 onClick={() => move(idx, -1)}
-                aria-label={`Move image ${idx + 1} up`}
+                aria-label={
+                  isAr
+                    ? `حرّك الصورة ${idx + 1} لفوق`
+                    : `Move image ${idx + 1} up`
+                }
                 // eslint-disable-next-line jsx-a11y/aria-proptypes -- stringified
                 // ternary produces only valid "true"|"false" literals at runtime.
                 aria-disabled={idx === 0 ? "true" : "false"}
@@ -200,7 +235,11 @@ export function ImageManager({
               <button
                 type="button"
                 onClick={() => move(idx, +1)}
-                aria-label={`Move image ${idx + 1} down`}
+                aria-label={
+                  isAr
+                    ? `حرّك الصورة ${idx + 1} لتحت`
+                    : `Move image ${idx + 1} down`
+                }
                 // eslint-disable-next-line jsx-a11y/aria-proptypes
                 aria-disabled={idx === images.length - 1 ? "true" : "false"}
                 disabled={idx === images.length - 1}
@@ -211,7 +250,9 @@ export function ImageManager({
               <button
                 type="button"
                 onClick={() => remove(idx)}
-                aria-label={`Delete image ${idx + 1}`}
+                aria-label={
+                  isAr ? `احذف الصورة ${idx + 1}` : `Delete image ${idx + 1}`
+                }
                 className="grid h-6 w-6 place-items-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-error)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-error)]"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -226,7 +267,7 @@ export function ImageManager({
           type="button"
           disabled={uploading || images.length >= MAX_IMAGES}
           onClick={() => fileInputRef.current?.click()}
-          aria-label="Upload product images"
+          aria-label={isAr ? "ارفع صور المنتج" : "Upload product images"}
           className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {uploading ? (
@@ -234,14 +275,20 @@ export function ImageManager({
           ) : (
             <ImagePlus className="h-3.5 w-3.5" />
           )}
-          {uploading ? "Uploading..." : "Upload images"}
+          {uploading
+            ? isAr
+              ? "جاري الرفع..."
+              : "Uploading..."
+            : isAr
+              ? "رفع صور"
+              : "Upload images"}
         </button>
         <input
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
           multiple
-          title="Upload product images"
+          title={isAr ? "ارفع صور المنتج" : "Upload product images"}
           onChange={handlePick}
           className="hidden"
         />

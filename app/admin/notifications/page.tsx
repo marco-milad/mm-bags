@@ -10,6 +10,7 @@ import {
   sendVariantNotificationsForm,
 } from "@/lib/admin/notification-actions";
 import { SendButton } from "@/components/admin/notifications/SendButton";
+import { getAdminLocale } from "@/lib/admin/locale";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,8 @@ export const dynamic = "force-dynamic";
 export default async function NotificationsPage({
   searchParams,
 }: PageProps<"/admin/notifications">) {
+  const locale = await getAdminLocale();
+  const isAr = locale === "ar";
   const sp = await searchParams;
   const filters: WaitlistFilters = {
     status: sp?.status === "all" ? "all" : "pending",
@@ -46,11 +49,12 @@ export default async function NotificationsPage({
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl text-[var(--color-text)]">
-            Back-in-stock · الإشعارات
+            {isAr ? "إشعارات توفر المخزون" : "Back-in-stock notifications"}
           </h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            Customers waiting for restocks. Sending fires Resend email or
-            Twilio WhatsApp depending on the channel they signed up with.
+            {isAr
+              ? "العملاء اللي مستنيين رجوع المنتجات. الإرسال يفعّل Resend للإيميل أو Twilio للواتساب حسب القناة اللي اختاروها."
+              : "Customers waiting for restocks. Sending fires Resend email or Twilio WhatsApp depending on the channel they signed up with."}
           </p>
         </div>
         {stats.pendingTotal > 0 && (
@@ -58,7 +62,12 @@ export default async function NotificationsPage({
             <SendButton
               pendingCount={stats.pendingTotal}
               variant="bulk"
-              confirmMessage={`Send WhatsApp + email to ${stats.pendingTotal} pending subscribers? Each message costs money — capped at 100 variants per run.`}
+              locale={locale}
+              confirmMessage={
+                isAr
+                  ? `إرسال واتساب + إيميل لـ ${stats.pendingTotal} مشترك معلق؟ كل رسالة بتكلف فلوس — الحد الأقصى 100 فاريانت في المرة.`
+                  : `Send WhatsApp + email to ${stats.pendingTotal} pending subscribers? Each message costs money — capped at 100 variants per run.`
+              }
             />
           </form>
         )}
@@ -66,9 +75,19 @@ export default async function NotificationsPage({
 
       {/* Stats */}
       <section className="grid gap-3 md:grid-cols-3">
-        <Stat label="Pending notifications" value={String(stats.pendingTotal)} tone={stats.pendingTotal > 0 ? "warn" : "muted"} />
-        <Stat label="Products with waitlist" value={String(stats.productsWithPending)} />
-        <Stat label="Variants in queue" value={String(groups.length)} />
+        <Stat
+          label={isAr ? "إشعارات معلقة" : "Pending notifications"}
+          value={String(stats.pendingTotal)}
+          tone={stats.pendingTotal > 0 ? "warn" : "muted"}
+        />
+        <Stat
+          label={isAr ? "منتجات في قائمة الانتظار" : "Products with waitlist"}
+          value={String(stats.productsWithPending)}
+        />
+        <Stat
+          label={isAr ? "فاريانتس في الطابور" : "Variants in queue"}
+          value={String(groups.length)}
+        />
       </section>
 
       {/* Filters */}
@@ -78,27 +97,27 @@ export default async function NotificationsPage({
       >
         <label className="text-xs">
           <span className="mb-1 block uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Status
+            {isAr ? "الحالة" : "Status"}
           </span>
           <select
             name="status"
             defaultValue={filters.status ?? "pending"}
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
           >
-            <option value="pending">Pending only</option>
-            <option value="all">All</option>
+            <option value="pending">{isAr ? "المعلق فقط" : "Pending only"}</option>
+            <option value="all">{isAr ? "الكل" : "All"}</option>
           </select>
         </label>
         <label className="text-xs">
           <span className="mb-1 block uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Product
+            {isAr ? "المنتج" : "Product"}
           </span>
           <select
             name="product"
             defaultValue={filters.productId ?? ""}
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
           >
-            <option value="">All products</option>
+            <option value="">{isAr ? "كل المنتجات" : "All products"}</option>
             {products.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} ({p.pendingCount})
@@ -110,20 +129,22 @@ export default async function NotificationsPage({
           type="submit"
           className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white"
         >
-          Apply
+          {isAr ? "تطبيق" : "Apply"}
         </button>
         <Link
           href="/admin/notifications"
           className="text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
         >
-          Reset
+          {isAr ? "إعادة تعيين" : "Reset"}
         </Link>
       </form>
 
       {/* Groups */}
       {groups.length === 0 ? (
         <p className="rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
-          No waitlist entries match the current filters.
+          {isAr
+            ? "لا يوجد قوائم انتظار مطابقة للفلاتر."
+            : "No waitlist entries match the current filters."}
         </p>
       ) : (
         <ul className="space-y-3">
@@ -160,7 +181,7 @@ export default async function NotificationsPage({
                             : "bg-[var(--color-warning)]/15 text-[var(--color-warning)]",
                         )}
                       >
-                        Stock: {g.stockQty}
+                        {isAr ? "المخزون" : "Stock"}: {g.stockQty}
                       </span>
                     </div>
                   </div>
@@ -172,7 +193,12 @@ export default async function NotificationsPage({
                       // stock=0; the disabled flag here just makes
                       // the UI honest.
                       disabled={!backInStock}
-                      confirmMessage={`Send WhatsApp/email to ${g.pendingCount} pending subscribers of ${g.productName} (${g.variantLabel})?`}
+                      locale={locale}
+                      confirmMessage={
+                        isAr
+                          ? `إرسال واتساب/إيميل لـ ${g.pendingCount} مشترك من ${g.productName} (${g.variantLabel})؟`
+                          : `Send WhatsApp/email to ${g.pendingCount} pending subscribers of ${g.productName} (${g.variantLabel})?`
+                      }
                     />
                   </form>
                 </header>
@@ -192,7 +218,13 @@ export default async function NotificationsPage({
                             : "bg-brass-500/15 text-brass-700",
                         )}
                       >
-                        {s.channel}
+                        {s.channel === "email"
+                          ? isAr
+                            ? "إيميل"
+                            : "Email"
+                          : isAr
+                            ? "واتساب"
+                            : s.channel}
                       </span>
                       <span
                         className="flex-1 truncate font-mono text-[12px] text-[var(--color-text)]"
@@ -203,9 +235,12 @@ export default async function NotificationsPage({
                           : s.guest_phone ?? "—"}
                       </span>
                       <span className="text-[11px] text-[var(--color-text-secondary)]">
-                        {new Date(s.created_at).toLocaleDateString("en-US", {
-                          dateStyle: "medium",
-                        })}
+                        {new Date(s.created_at).toLocaleDateString(
+                          isAr ? "ar-EG" : "en-US",
+                          {
+                            dateStyle: "medium",
+                          },
+                        )}
                       </span>
                       <span
                         className={cn(
@@ -215,7 +250,13 @@ export default async function NotificationsPage({
                             : "bg-[var(--color-warning)]/15 text-[var(--color-warning)]",
                         )}
                       >
-                        {s.notified ? "Sent" : "Pending"}
+                        {s.notified
+                          ? isAr
+                            ? "تم الإرسال"
+                            : "Sent"
+                          : isAr
+                            ? "معلق"
+                            : "Pending"}
                       </span>
                     </li>
                   ))}

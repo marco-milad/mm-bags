@@ -9,6 +9,7 @@ import {
   type DeleteResult,
   type ProductActionResult,
 } from "@/lib/admin/product-actions";
+import type { AdminLocale } from "@/lib/admin/locale";
 import type { Collection, Product } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 import { ImageManager } from "./ImageManager";
@@ -28,10 +29,13 @@ import { ImageManager } from "./ImageManager";
 export function ProductForm({
   product,
   collections,
+  locale,
 }: {
   product?: Product;
   collections: Collection[];
+  locale: AdminLocale;
 }) {
+  const isAr = locale === "ar";
   const [slug, setSlug] = useState(product?.slug ?? "");
   const slugTouchedRef = useRef(slug !== "");
   const isEdit = !!product;
@@ -85,9 +89,9 @@ export function ProductForm({
       <form action={saveAction} className="space-y-6">
         {isEdit && <input type="hidden" name="id" value={product.id} />}
 
-        <Section title="Identification">
+        <Section title={isAr ? "البيانات" : "Identification"}>
           <Row>
-            <Field id="name_ar" label="Name (Arabic) *">
+            <Field id="name_ar" label={isAr ? "الاسم (عربي) *" : "Name (Arabic) *"}>
               <input
                 id="name_ar"
                 name="name_ar"
@@ -97,7 +101,7 @@ export function ProductForm({
                 className={inputCls}
               />
             </Field>
-            <Field id="name_en" label="Name (English) *">
+            <Field id="name_en" label={isAr ? "الاسم (إنجليزي) *" : "Name (English) *"}>
               <input
                 id="name_en"
                 name="name_en"
@@ -111,8 +115,12 @@ export function ProductForm({
           <Row>
             <Field
               id="slug"
-              label="Slug *"
-              hint="Auto-fills from English name. URL-safe (a-z, 0-9, single dashes)."
+              label={isAr ? "الرابط (Slug) *" : "Slug *"}
+              hint={
+                isAr
+                  ? "بيتعبّى تلقائي من الاسم الإنجليزي. حروف صغيرة وأرقام وشرطات فقط."
+                  : "Auto-fills from English name. URL-safe (a-z, 0-9, single dashes)."
+              }
             >
               <input
                 id="slug"
@@ -124,14 +132,14 @@ export function ProductForm({
                 className={cn(inputCls, "font-mono")}
               />
             </Field>
-            <Field id="collection_id" label="Collection">
+            <Field id="collection_id" label={isAr ? "المجموعة" : "Collection"}>
               <select
                 id="collection_id"
                 name="collection_id"
                 defaultValue={product?.collection_id ?? ""}
                 className={inputCls}
               >
-                <option value="">(none)</option>
+                <option value="">{isAr ? "(بدون)" : "(none)"}</option>
                 {collections.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name_ar} · {c.name_en}
@@ -142,9 +150,9 @@ export function ProductForm({
           </Row>
         </Section>
 
-        <Section title="Descriptions">
+        <Section title={isAr ? "الوصف" : "Descriptions"}>
           <Row>
-            <Field id="description_ar" label="Description (Arabic)">
+            <Field id="description_ar" label={isAr ? "الوصف (عربي)" : "Description (Arabic)"}>
               <textarea
                 id="description_ar"
                 name="description_ar"
@@ -154,7 +162,7 @@ export function ProductForm({
                 className={cn(inputCls, "resize-y")}
               />
             </Field>
-            <Field id="description_en" label="Description (English)">
+            <Field id="description_en" label={isAr ? "الوصف (إنجليزي)" : "Description (English)"}>
               <textarea
                 id="description_en"
                 name="description_en"
@@ -166,11 +174,11 @@ export function ProductForm({
           </Row>
         </Section>
 
-        <Section title="Pricing">
+        <Section title={isAr ? "التسعير" : "Pricing"}>
           <Row>
             <Field
               id="base_price"
-              label="Base price (EGP) *"
+              label={isAr ? "السعر الأساسي (ج.م) *" : "Base price (EGP) *"}
               error={fieldErrors.base_price}
             >
               <NumericInput
@@ -184,8 +192,12 @@ export function ProductForm({
             </Field>
             <Field
               id="sale_price"
-              label="Sale price (EGP)"
-              hint="Leave blank for no sale. Must be lower than base price."
+              label={isAr ? "سعر الخصم (ج.م)" : "Sale price (EGP)"}
+              hint={
+                isAr
+                  ? "اتركه فاضي لو مفيش خصم. لازم يكون أقل من السعر الأساسي."
+                  : "Leave blank for no sale. Must be lower than base price."
+              }
               error={fieldErrors.sale_price}
             >
               <NumericInput
@@ -199,9 +211,9 @@ export function ProductForm({
           </Row>
         </Section>
 
-        <Section title="Specifications">
+        <Section title={isAr ? "المواصفات" : "Specifications"}>
           <Row>
-            <Field id="material_type" label="Material type">
+            <Field id="material_type" label={isAr ? "نوع الخامة" : "Material type"}>
               <input
                 id="material_type"
                 name="material_type"
@@ -209,7 +221,7 @@ export function ProductForm({
                 className={inputCls}
               />
             </Field>
-            <Field id="wheel_type" label="Wheel type">
+            <Field id="wheel_type" label={isAr ? "نوع العجلات" : "Wheel type"}>
               <input
                 id="wheel_type"
                 name="wheel_type"
@@ -219,7 +231,7 @@ export function ProductForm({
             </Field>
           </Row>
           <Row>
-            <Field id="lock_type" label="Lock type">
+            <Field id="lock_type" label={isAr ? "نوع القفل" : "Lock type"}>
               <input
                 id="lock_type"
                 name="lock_type"
@@ -229,8 +241,12 @@ export function ProductForm({
             </Field>
             <Field
               id="dimensions"
-              label="Dimensions"
-              hint="Free-form, e.g. 44cm × 29.5cm × 23.5cm"
+              label={isAr ? "الأبعاد" : "Dimensions"}
+              hint={
+                isAr
+                  ? "نص حر، مثال: 44سم × 29.5سم × 23.5سم"
+                  : "Free-form, e.g. 44cm × 29.5cm × 23.5cm"
+              }
             >
               <input
                 id="dimensions"
@@ -243,7 +259,7 @@ export function ProductForm({
           <Row>
             <Field
               id="weight_kg"
-              label="Weight (kg)"
+              label={isAr ? "الوزن (كجم)" : "Weight (kg)"}
               error={fieldErrors.weight_kg}
             >
               <NumericInput
@@ -256,7 +272,7 @@ export function ProductForm({
             </Field>
             <Field
               id="laptop_inches"
-              label="Laptop fit (inches)"
+              label={isAr ? "مقاس اللاب توب (بوصة)" : "Laptop fit (inches)"}
               error={fieldErrors.laptop_inches}
             >
               <NumericInput
@@ -271,7 +287,7 @@ export function ProductForm({
           <Row>
             <Field
               id="capacity_liters"
-              label="Capacity (liters)"
+              label={isAr ? "السعة (لتر)" : "Capacity (liters)"}
               error={fieldErrors.capacity_liters}
             >
               <NumericInput
@@ -282,66 +298,84 @@ export function ProductForm({
                 className={cn(inputCls, "font-mono")}
               />
             </Field>
-            <Field id="flags" label="Flags">
+            <Field id="flags" label={isAr ? "خصائص" : "Flags"}>
               <div className="flex flex-wrap gap-3 pt-2">
                 <Checkbox
                   name="is_water_resistant"
                   defaultChecked={product?.is_water_resistant ?? false}
-                  label="Water-resistant"
+                  label={isAr ? "مقاوم للماء" : "Water-resistant"}
                 />
                 <Checkbox
                   name="is_expandable"
                   defaultChecked={product?.is_expandable ?? false}
-                  label="Expandable"
+                  label={isAr ? "قابل للتوسعة" : "Expandable"}
                 />
               </div>
             </Field>
           </Row>
         </Section>
 
-        <Section title="Display">
+        <Section title={isAr ? "العرض" : "Display"}>
           <Row>
-            <Field id="image_fit" label="Image fit">
+            <Field id="image_fit" label={isAr ? "طريقة عرض الصورة" : "Image fit"}>
               <Radios
                 name="image_fit"
                 value={product?.image_fit ?? "cover"}
                 options={[
-                  { value: "cover", label: "Cover (crop to fill)" },
-                  { value: "contain", label: "Contain (letterbox)" },
+                  {
+                    value: "cover",
+                    label: isAr ? "تغطية (قص لملء الإطار)" : "Cover (crop to fill)",
+                  },
+                  {
+                    value: "contain",
+                    label: isAr ? "احتواء (هامش حول الصورة)" : "Contain (letterbox)",
+                  },
                 ]}
               />
             </Field>
-            <Field id="image_aspect" label="Image aspect">
+            <Field id="image_aspect" label={isAr ? "نسبة الصورة" : "Image aspect"}>
               <Radios
                 name="image_aspect"
                 value={product?.image_aspect ?? "square"}
                 options={[
-                  { value: "square", label: "Square" },
-                  { value: "landscape", label: "Landscape" },
-                  { value: "portrait", label: "Portrait" },
+                  { value: "square", label: isAr ? "مربع" : "Square" },
+                  { value: "landscape", label: isAr ? "أفقي" : "Landscape" },
+                  { value: "portrait", label: isAr ? "طولي" : "Portrait" },
                 ]}
               />
             </Field>
           </Row>
           <Row>
-            <Field id="visibility" label="Visibility">
+            <Field id="visibility" label={isAr ? "الظهور" : "Visibility"}>
               <div className="flex flex-col gap-2 pt-2">
                 <Checkbox
                   name="is_active"
                   defaultChecked={product?.is_active ?? true}
-                  label="Active on website (visible in /catalog)"
+                  label={
+                    isAr
+                      ? "مفعّل على الموقع (ظاهر في الكتالوج)"
+                      : "Active on website (visible in /catalog)"
+                  }
                 />
                 <Checkbox
                   name="show_in_store"
                   defaultChecked={product?.show_in_store ?? true}
-                  label="Available at POS (physical store)"
+                  label={
+                    isAr
+                      ? "متاح في المحل (نقطة البيع)"
+                      : "Available at POS (physical store)"
+                  }
                 />
               </div>
             </Field>
             <Field
               id="tags"
-              label="Tags"
-              hint="Comma-separated, e.g. best-seller, set"
+              label={isAr ? "وسوم" : "Tags"}
+              hint={
+                isAr
+                  ? "مفصولة بفواصل، مثال: best-seller, set"
+                  : "Comma-separated, e.g. best-seller, set"
+              }
             >
               <input
                 id="tags"
@@ -353,15 +387,16 @@ export function ProductForm({
           </Row>
         </Section>
 
-        <Section title="Images">
+        <Section title={isAr ? "الصور" : "Images"}>
           <ImageManager
             productId={product?.id}
             initial={product?.images ?? []}
+            locale={locale}
           />
         </Section>
 
         <div className="flex items-center justify-end border-t border-[var(--color-border)] pt-4">
-          <SaveButton isEdit={isEdit} />
+          <SaveButton isEdit={isEdit} isAr={isAr} />
         </div>
       </form>
 
@@ -369,7 +404,7 @@ export function ProductForm({
       {isEdit && (
         <form action={deleteAction} className="border-t border-[var(--color-border)] pt-4">
           <input type="hidden" name="id" value={product.id} />
-          <DeleteButton />
+          <DeleteButton isAr={isAr} />
         </form>
       )}
     </div>
@@ -377,7 +412,7 @@ export function ProductForm({
 }
 
 // ─── Submit / Delete buttons with useFormStatus ─────────────────────
-function SaveButton({ isEdit }: { isEdit: boolean }) {
+function SaveButton({ isEdit, isAr }: { isEdit: boolean; isAr: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -386,12 +421,18 @@ function SaveButton({ isEdit }: { isEdit: boolean }) {
       className="inline-flex items-center gap-2 rounded-full bg-brass-500 px-6 py-2.5 text-sm font-semibold text-navy-900 transition hover:bg-brass-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-      {isEdit ? "Save changes" : "Create product"}
+      {isEdit
+        ? isAr
+          ? "حفظ التعديلات"
+          : "Save changes"
+        : isAr
+          ? "إنشاء المنتج"
+          : "Create product"}
     </button>
   );
 }
 
-function DeleteButton() {
+function DeleteButton({ isAr }: { isAr: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -400,7 +441,9 @@ function DeleteButton() {
       onClick={(e) => {
         if (
           !confirm(
-            "Delete this product? Orders or wishlists referencing it will block the delete.",
+            isAr
+              ? "تأكيد حذف المنتج؟ لو فيه طلبات أو قوائم رغبات بتشيره الحذف هيتمنع."
+              : "Delete this product? Orders or wishlists referencing it will block the delete.",
           )
         )
           e.preventDefault();
@@ -409,7 +452,7 @@ function DeleteButton() {
     >
       {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
       <Trash2 className="h-3.5 w-3.5" />
-      Delete product
+      {isAr ? "حذف المنتج" : "Delete product"}
     </button>
   );
 }
