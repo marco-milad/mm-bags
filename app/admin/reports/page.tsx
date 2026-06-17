@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import {
   getBestSellers,
   getDailyReport,
@@ -48,8 +48,8 @@ export default async function ReportsPage({
         </h1>
         <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
           {isAr
-            ? "إيراد يومي / شهري، الأكثر مبيعاً، قيمة المخزون، سجل الموردين. كل تقرير بيتصدّر CSV."
-            : "Daily / monthly revenue, best-sellers, stock value, supplier ledger. Every report exports as CSV."}
+            ? "إيراد يومي / شهري، الأكثر مبيعاً، قيمة المخزون، سجل الموردين. كل تقرير بيتصدّر CSV أو PDF."
+            : "Daily / monthly revenue, best-sellers, stock value, supplier ledger. Every report exports as CSV or PDF."}
         </p>
       </header>
 
@@ -132,10 +132,7 @@ async function DailyTab({
         >
           {isAr ? "تطبيق" : "Apply"}
         </button>
-        <ExportLink
-          href={`/admin/reports/export?report=daily&date=${iso}`}
-          locale={locale}
-        />
+        <ExportLink query={`report=daily&date=${iso}`} locale={locale} />
       </form>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -203,10 +200,7 @@ async function MonthlyTab({
         >
           {isAr ? "تطبيق" : "Apply"}
         </button>
-        <ExportLink
-          href={`/admin/reports/export?report=monthly&month=${yyyymm}`}
-          locale={locale}
-        />
+        <ExportLink query={`report=monthly&month=${yyyymm}`} locale={locale} />
       </form>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -319,7 +313,7 @@ async function BestSellersTab({
           {isAr ? "تطبيق" : "Apply"}
         </button>
         <ExportLink
-          href={`/admin/reports/export?report=best-sellers&from=${fromISO}&to=${toISO}&source=${source}`}
+          query={`report=best-sellers&from=${fromISO}&to=${toISO}&source=${source}`}
           locale={locale}
         />
       </form>
@@ -388,7 +382,7 @@ async function StockTab({ locale }: { locale: AdminLocale }) {
           value={formatPriceEGP(totalValue)}
           tone="primary"
         />
-        <ExportLink href="/admin/reports/export?report=stock" locale={locale} />
+        <ExportLink query="report=stock" locale={locale} />
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
@@ -440,10 +434,7 @@ async function SuppliersTab({ locale }: { locale: AdminLocale }) {
           value={formatPriceEGP(owedTotal)}
           tone={owedTotal > 0 ? "error" : "muted"}
         />
-        <ExportLink
-          href="/admin/reports/export?report=suppliers"
-          locale={locale}
-        />
+        <ExportLink query="report=suppliers" locale={locale} />
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
@@ -529,16 +520,30 @@ function Stat({
   );
 }
 
-function ExportLink({ href, locale }: { href: string; locale: AdminLocale }) {
+/**
+ * Renders both export buttons (CSV + PDF) for a given report tab. The
+ * `query` is the shared querystring (e.g. "report=daily&date=2026-06-17")
+ * appended to each export endpoint.
+ */
+function ExportLink({ query, locale }: { query: string; locale: AdminLocale }) {
   const isAr = locale === "ar";
   return (
-    <a
-      href={href}
-      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
-    >
-      <Download className="h-3.5 w-3.5" />
-      {isAr ? "تصدير CSV" : "Export CSV"}
-    </a>
+    <div className="inline-flex items-center gap-2">
+      <a
+        href={`/admin/reports/export?${query}`}
+        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
+      >
+        <Download className="h-3.5 w-3.5" />
+        {isAr ? "تصدير CSV" : "Export CSV"}
+      </a>
+      <a
+        href={`/admin/reports/export-pdf?${query}`}
+        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
+      >
+        <FileText className="h-3.5 w-3.5" />
+        {isAr ? "تصدير PDF" : "Export PDF"}
+      </a>
+    </div>
   );
 }
 
