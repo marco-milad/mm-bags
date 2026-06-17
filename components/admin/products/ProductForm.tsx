@@ -177,7 +177,7 @@ export function ProductForm({
                 id="base_price"
                 name="base_price"
                 required
-                defaultValue={product?.base_price ?? 0}
+                defaultValue={product?.base_price ?? ""}
                 placeholder="مثال: 1299"
                 className={cn(inputCls, "font-mono")}
               />
