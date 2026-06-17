@@ -104,6 +104,157 @@ export async function getDailyReport(iso: string): Promise<DailyReport> {
   };
 }
 
+// ─── 1b. Daily revenue, with per-sale detail + cashier ──────────────
+export type DailyOnlineOrderRow = {
+  id: string;
+  orderNumber: string;
+  createdAt: string;          // ISO timestamptz
+  customerName: string;
+  items: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  status: string;
+  total: number;
+};
+export type DailyPosSaleRow = {
+  id: string;
+  saleNumber: string;
+  createdAt: string;
+  /** Display name of whoever rang up the sale + their role
+      (admin / manager / cashier). "—" when the sale predates the
+      staff table or the link is broken. */
+  cashierName: string;
+  cashierRole: string;
+  items: number;
+  paymentMethod: string;
+  paymentRef: string | null;
+  total: number;
+};
+export type DailyDetailedReport = DailyReport & {
+  onlineRows: DailyOnlineOrderRow[];
+  posRows: DailyPosSaleRow[];
+};
+
+/**
+ * Enriched version of getDailyReport with the actual rows so the PDF
+ * can list every order + every POS sale with timestamp, totals, and
+ * cashier attribution. Heavier query than the dashboard version;
+ * intended for the PDF export only.
+ */
+export async function getDailyDetailedReport(
+  iso: string,
+): Promise<DailyDetailedReport> {
+  const summary = await getDailyReport(iso);
+  const { from, to } = dayRange(iso);
+  const admin = getSupabaseAdminClient();
+
+  // Online orders for the day. shipping_address.name is the canonical
+  // place we record the customer's display name; fall back to a
+  // truncated email / phone so the row always reads as someone.
+  const [ordersRes, posSalesRes] = await Promise.all([
+    admin
+      .from("orders")
+      .select(
+        "id, order_number, created_at, total, status, payment_method, payment_status, shipping_address, guest_email, guest_phone",
+      )
+      .gte("created_at", from)
+      .lt("created_at", to)
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: true }),
+    admin
+      .from("pos_sales")
+      .select(
+        "id, sale_number, created_at, total, payment_method, payment_ref, cashier_id",
+      )
+      .gte("created_at", from)
+      .lt("created_at", to)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  const onlineIds = (ordersRes.data ?? []).map((o) => o.id);
+  const posIds = (posSalesRes.data ?? []).map((s) => s.id);
+
+  const [orderItemsRes, posItemsRes] = await Promise.all([
+    onlineIds.length > 0
+      ? admin
+          .from("order_items")
+          .select("order_id, qty")
+          .in("order_id", onlineIds)
+      : Promise.resolve({ data: [] as Array<{ order_id: string; qty: number }> }),
+    posIds.length > 0
+      ? admin
+          .from("pos_sale_items")
+          .select("sale_id, qty")
+          .in("sale_id", posIds)
+      : Promise.resolve({ data: [] as Array<{ sale_id: string; qty: number }> }),
+  ]);
+
+  // Cashier names: look up via staff.user_id = pos_sales.cashier_id.
+  const cashierIds = Array.from(
+    new Set(
+      (posSalesRes.data ?? [])
+        .map((s) => s.cashier_id)
+        .filter((v): v is string => typeof v === "string"),
+    ),
+  );
+  const staffMap = new Map<string, { name: string; role: string }>();
+  if (cashierIds.length > 0) {
+    const { data: staffRows } = await admin
+      .from("staff")
+      .select("user_id, name, role")
+      .in("user_id", cashierIds);
+    for (const r of staffRows ?? []) {
+      if (r.user_id) staffMap.set(r.user_id, { name: r.name, role: r.role });
+    }
+  }
+
+  const itemsByOrder = new Map<string, number>();
+  for (const it of orderItemsRes.data ?? []) {
+    if (!it.order_id) continue;
+    itemsByOrder.set(it.order_id, (itemsByOrder.get(it.order_id) ?? 0) + it.qty);
+  }
+  const itemsBySale = new Map<string, number>();
+  for (const it of posItemsRes.data ?? []) {
+    if (!it.sale_id) continue;
+    itemsBySale.set(it.sale_id, (itemsBySale.get(it.sale_id) ?? 0) + it.qty);
+  }
+
+  const onlineRows: DailyOnlineOrderRow[] = (ordersRes.data ?? []).map((o) => {
+    const addr = o.shipping_address as { name?: string } | null;
+    const fallback = o.guest_email
+      ? o.guest_email.split("@")[0]
+      : o.guest_phone ?? "—";
+    return {
+      id: o.id,
+      orderNumber: o.order_number ?? o.id.slice(0, 8),
+      createdAt: o.created_at ?? "",
+      customerName: addr?.name?.trim() || fallback,
+      items: itemsByOrder.get(o.id) ?? 0,
+      paymentMethod: o.payment_method ?? "—",
+      paymentStatus: o.payment_status ?? "—",
+      status: o.status ?? "pending",
+      total: Number(o.total ?? 0),
+    };
+  });
+
+  const posRows: DailyPosSaleRow[] = (posSalesRes.data ?? []).map((s) => {
+    const staff = s.cashier_id ? staffMap.get(s.cashier_id) : undefined;
+    return {
+      id: s.id,
+      saleNumber: s.sale_number ?? s.id.slice(0, 8),
+      createdAt: s.created_at ?? "",
+      cashierName: staff?.name ?? "—",
+      cashierRole: staff?.role ?? "",
+      items: itemsBySale.get(s.id) ?? 0,
+      paymentMethod: s.payment_method ?? "—",
+      paymentRef: s.payment_ref ?? null,
+      total: Number(s.total ?? 0),
+    };
+  });
+
+  return { ...summary, onlineRows, posRows };
+}
+
 // ─── 2. Monthly revenue (incl. previous-month total) ─────────────────
 export type MonthlyReport = {
   yyyymm: string;

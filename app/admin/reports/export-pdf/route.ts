@@ -2,13 +2,19 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   getBestSellers,
-  getDailyReport,
+  getDailyDetailedReport,
   getMonthlyReport,
   getStockValueReport,
   getSupplierLedger,
 } from "@/lib/queries/admin-reports";
 import { getAdminLocale } from "@/lib/admin/locale";
-import { buildReportPdf, type PdfColumn, type PdfRow } from "@/lib/admin/reports/pdf";
+import {
+  fmtEGP,
+  fmtInt,
+  renderDailyPdf,
+  renderGenericPdf,
+  type PdfColumn,
+} from "@/lib/admin/reports/pdf";
 
 export const runtime = "nodejs";
 
@@ -18,11 +24,10 @@ export const runtime = "nodejs";
  * returns an attachment PDF. Locale follows the `admin_locale` cookie
  * so the PDF matches whichever language the admin is using in the UI.
  *
- * GET /admin/reports/export-pdf?report=daily&date=YYYY-MM-DD
- *                              ?report=monthly&month=YYYY-MM
- *                              ?report=best-sellers&from=...&to=...&source=...
- *                              ?report=stock
- *                              ?report=suppliers
+ * Daily report uses the rich `renderDailyPdf` layout (summary grid +
+ * per-sale detail tables with cashier attribution). The other four
+ * tabs use `renderGenericPdf` — same brand header / footer template,
+ * simpler single-table body.
  */
 export async function GET(request: Request) {
   const supabase = await createSupabaseServerClient();
@@ -38,8 +43,6 @@ export async function GET(request: Request) {
 
   const locale = await getAdminLocale();
   const isAr = locale === "ar";
-  // Admin name for the footer signature. Falls back to the email if no
-  // display name is set on the auth user.
   const meta = user.user_metadata as { full_name?: string; name?: string } | null;
   const adminName =
     meta?.full_name ?? meta?.name ?? user.email?.split("@")[0] ?? "admin";
@@ -47,51 +50,60 @@ export async function GET(request: Request) {
   const sp = new URL(request.url).searchParams;
   const report = sp.get("report");
 
-  let title = "";
-  let dateRange = "";
-  let columns: PdfColumn[] = [];
-  let rows: PdfRow[] = [];
-  let totals: ReadonlyArray<string | number | null> | undefined;
+  let pdf: Buffer;
   let filename = "report.pdf";
 
   switch (report) {
     case "daily": {
       const date = sp.get("date") ?? new Date().toISOString().slice(0, 10);
-      const r = await getDailyReport(date);
-      title = isAr ? "إيراد يومي" : "Daily revenue";
-      dateRange = isAr ? `تاريخ ${r.date}` : `Date: ${r.date}`;
-      columns = [
-        { header: isAr ? "البند" : "Metric" },
-        { header: isAr ? "القيمة" : "Value", isNumeric: true },
-      ];
-      rows = [
-        [isAr ? "طلبات أونلاين" : "Online orders", r.online.count],
-        [isAr ? "إيراد أونلاين" : "Online revenue (EGP)", r.online.revenue],
-        [isAr ? "قطع أونلاين" : "Online items", r.online.items],
-        [isAr ? "بيعات المحل" : "POS sales", r.pos.count],
-        [isAr ? "إيراد المحل" : "POS revenue (EGP)", r.pos.revenue],
-        [isAr ? "قطع المحل" : "POS items", r.pos.items],
-        [isAr ? "متوسط قيمة الطلب" : "Avg order value (EGP)", r.averageOrderValue],
-      ];
-      totals = [isAr ? "الإجمالي" : "Total revenue (EGP)", r.total];
-      filename = `daily-${r.date}.pdf`;
+      const detailed = await getDailyDetailedReport(date);
+      pdf = await renderDailyPdf({ report: detailed, adminName, locale });
+      filename = `daily-${detailed.date}.pdf`;
       break;
     }
     case "monthly": {
       const month = sp.get("month") ?? new Date().toISOString().slice(0, 7);
       const r = await getMonthlyReport(month);
-      title = isAr ? "إيراد شهري" : "Monthly revenue";
-      dateRange = isAr ? `شهر ${r.yyyymm}` : `Month: ${r.yyyymm}`;
-      columns = [
-        { header: isAr ? "التاريخ" : "Date" },
-        { header: isAr ? "أونلاين" : "Online (EGP)", isNumeric: true },
-        { header: isAr ? "المحل" : "POS (EGP)", isNumeric: true },
-        { header: isAr ? "الإجمالي" : "Total (EGP)", isNumeric: true },
+      const columns: PdfColumn[] = [
+        { header: { ar: "التاريخ", en: "Date" }, flex: 2 },
+        { header: { ar: "أونلاين", en: "Online" }, flex: 2, numeric: true },
+        { header: { ar: "المحل", en: "POS" }, flex: 2, numeric: true },
+        { header: { ar: "الإجمالي", en: "Total" }, flex: 2.4, numeric: true },
       ];
-      rows = r.daily.map((d) => [d.date, d.online, d.pos, d.online + d.pos]);
+      const rows = r.daily.map((d) => [
+        d.date,
+        fmtEGP(d.online, locale),
+        fmtEGP(d.pos, locale),
+        fmtEGP(d.online + d.pos, locale),
+      ]);
       const sumOnline = r.daily.reduce((s, d) => s + d.online, 0);
       const sumPos = r.daily.reduce((s, d) => s + d.pos, 0);
-      totals = [isAr ? "الإجمالي" : "Total", sumOnline, sumPos, sumOnline + sumPos];
+      const footer = [
+        isAr ? "الإجمالي" : "Total",
+        fmtEGP(sumOnline, locale),
+        fmtEGP(sumPos, locale),
+        fmtEGP(sumOnline + sumPos, locale),
+      ];
+      const subtitle = isAr
+        ? `شهر ${r.yyyymm} — مقارنة بالشهر السابق: ${
+            r.deltaPct === null
+              ? "—"
+              : `${r.deltaPct >= 0 ? "+" : ""}${r.deltaPct.toFixed(1)}%`
+          }`
+        : `Month ${r.yyyymm} — vs previous: ${
+            r.deltaPct === null
+              ? "—"
+              : `${r.deltaPct >= 0 ? "+" : ""}${r.deltaPct.toFixed(1)}%`
+          }`;
+      pdf = await renderGenericPdf({
+        title: { ar: "تقرير الإيراد الشهري", en: "Monthly revenue report" },
+        subtitle,
+        columns,
+        rows,
+        footer,
+        adminName,
+        locale,
+      });
       filename = `monthly-${r.yyyymm}.pdf`;
       break;
     }
@@ -107,83 +119,119 @@ export async function GET(request: Request) {
           ? (sp.get("source") as "online" | "pos")
           : ("both" as const);
       const r = await getBestSellers({ from, to, source, limit: 500 });
-      title = isAr ? "الأكثر مبيعاً" : "Best sellers";
-      dateRange = isAr ? `من ${from} إلى ${to}` : `${from} → ${to}`;
-      columns = [
-        { header: "#" },
-        { header: isAr ? "المنتج" : "Product" },
-        { header: isAr ? "القطع" : "Units", isNumeric: true },
-        { header: isAr ? "الإيراد" : "Revenue (EGP)", isNumeric: true },
+      const columns: PdfColumn[] = [
+        { header: { ar: "#", en: "#" }, flex: 0.8, align: "center" },
+        { header: { ar: "المنتج", en: "Product" }, flex: 5 },
+        { header: { ar: "القطع", en: "Units" }, flex: 1.4, numeric: true },
+        { header: { ar: "الإيراد", en: "Revenue" }, flex: 2.4, numeric: true },
       ];
-      rows = r.map((row, i) => [i + 1, row.productName, row.unitsSold, row.revenue]);
+      const rows = r.map((row, i) => [
+        String(i + 1),
+        row.productName,
+        fmtInt(row.unitsSold, locale),
+        fmtEGP(row.revenue, locale),
+      ]);
       const totalUnits = r.reduce((s, row) => s + row.unitsSold, 0);
       const totalRev = r.reduce((s, row) => s + row.revenue, 0);
-      totals = ["", isAr ? "الإجمالي" : "Total", totalUnits, totalRev];
+      const sourceLabelAr = source === "both" ? "أونلاين + محل" : source === "online" ? "أونلاين" : "محل";
+      const sourceLabelEn = source === "both" ? "Online + POS" : source === "online" ? "Online" : "POS";
+      pdf = await renderGenericPdf({
+        title: { ar: "الأكثر مبيعاً", en: "Best sellers" },
+        subtitle: isAr
+          ? `من ${from} إلى ${to} · ${sourceLabelAr}`
+          : `${from} → ${to} · ${sourceLabelEn}`,
+        columns,
+        rows,
+        footer: [
+          "",
+          isAr ? "الإجمالي" : "Total",
+          fmtInt(totalUnits, locale),
+          fmtEGP(totalRev, locale),
+        ],
+        adminName,
+        locale,
+      });
       filename = `best-sellers-${from}-${to}.pdf`;
       break;
     }
     case "stock": {
       const r = await getStockValueReport();
-      title = isAr ? "قيمة المخزون" : "Stock value";
-      dateRange = new Date().toLocaleDateString(isAr ? "ar-EG" : "en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-      columns = [
-        { header: isAr ? "المنتج" : "Product" },
-        { header: isAr ? "القطع" : "Units", isNumeric: true },
-        { header: isAr ? "متوسط التكلفة" : "Avg cost (EGP)", isNumeric: true },
-        { header: isAr ? "قيمة المخزون" : "Stock value (EGP)", isNumeric: true },
-        { header: isAr ? "اتباع آخر 30 يوم" : "Sold last 30d", isNumeric: true },
+      const columns: PdfColumn[] = [
+        { header: { ar: "المنتج", en: "Product" }, flex: 4 },
+        { header: { ar: "القطع", en: "Units" }, flex: 1.2, numeric: true },
+        { header: { ar: "متوسط التكلفة", en: "Avg cost" }, flex: 2, numeric: true },
+        { header: { ar: "قيمة المخزون", en: "Stock value" }, flex: 2.2, numeric: true },
+        { header: { ar: "اتباع آخر 30 يوم", en: "Sold 30d" }, flex: 1.6, numeric: true },
       ];
-      rows = r.map((row) => [
+      const rows = r.map((row) => [
         row.productName,
-        row.totalUnits,
-        row.avgUnitCost,
-        row.stockValue,
-        row.unitsSoldLast30,
+        fmtInt(row.totalUnits, locale),
+        fmtEGP(row.avgUnitCost, locale),
+        fmtEGP(row.stockValue, locale),
+        fmtInt(row.unitsSoldLast30, locale),
       ]);
       const totalUnits = r.reduce((s, row) => s + row.totalUnits, 0);
       const totalValue = r.reduce((s, row) => s + row.stockValue, 0);
       const totalSold = r.reduce((s, row) => s + row.unitsSoldLast30, 0);
-      totals = [isAr ? "الإجمالي" : "Total", totalUnits, "", totalValue, totalSold];
+      pdf = await renderGenericPdf({
+        title: { ar: "تقرير قيمة المخزون", en: "Stock value report" },
+        subtitle: new Date().toLocaleDateString(
+          isAr ? "ar-EG" : "en-US",
+          { year: "numeric", month: "long", day: "numeric", timeZone: "Africa/Cairo" },
+        ),
+        columns,
+        rows,
+        footer: [
+          isAr ? "الإجمالي" : "Total",
+          fmtInt(totalUnits, locale),
+          "",
+          fmtEGP(totalValue, locale),
+          fmtInt(totalSold, locale),
+        ],
+        adminName,
+        locale,
+      });
       filename = "stock-value.pdf";
       break;
     }
     case "suppliers": {
       const r = await getSupplierLedger();
-      title = isAr ? "سجل الموردين" : "Supplier ledger";
-      dateRange = new Date().toLocaleDateString(isAr ? "ar-EG" : "en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-      columns = [
-        { header: isAr ? "المورد" : "Supplier" },
-        { header: isAr ? "أوامر الشراء" : "POs", isNumeric: true },
-        { header: isAr ? "المشتريات" : "Purchased (EGP)", isNumeric: true },
-        { header: isAr ? "المدفوع" : "Paid (EGP)", isNumeric: true },
-        { header: isAr ? "المستحق" : "Owed (EGP)", isNumeric: true },
+      const columns: PdfColumn[] = [
+        { header: { ar: "المورد", en: "Supplier" }, flex: 4 },
+        { header: { ar: "أوامر الشراء", en: "POs" }, flex: 1.4, numeric: true },
+        { header: { ar: "المشتريات", en: "Purchased" }, flex: 2, numeric: true },
+        { header: { ar: "المدفوع", en: "Paid" }, flex: 2, numeric: true },
+        { header: { ar: "المستحق", en: "Owed" }, flex: 2, numeric: true },
       ];
-      rows = r.map((row) => [
+      const rows = r.map((row) => [
         row.name,
-        row.poCount,
-        row.totalPurchased,
-        row.totalPaid,
-        row.totalOwed,
+        fmtInt(row.poCount, locale),
+        fmtEGP(row.totalPurchased, locale),
+        fmtEGP(row.totalPaid, locale),
+        fmtEGP(row.totalOwed, locale),
       ]);
       const totalPurchased = r.reduce((s, row) => s + row.totalPurchased, 0);
       const totalPaid = r.reduce((s, row) => s + row.totalPaid, 0);
       const totalOwed = r.reduce((s, row) => s + row.totalOwed, 0);
       const totalPos = r.reduce((s, row) => s + row.poCount, 0);
-      totals = [
-        isAr ? "الإجمالي" : "Total",
-        totalPos,
-        totalPurchased,
-        totalPaid,
-        totalOwed,
-      ];
+      pdf = await renderGenericPdf({
+        title: { ar: "سجل الموردين", en: "Supplier ledger" },
+        subtitle: new Date().toLocaleDateString(
+          isAr ? "ar-EG" : "en-US",
+          { year: "numeric", month: "long", day: "numeric", timeZone: "Africa/Cairo" },
+        ),
+        columns,
+        rows,
+        footer: [
+          isAr ? "الإجمالي" : "Total",
+          fmtInt(totalPos, locale),
+          fmtEGP(totalPurchased, locale),
+          fmtEGP(totalPaid, locale),
+          fmtEGP(totalOwed, locale),
+        ],
+        adminName,
+        locale,
+      });
       filename = "suppliers.pdf";
       break;
     }
@@ -191,17 +239,7 @@ export async function GET(request: Request) {
       return new NextResponse("unknown report", { status: 400 });
   }
 
-  const pdfBytes = buildReportPdf({
-    title,
-    dateRange,
-    columns,
-    rows,
-    totals,
-    adminName,
-    locale,
-  });
-
-  return new NextResponse(Buffer.from(pdfBytes), {
+  return new NextResponse(new Uint8Array(pdf), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
