@@ -18,6 +18,15 @@ const nextConfig: NextConfig = {
               hostname: supabaseHostname,
               pathname: "/storage/v1/object/public/**",
             },
+            // Supabase render-image (transform) endpoint. The custom
+            // next/image loader (lib/images/supabase-loader.ts) rewrites
+            // every Supabase product URL through this path so we get
+            // on-demand WebP + per-breakpoint widths at the edge.
+            {
+              protocol: "https" as const,
+              hostname: supabaseHostname,
+              pathname: "/storage/v1/render/image/public/**",
+            },
           ]
         : []),
       // Unsplash — used for hero, mood board, category cards, and product seed
@@ -30,9 +39,17 @@ const nextConfig: NextConfig = {
       // Temporary; replace with images hosted on Supabase Storage before launch.
       { protocol: "https" as const, hostname: "eg.jumia.is" },
     ],
-    // Imported Shopify CDN images can be large (1-1.5MB PNGs). Keep optimized
-    // results in the on-disk cache for a week so cold compiles and slow first
-    // hits don't keep re-fetching from upstream.
+    // Serve AVIF when the browser accepts it, fall back to WebP, then
+    // origin. Made explicit (matches the Next 13+ default) so future
+    // upstream default changes can't silently shift our format mix.
+    formats: ["image/avif", "image/webp"],
+    // Trimmed from the default 8-step ladder. We're a mobile-first store
+    // and cap our source images at 1600px on the long edge (see the
+    // Supabase loader + the admin upload guardrail), so anything above
+    // 1600 would just upscale and waste optimizer cache.
+    deviceSizes: [360, 640, 750, 828, 1080, 1200, 1600],
+    // Optimized results stay in the on-disk cache for a week so cold
+    // compiles and slow first hits don't keep re-fetching from upstream.
     minimumCacheTTL: 60 * 60 * 24 * 7,
   },
   experimental: {
