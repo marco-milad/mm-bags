@@ -39,9 +39,15 @@ const nextConfig: NextConfig = {
       // Temporary; replace with images hosted on Supabase Storage before launch.
       { protocol: "https" as const, hostname: "eg.jumia.is" },
     ],
-    // Serve AVIF when the browser accepts it, fall back to WebP, then
-    // origin. Made explicit (matches the Next 13+ default) so future
-    // upstream default changes can't silently shift our format mix.
+    // Custom loader: every `<Image>` runs through the Supabase
+    // transform endpoint when the src is one of our own Storage URLs;
+    // external URLs (Unsplash placeholders, etc.) are returned
+    // unchanged. See lib/images/supabase-loader.ts for the rules.
+    // `formats` is ignored when a custom loader is configured (the
+    // built-in /_next/image optimiser is bypassed), but keeping the
+    // declaration documents what we'd serve if we ever switched back.
+    loader: "custom",
+    loaderFile: "./lib/images/supabase-loader.ts",
     formats: ["image/avif", "image/webp"],
     // Trimmed from the default 8-step ladder. We're a mobile-first store
     // and cap our source images at 1600px on the long edge (see the

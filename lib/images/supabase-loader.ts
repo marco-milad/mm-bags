@@ -101,3 +101,13 @@ export function supabaseImageLoader({
   out.searchParams.set("resize", "contain");
   return out.toString();
 }
+
+/**
+ * Default export wired into next.config.ts via `images.loaderFile`.
+ * Next.js calls it with `{ src, width, quality }` for every `<Image>`.
+ * Non-Supabase URLs (Unsplash placeholders, brand assets, etc.) get
+ * passed through unchanged so the browser fetches them directly.
+ */
+export default function nextImageLoader(args: SupabaseLoaderInput): string {
+  return supabaseImageLoader(args);
+}
