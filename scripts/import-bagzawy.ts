@@ -144,10 +144,12 @@ const ONE_DESC_AR =
 const ONE_DESC_EN =
   "Premium silicone luggage with 360° spinner wheels. Available in 22\", 26\" and 30\" sizes. Built for everyday travel and longer trips.";
 
-function twoPieceDesc(label: string): { ar: string; en: string } {
+function twoPieceDesc(
+  label: string,
+): { description_ar: string; description_en: string } {
   return {
-    ar: `طقم سفر قطعتين — ${label}. خامة سيليكون متينة، عجلات دوارة 360 درجة، وقفل TSA. مناسب للرحلات القصيرة والمتوسطة.`,
-    en: `Two-piece travel set — ${label}. Durable silicone shell, 360° spinner wheels, TSA-approved lock. Built for short and mid-length trips.`,
+    description_ar: `طقم سفر قطعتين — ${label}. خامة سيليكون متينة، عجلات دوارة 360 درجة، وقفل TSA. مناسب للرحلات القصيرة والمتوسطة.`,
+    description_en: `Two-piece travel set — ${label}. Durable silicone shell, 360° spinner wheels, TSA-approved lock. Built for short and mid-length trips.`,
   };
 }
 
