@@ -26,14 +26,33 @@ import { ProductAccordion } from "./ProductAccordion";
  * page server-renders it and ships the rendered tree down — no need to
  * port its data fetches into the client.
  */
+// Collections that opt into the compact PDP layout: slim h-12 thumb
+// strip, progressive-disclosure thumb (+N) tile when images > 6, and
+// progressive-disclosure colour (+N more) pill when colours > 6.
+// Products outside these collections render byte-identically to the
+// default ProductGallery / ProductActions paths.
+//
+// Why a set: started as a slug-scoped canary on bs-milano-classic,
+// then promoted to the milano-series collection after on-phone QA.
+// Add other crowded collections here when they need the same treatment.
+const COMPACT_COLLECTION_SLUGS: ReadonlySet<string> = new Set([
+  "milano-series",
+]);
+
 export function ProductDetailLayout({
   product,
+  collectionSlug,
   locale,
   name,
   whatsappNumber,
   header,
 }: {
   product: ProductWithVariants;
+  /** Slug of the product's parent collection (joined from the
+      collections table by the PDP server page). Drives the
+      compact-layout policy below. Pass `null` when the product has
+      no collection. */
+  collectionSlug: string | null;
   locale: Locale;
   name: string;
   whatsappNumber: string;
@@ -41,14 +60,8 @@ export function ProductDetailLayout({
       ProductActions buy-box (h1, collection chip, review stars). */
   header: React.ReactNode;
 }) {
-  // Slug-scoped canary gate for the compact PDP layout (smaller
-  // thumb strip + horizontally-scrolling color picker). Flip to
-  // `true` unconditionally once Marco approves on mobile, then
-  // delete the `compact` prop from ProductGallery + ProductActions
-  // and make compact the default render path. While the gate stays
-  // scoped to one slug, every other product (~84) renders byte-
-  // identically to today.
-  const compactCanary = product.slug === "bs-milano-classic";
+  const useCompactLayout =
+    collectionSlug !== null && COMPACT_COLLECTION_SLUGS.has(collectionSlug);
 
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
 
@@ -86,7 +99,7 @@ export function ProductDetailLayout({
         imageFit={product.image_fit}
         imageAspect={product.image_aspect}
         previewImageIndex={previewImageIndex}
-        compact={compactCanary}
+        compact={useCompactLayout}
       />
 
       <div className="flex flex-col gap-6">
@@ -97,7 +110,7 @@ export function ProductDetailLayout({
           locale={locale}
           whatsappNumber={whatsappNumber}
           onColorHover={setHoveredColor}
-          compact={compactCanary}
+          compact={useCompactLayout}
         />
 
         <ProductAccordion product={product} locale={locale} />

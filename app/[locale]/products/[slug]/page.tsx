@@ -168,6 +168,7 @@ export default async function ProductDetailPage({
           children. */}
       <ProductDetailLayout
         product={product}
+        collectionSlug={product.collection?.slug ?? null}
         locale={locale}
         name={name}
         whatsappNumber={whatsappNumber}
