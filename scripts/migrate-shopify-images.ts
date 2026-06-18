@@ -1,11 +1,16 @@
 /* eslint-disable no-console */
 /**
- * One-off migration: pull product images that live on cdn.shopify.com,
- * upload them to the `products` Supabase Storage bucket under
- * `<product-slug>/<filename>`, and rewrite each row's `images[]` to the
- * new public URLs.
+ * Pull every off-bucket product image (cdn.shopify.com, eg.jumia.is,
+ * images.unsplash.com, …anything not on our own Storage) into the
+ * `products` Supabase Storage bucket under `<product-slug>/<filename>`
+ * and rewrite each row's `images[]` to the new public URLs.
  *
  * Run with: `npx tsx scripts/migrate-shopify-images.ts`
+ *
+ * Originally Shopify-only (Milano + Calvin Klein imports) — kept the
+ * filename for git history but the body is now generalised: every
+ * product across every collection is processed, every URL that isn't
+ * a Supabase Storage URL is re-hosted.
  *
  * Idempotent: re-uploads use `upsert: true`, so re-running overwrites
  * the same destination paths and rewrites `images[]` with the same
@@ -47,7 +52,7 @@ function loadEnv(): { url: string; serviceKey: string } {
 
 const { url: SUPABASE_URL, serviceKey: SUPABASE_SERVICE_KEY } = loadEnv();
 const BUCKET = "products";
-const COLLECTIONS = ["milano-series", "calvin-klein"];
+const SUPABASE_PREFIX = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: { persistSession: false },
@@ -60,8 +65,9 @@ type ProductRow = {
   images: string[] | null;
 };
 
-function isShopifyUrl(u: string): boolean {
-  return u.startsWith("https://cdn.shopify.com/");
+/** True for any URL that we don't already host on our own Storage. */
+function isExternalUrl(u: string): boolean {
+  return !u.startsWith(SUPABASE_PREFIX);
 }
 
 /** Derive a clean, deterministic filename for the destination path. */
@@ -88,6 +94,26 @@ function contentTypeFor(filename: string): string {
       return "image/gif";
     default:
       return "application/octet-stream";
+  }
+}
+
+/** Some CDNs (Unsplash) serve images at extension-less URLs. Use the
+ *  response Content-Type to pick a usable extension instead. */
+function extensionFor(contentType: string): string {
+  const ct = contentType.split(";")[0].trim().toLowerCase();
+  switch (ct) {
+    case "image/jpeg":
+      return ".jpg";
+    case "image/png":
+      return ".png";
+    case "image/webp":
+      return ".webp";
+    case "image/gif":
+      return ".gif";
+    case "image/avif":
+      return ".avif";
+    default:
+      return "";
   }
 }
 
@@ -150,9 +176,7 @@ async function migrateOne(product: ProductRow): Promise<{
     return stats;
   }
   // If every image is already on Supabase Storage we leave the row alone.
-  const allOnSupabase = existing.every((u) =>
-    u.startsWith(`${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`),
-  );
+  const allOnSupabase = existing.every((u) => !isExternalUrl(u));
   if (allOnSupabase) {
     console.log(
       `  ${product.slug}: ${existing.length} images already on Supabase — skipping`,
@@ -165,24 +189,37 @@ async function migrateOne(product: ProductRow): Promise<{
 
   for (let i = 0; i < existing.length; i++) {
     const src = existing[i];
-    // Pass-through any URL that's already on Supabase Storage.
-    if (!isShopifyUrl(src)) {
+    // Pass-through anything we already host.
+    if (!isExternalUrl(src)) {
       newImageUrls.push(src);
       stats.skipped++;
       continue;
     }
 
-    const filename = filenameFor(src, i);
-    const destPath = `${product.slug}/${filename}`;
+    let filename = filenameFor(src, i);
 
     try {
       const res = await fetchWithRetry(src);
       const bytes = new Uint8Array(await res.arrayBuffer());
 
+      // Prefer the CDN's Content-Type when the URL lacks an extension
+      // (Unsplash serves /photo-<id> with no suffix, which our default
+      // extension-based MIME guess can't classify).
+      const ctHeader = res.headers.get("content-type") ?? "";
+      let contentType = contentTypeFor(filename);
+      if (contentType === "application/octet-stream" && ctHeader) {
+        contentType = ctHeader.split(";")[0].trim();
+        const ext = extensionFor(ctHeader);
+        if (ext && !/\.[a-z0-9]+$/i.test(filename)) {
+          filename = `${filename}${ext}`;
+        }
+      }
+      const destPath = `${product.slug}/${filename}`;
+
       const { error: uploadError } = await supabase.storage
         .from(BUCKET)
         .upload(destPath, bytes, {
-          contentType: contentTypeFor(filename),
+          contentType,
           upsert: true,
           cacheControl: "31536000", // 1 year — images are immutable per path
         });
@@ -224,15 +261,11 @@ async function migrateOne(product: ProductRow): Promise<{
 }
 
 async function main(): Promise<void> {
-  console.log(`Loading products in: ${COLLECTIONS.join(", ")}`);
-
-  // The supabase-js inner-join filter uses the relationship name; here
-  // we fetch products + the joined collection slug, then filter
-  // client-side to keep the query trivial.
+  // Process every product — the helper short-circuits the ones whose
+  // images are already on Supabase Storage so this is cheap to rerun.
   const { data: products, error } = await supabase
     .from("products")
-    .select("id, slug, name_en, images, collections!inner(slug)")
-    .in("collections.slug", COLLECTIONS)
+    .select("id, slug, name_en, images")
     .order("slug");
   if (error) {
     throw new Error(`Failed to list products: ${error.message}`);
@@ -242,18 +275,25 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log(`Found ${products.length} products. Starting migration.\n`);
+  const needsWork = (products as ProductRow[]).filter((p) =>
+    (p.images ?? []).some(isExternalUrl),
+  );
+  console.log(
+    `Scanned ${products.length} products. ${needsWork.length} have external images.\n`,
+  );
 
   let totalUploaded = 0;
   let totalSkipped = 0;
   let totalFailed = 0;
+  const migratedSlugs: string[] = [];
 
-  for (const p of products as unknown as ProductRow[]) {
+  for (const p of needsWork) {
     console.log(`→ ${p.slug}  (${p.name_en})`);
     const stats = await migrateOne(p);
     totalUploaded += stats.uploaded;
     totalSkipped += stats.skipped;
     totalFailed += stats.failed;
+    if (stats.uploaded > 0) migratedSlugs.push(p.slug);
   }
 
   console.log(
@@ -262,32 +302,33 @@ async function main(): Promise<void> {
 
   // Spot-check: HEAD the first image of each migrated product so we
   // know the new public URLs actually serve bytes.
-  console.log(`\nSpot-checking new URLs are reachable:`);
-  const { data: verifyRows } = await supabase
-    .from("products")
-    .select("slug, images, collections!inner(slug)")
-    .in("collections.slug", COLLECTIONS)
-    .order("slug");
-  for (const r of (verifyRows ?? []) as unknown as Array<{
-    slug: string;
-    images: string[] | null;
-  }>) {
-    const first = r.images?.[0];
-    if (!first) {
-      console.log(`  ${r.slug}: no images`);
-      continue;
-    }
-    if (!first.startsWith(`${SUPABASE_URL}/`)) {
-      console.log(`  ${r.slug}: first image NOT on Supabase — ${first}`);
-      continue;
-    }
-    try {
-      const head = await fetch(first, { method: "HEAD" });
-      console.log(
-        `  ${r.slug}: ${head.status} ${head.headers.get("content-type") ?? ""} ${head.headers.get("content-length") ?? ""}B`,
-      );
-    } catch (err) {
-      console.log(`  ${r.slug}: HEAD failed — ${(err as Error).message}`);
+  if (migratedSlugs.length > 0) {
+    console.log(`\nSpot-checking new URLs are reachable:`);
+    const { data: verifyRows } = await supabase
+      .from("products")
+      .select("slug, images")
+      .in("slug", migratedSlugs);
+    for (const r of (verifyRows ?? []) as Array<{
+      slug: string;
+      images: string[] | null;
+    }>) {
+      const first = r.images?.[0];
+      if (!first) {
+        console.log(`  ${r.slug}: no images`);
+        continue;
+      }
+      if (isExternalUrl(first)) {
+        console.log(`  ${r.slug}: first image still external — ${first}`);
+        continue;
+      }
+      try {
+        const head = await fetch(first, { method: "HEAD" });
+        console.log(
+          `  ${r.slug}: ${head.status} ${head.headers.get("content-type") ?? ""} ${head.headers.get("content-length") ?? ""}B`,
+        );
+      } catch (err) {
+        console.log(`  ${r.slug}: HEAD failed — ${(err as Error).message}`);
+      }
     }
   }
 }
