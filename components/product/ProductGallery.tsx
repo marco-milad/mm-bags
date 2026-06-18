@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ImageAspect, ImageFit } from "@/components/product/ImageContainer";
+import { supabaseImageLoader } from "@/lib/images/supabase-loader";
 
 export function ProductGallery({
   images,
@@ -87,6 +88,7 @@ export function ProductGallery({
           fill
           sizes="(min-width: 1024px) 600px, 100vw"
           priority
+          loader={supabaseImageLoader}
           className={cn(isContain ? "object-contain p-4" : "object-cover")}
         />
       </div>
@@ -125,6 +127,7 @@ export function ProductGallery({
                   alt=""
                   fill
                   sizes="64px"
+                  loader={supabaseImageLoader}
                   className={cn(
                     isContain ? "object-contain p-1" : "object-cover",
                   )}
