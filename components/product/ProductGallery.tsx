@@ -36,6 +36,12 @@ export function ProductGallery({
   previewImageIndex?: number | null;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  // Progressive disclosure for dense thumbnail strips. Gated behind
+  // `compact` (currently slug-scoped to bs-milano-classic) AND a hard
+  // image-count threshold so products with ≤ 6 images never see the
+  // +N tile. Once the user taps the tile, all thumbs render and the
+  // tile disappears for the rest of the session.
+  const [thumbsExpanded, setThumbsExpanded] = useState(false);
   const safeImages = images.length > 0 ? images : [];
   // Preview wins when set + in range. We intentionally don't touch
   // setActiveIndex on hover so the original click-selected thumb stays
@@ -57,6 +63,19 @@ export function ProductGallery({
   }
 
   const isContain = imageFit === "contain";
+  // Show first 5 thumbs + a +N tile (6 total tiles) when the strip is
+  // crowded. Threshold of >6 means a product with exactly 6 images
+  // shows them all rather than 5 + "+1" (which would look silly).
+  const THUMB_INITIAL = 5;
+  const THUMB_DISCLOSURE_THRESHOLD = 6;
+  const showThumbDisclosure =
+    compact &&
+    safeImages.length > THUMB_DISCLOSURE_THRESHOLD &&
+    !thumbsExpanded;
+  const visibleThumbs = showThumbDisclosure
+    ? safeImages.slice(0, THUMB_INITIAL)
+    : safeImages;
+  const hiddenThumbCount = safeImages.length - THUMB_INITIAL;
   // Aspect-ratio container — `fill` inside an explicit aspect-* wrapper
   // is the only reliable cross-browser pattern. The previous
   // `width={0} height={0} + style.height:auto` trick relied on the
@@ -107,7 +126,7 @@ export function ProductGallery({
           )}
           aria-label={locale === "ar" ? "صور المنتج" : "Product images"}
         >
-          {safeImages.map((src, idx) => (
+          {visibleThumbs.map((src, idx) => (
             <div key={src} className="shrink-0">
               <button
                 type="button"
@@ -144,6 +163,26 @@ export function ProductGallery({
               </button>
             </div>
           ))}
+          {showThumbDisclosure && (
+            <div className="shrink-0">
+              <button
+                type="button"
+                onClick={() => setThumbsExpanded(true)}
+                aria-label={
+                  locale === "ar"
+                    ? `عرض كل الصور (${hiddenThumbCount} أخرى)`
+                    : `Show all images (${hiddenThumbCount} more)`
+                }
+                className={cn(
+                  "flex items-center justify-center rounded-lg font-mono text-sm font-semibold transition",
+                  compact ? "h-12 w-12" : "h-16 w-16",
+                  "bg-[var(--color-surface)] text-[var(--color-accent-dark)] ring-1 ring-[var(--color-border)] hover:bg-[var(--color-accent)]/15 hover:ring-[var(--color-accent)]",
+                )}
+              >
+                +{hiddenThumbCount}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

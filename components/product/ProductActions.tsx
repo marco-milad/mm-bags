@@ -61,6 +61,12 @@ export function ProductActions({
   const [selectedSize, setSelectedSize] = useState<number | null>(
     initial?.size_inches ?? null,
   );
+  // Progressive disclosure for dense colour rails. Gated behind
+  // `compact` (currently slug-scoped to bs-milano-classic) AND a hard
+  // count threshold so products with ≤ 6 colours show every swatch
+  // up front. Once expanded, every swatch wraps into the row as
+  // normal and the disclosure button disappears.
+  const [colorsExpanded, setColorsExpanded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
 
@@ -170,7 +176,24 @@ export function ProductActions({
       </p>
 
       {/* Color picker */}
-      {colors.length > 0 && (
+      {colors.length > 0 && (() => {
+        // Show first 6 swatches + "+N more" link when the rail is
+        // crowded; threshold of >6 means a row with exactly 6 colours
+        // shows them all rather than 6 + "+0". Replaces the
+        // horizontal-scroll pattern from the previous compact canary
+        // — progressive disclosure beats a hidden scroll affordance
+        // on touch.
+        const COLORS_INITIAL = 6;
+        const COLORS_DISCLOSURE_THRESHOLD = 6;
+        const showColorDisclosure =
+          compact &&
+          colors.length > COLORS_DISCLOSURE_THRESHOLD &&
+          !colorsExpanded;
+        const visibleColors = showColorDisclosure
+          ? colors.slice(0, COLORS_INITIAL)
+          : colors;
+        const hiddenColorCount = colors.length - COLORS_INITIAL;
+        return (
         <div className="flex flex-col gap-2">
           <p className="text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
             {locale === "ar" ? "اللون" : "Color"}
@@ -182,13 +205,11 @@ export function ProductActions({
           </p>
           <div
             className={cn(
-              "gap-2",
-              compact
-                ? "flex flex-nowrap overflow-x-auto py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-                : "flex flex-wrap",
+              "flex flex-wrap items-center gap-2",
+              compact && "py-1",
             )}
           >
-            {colors.map((c) => {
+            {visibleColors.map((c) => {
               const stockedForColor = variantHasStock(
                 (v) =>
                   v.color_hex === c.hex &&
@@ -229,9 +250,21 @@ export function ProductActions({
                 </button>
               );
             })}
+            {showColorDisclosure && (
+              <button
+                type="button"
+                onClick={() => setColorsExpanded(true)}
+                className="inline-flex h-11 items-center rounded-full border border-[var(--color-border)] px-3 text-xs font-semibold text-[var(--color-accent-dark)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+              >
+                {locale === "ar"
+                  ? `+${hiddenColorCount} لون آخر`
+                  : `+${hiddenColorCount} more`}
+              </button>
+            )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Size picker */}
       {sizes.length > 0 && (
