@@ -74,6 +74,9 @@ export function Footer({
           title={t.company}
           links={[
             { href: `${base}/about`, label: locale === "ar" ? "قصتنا" : "Our story" },
+            { href: `${base}/shipping-policy`, label: locale === "ar" ? "سياسة الشحن" : "Shipping policy" },
+            { href: `${base}/refund-policy`, label: locale === "ar" ? "سياسة الإرجاع" : "Refund policy" },
+            { href: `${base}/terms-of-service`, label: locale === "ar" ? "شروط الاستخدام" : "Terms of service" },
             { href: "https://instagram.com/mmbags.eg", label: "Instagram" },
             { href: "https://facebook.com/mmbags.eg", label: "Facebook" },
           ]}
