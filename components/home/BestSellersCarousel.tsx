@@ -35,14 +35,14 @@ export function BestSellersCarousel({
   const Next = locale === "ar" ? ChevronLeft : ChevronRight;
 
   return (
-    <section className="bg-surface py-12 md:py-24">
+    <section className="bg-surface py-8 md:py-24">
       <div className="mx-auto max-w-[1200px] px-6 md:px-12">
-        <header className="mb-8 flex items-end justify-between gap-4">
+        <header className="mb-5 flex items-end justify-between gap-4 md:mb-8">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-brass-700">
               {locale === "ar" ? "اختيار العملاء" : "Best sellers"}
             </p>
-            <h2 className="font-display mt-2 text-3xl text-navy-900 md:text-4xl">
+            <h2 className="font-display mt-1 text-2xl text-navy-900 md:mt-2 md:text-4xl">
               {locale === "ar" ? "الأكثر مبيعاً" : "Customer favourites"}
             </h2>
           </div>
