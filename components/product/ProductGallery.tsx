@@ -10,7 +10,7 @@ export function ProductGallery({
   name,
   locale,
   imageFit = "cover",
-  imageAspect: _imageAspect = "square",
+  imageAspect = "square",
   previewImageIndex = null,
 }: {
   images: string[];
@@ -19,8 +19,9 @@ export function ProductGallery({
   /** Determines whether the main image and thumbnails crop (`cover`) or
       letterbox with padding (`contain`). */
   imageFit?: ImageFit;
-  /** Reserved for ImageContainer-based hosts; main-image gallery uses a
-      hard `min(320px, 45vw)` height clamp regardless of orientation. */
+  /** Source orientation — drives the gallery's aspect-ratio container.
+      Matching the source's native orientation keeps contain-mode bags
+      from getting big whitespace stripes top/bottom. */
   imageAspect?: ImageAspect;
   /** External override (e.g. ProductActions color-swatch hover) that
       replaces the internally-tracked thumbnail selection without
@@ -51,20 +52,27 @@ export function ProductGallery({
   }
 
   const isContain = imageFit === "contain";
+  // Aspect-ratio container — `fill` inside an explicit aspect-* wrapper
+  // is the only reliable cross-browser pattern. The previous
+  // `width={0} height={0} + style.height:auto` trick relied on the
+  // browser computing intrinsic dimensions; on Samsung Internet +
+  // some Android WebViews the IMG renders at native pixel width and
+  // gets left-aligned inside a w-full parent, leaving white space on
+  // the trailing side of the gallery (reported on mobile Milano PDP).
+  const aspectClass =
+    imageAspect === "landscape"
+      ? "aspect-[7/5]"
+      : imageAspect === "portrait"
+        ? "aspect-[3/4]"
+        : "aspect-square";
 
   return (
     <div className="flex flex-col gap-3">
-      {/* NATURAL-FLOW IMAGE — no fixed height, no aspect-ratio forcing.
-          The image renders at its own intrinsic proportions (width 100%
-          of container, height computed by the browser from the natural
-          aspect), capped at maxHeight: 70vh so a tall portrait can't
-          ever exceed the viewport. This is the pattern Shopify themes
-          and Bagzawy/Noon/Amazon use for product galleries — the source
-          image decides the box, not the box deciding the source. */}
       <div
         key={active}
         className={cn(
           "relative w-full overflow-hidden rounded-2xl",
+          aspectClass,
           isContain && "bg-white",
         )}
         // 300ms crossfade fires whenever `active` changes — color-swatch
@@ -76,18 +84,10 @@ export function ProductGallery({
         <Image
           src={active}
           alt={name}
-          /* width/height=0 + sizes + style:height:auto is the Next.js
-             documented pattern for letting next/image render at natural
-             intrinsic aspect while still going through the optimizer. */
-          width={0}
-          height={0}
+          fill
           sizes="(min-width: 1024px) 600px, 100vw"
           priority
-          className={cn(
-            "block h-auto w-full",
-            isContain ? "object-contain p-4" : "object-cover",
-          )}
-          style={{ maxHeight: "70vh" }}
+          className={cn(isContain ? "object-contain p-4" : "object-cover")}
         />
       </div>
 
