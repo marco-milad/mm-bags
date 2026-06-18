@@ -11,6 +11,7 @@ export function ProductGallery({
   locale,
   imageFit = "cover",
   imageAspect = "square",
+  compact = false,
   previewImageIndex = null,
 }: {
   images: string[];
@@ -23,6 +24,10 @@ export function ProductGallery({
       Matching the source's native orientation keeps contain-mode bags
       from getting big whitespace stripes top/bottom. */
   imageAspect?: ImageAspect;
+  /** Slug-scoped canary (bs-milano-classic): tighter thumbnail strip —
+      smaller thumbs, smaller gap, no bottom padding, no horizontal
+      bleed. All other products must render byte-identically to today. */
+  compact?: boolean;
   /** External override (e.g. ProductActions color-swatch hover) that
       replaces the internally-tracked thumbnail selection without
       mutating it. `null` = no preview, fall back to the selected image.
@@ -93,7 +98,13 @@ export function ProductGallery({
 
       {safeImages.length > 1 && (
         <div
-          className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className={cn(
+            "flex overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+            // Keep all four toggled atoms (-mx-2 / gap-2 / px-2 / pb-1) in
+            // the same branch so the non-canary path is byte-identical
+            // to the previous static string.
+            compact ? "gap-1.5" : "-mx-2 gap-2 px-2 pb-1",
+          )}
           aria-label={locale === "ar" ? "صور المنتج" : "Product images"}
         >
           {safeImages.map((src, idx) => (
@@ -111,7 +122,8 @@ export function ProductGallery({
                 }
                 onClick={() => setActiveIndex(idx)}
                 className={cn(
-                  "relative h-16 w-16 overflow-hidden rounded-lg transition",
+                  "relative overflow-hidden rounded-lg transition",
+                  compact ? "h-12 w-12" : "h-16 w-16",
                   // Thumbnail bg matches the contain mode so product-on-white
                   // shots blend in nicely; cover mode uses the neutral surface.
                   isContain ? "bg-white" : "bg-[var(--color-surface-2)]",

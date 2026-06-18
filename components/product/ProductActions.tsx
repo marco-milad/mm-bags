@@ -35,6 +35,7 @@ export function ProductActions({
   locale,
   whatsappNumber,
   onColorHover,
+  compact = false,
 }: {
   product: ProductWithVariants;
   locale: Locale;
@@ -44,6 +45,13 @@ export function ProductActions({
       layout should clear its preview-image override. Fired by both
       hover and keyboard focus to keep the image preview accessible. */
   onColorHover?: (hex: string | null) => void;
+  /** Slug-scoped canary (bs-milano-classic): switch the color-swatch row
+      from `flex-wrap` to a single horizontally-scrollable row to drop
+      ~44 px of above-fold height on dense, multi-colour products.
+      Size row is intentionally NOT compacted (small finite set, hiding
+      behind a scroll affordance hurts conversion). All other products
+      render byte-identically to today. */
+  compact?: boolean;
 }) {
   const variants = product.product_variants;
   const initial = pickInitialVariant(variants);
@@ -172,7 +180,14 @@ export function ProductActions({
               </span>
             )}
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div
+            className={cn(
+              "gap-2",
+              compact
+                ? "flex flex-nowrap overflow-x-auto py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                : "flex flex-wrap",
+            )}
+          >
             {colors.map((c) => {
               const stockedForColor = variantHasStock(
                 (v) =>

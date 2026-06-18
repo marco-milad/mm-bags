@@ -41,6 +41,15 @@ export function ProductDetailLayout({
       ProductActions buy-box (h1, collection chip, review stars). */
   header: React.ReactNode;
 }) {
+  // Slug-scoped canary gate for the compact PDP layout (smaller
+  // thumb strip + horizontally-scrolling color picker). Flip to
+  // `true` unconditionally once Marco approves on mobile, then
+  // delete the `compact` prop from ProductGallery + ProductActions
+  // and make compact the default render path. While the gate stays
+  // scoped to one slug, every other product (~84) renders byte-
+  // identically to today.
+  const compactCanary = product.slug === "bs-milano-classic";
+
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
 
   // Distinct color hexes in the order they first appear on the variant
@@ -77,6 +86,7 @@ export function ProductDetailLayout({
         imageFit={product.image_fit}
         imageAspect={product.image_aspect}
         previewImageIndex={previewImageIndex}
+        compact={compactCanary}
       />
 
       <div className="flex flex-col gap-6">
@@ -87,6 +97,7 @@ export function ProductDetailLayout({
           locale={locale}
           whatsappNumber={whatsappNumber}
           onColorHover={setHoveredColor}
+          compact={compactCanary}
         />
 
         <ProductAccordion product={product} locale={locale} />

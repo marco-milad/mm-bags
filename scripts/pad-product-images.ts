@@ -87,11 +87,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: { persistSession: false },
 });
 
-type Args = { slugs: string[]; dryRun: boolean };
+type Args = { slugs: string[]; dryRun: boolean; rollback: boolean };
 function parseArgs(): Args {
-  const out: Args = { slugs: [], dryRun: false };
+  const out: Args = { slugs: [], dryRun: false, rollback: false };
   for (const arg of process.argv.slice(2)) {
     if (arg === "--dry-run") out.dryRun = true;
+    else if (arg === "--rollback") out.rollback = true;
     else if (arg.startsWith("--slug=")) {
       out.slugs = arg.slice(7).split(",").filter(Boolean);
     } else if (arg.startsWith("--slugs=")) {
@@ -104,6 +105,47 @@ function parseArgs(): Args {
     );
   }
   return out;
+}
+
+/**
+ * Rollback mode: for the given slugs, rewrite products.images[] by
+ * stripping the `/padded/` segment so URLs point at the original
+ * `/optimized/` paths again. The `/padded/` files in Storage are left
+ * in place (cheap; lets us re-roll forward without re-encoding).
+ */
+async function rollbackOne(slug: string): Promise<void> {
+  const { data: rows, error } = await supabase
+    .from("products")
+    .select("id, images")
+    .eq("slug", slug);
+  if (error || !rows || rows.length === 0) {
+    console.log(`! ${slug}: not found`);
+    return;
+  }
+  const row = rows[0];
+  const existing: string[] = (row.images as string[] | null) ?? [];
+  const restored = existing.map((u) => {
+    if (!u.includes(PADDED_SEGMENT)) return u;
+    // <slug>/padded/foo.webp -> <slug>/optimized/foo.webp.
+    // The pad pipeline always writes WebP so the destination here is
+    // also `.webp`, matching what Phase 5 produced.
+    return u.replace(PADDED_SEGMENT, "/optimized/");
+  });
+  const changed = restored.some((u, i) => u !== existing[i]);
+  if (!changed) {
+    console.log(`→ ${slug}: nothing to roll back`);
+    return;
+  }
+  const { error: updErr } = await supabase
+    .from("products")
+    .update({ images: restored })
+    .eq("id", row.id);
+  if (updErr) {
+    console.log(`  ! UPDATE failed: ${updErr.message}`);
+  } else {
+    const swapped = restored.filter((u, i) => u !== existing[i]).length;
+    console.log(`✓ ${slug}: rolled back ${swapped} URL(s)`);
+  }
 }
 
 function isOurStorageUrl(u: string): boolean {
@@ -271,6 +313,13 @@ async function processImage(
 
 async function main(): Promise<void> {
   const args = parseArgs();
+
+  if (args.rollback) {
+    console.log(`Rolling back padded images for: ${args.slugs.join(", ")}\n`);
+    for (const slug of args.slugs) await rollbackOne(slug);
+    return;
+  }
+
   console.log(
     `Padding to TARGET_ASPECT=${TARGET_ASPECT} for slugs: ${args.slugs.join(", ")}${args.dryRun ? "  (DRY RUN)" : ""}\n`,
   );
