@@ -5,6 +5,7 @@ import {
   FileBarChart2,
   FolderOpen,
   Globe,
+  Home,
   LayoutDashboard,
   Mail,
   Package,
@@ -59,6 +60,20 @@ export const ADMIN_NAV: ReadonlyArray<AdminNavSection> = [
         label_en: "Dashboard",
         icon: LayoutDashboard,
         allowedRoles: ["manager", "admin"],
+      },
+    ],
+  },
+  {
+    id: "storefront",
+    label_ar: "الواجهة",
+    label_en: "Storefront",
+    items: [
+      {
+        href: "/admin/homepage",
+        label_ar: "الصفحة الرئيسية",
+        label_en: "Homepage",
+        icon: Home,
+        allowedRoles: ["admin"],
       },
     ],
   },

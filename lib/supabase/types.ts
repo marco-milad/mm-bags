@@ -981,6 +981,37 @@ export type Database = {
           },
         ];
       };
+
+      // ─── Storefront merchandising (0006_homepage_featured_products.sql) ──
+      homepage_featured_products: {
+        Row: {
+          id: string;
+          product_id: string;
+          position: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          position: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          product_id?: string;
+          position?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "homepage_featured_products_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: true;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
 
     Views: Record<string, never>;
@@ -1037,3 +1068,4 @@ export type Staff = Tables<"staff">;
 export type PosSale = Tables<"pos_sales">;
 export type PosSaleItem = Tables<"pos_sale_items">;
 export type StockMovement = Tables<"stock_movements">;
+export type HomepageFeaturedProduct = Tables<"homepage_featured_products">;

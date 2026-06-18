@@ -26,9 +26,9 @@ import { FeaturedProduct } from "@/components/home/FeaturedProduct";
 import { ShopByMaterial } from "@/components/home/ShopByMaterial";
 import { NewsletterPanel } from "@/components/home/NewsletterPanel";
 import {
-  getProducts,
   getFeaturedProduct,
   getMaterialCounts,
+  getFeaturedHomepageProductsFlat,
 } from "@/lib/queries/catalog";
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 import { getFeaturedReviews } from "@/lib/queries/reviews";
@@ -64,7 +64,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
   const [categories, bestSellers, homeReviews, featuredProduct, materials] =
     await Promise.all([
       getTopLevelCategoriesWithCounts(),
-      getProducts({ tag: "best-seller", limit: 8 }),
+      getFeaturedHomepageProductsFlat(),
       getFeaturedReviews(6),
       getFeaturedProduct(),
       getMaterialCounts(),

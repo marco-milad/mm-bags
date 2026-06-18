@@ -268,3 +268,67 @@ export async function getRelatedProducts(opts: {
   if (error) throw new Error(`getRelatedProducts failed: ${error.message}`);
   return (data ?? []) as ProductWithVariants[];
 }
+
+/**
+ * One row of the homepage_featured_products curation list, joined with the
+ * product (and its variants) for rendering. The `id` is the join-row id —
+ * use it as the stable handle for remove/reorder server actions; do NOT
+ * use product.id for those because a product can only ever appear once
+ * but the row id is what the table actually keys on.
+ */
+export type FeaturedHomepageRow = {
+  id: string;
+  product: ProductWithVariants;
+};
+
+/**
+ * Loads the admin-curated homepage carousel as join-rows. Use this variant
+ * from the admin manager UI, which needs the join-row id to remove or
+ * reorder entries. Inactive products are filtered out so a soft-delete
+ * elsewhere doesn't leak a broken card onto the homepage.
+ *
+ * Order: homepage_featured_products.position ASC, tiebroken by created_at
+ * ASC so the older pick wins a tie deterministically.
+ */
+export async function getFeaturedHomepageProducts(): Promise<FeaturedHomepageRow[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("homepage_featured_products")
+    .select("id, position, created_at, product:products(*, product_variants(*))")
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) throw new Error(`getFeaturedHomepageProducts failed: ${error.message}`);
+
+  type JoinRow = {
+    id: string;
+    position: number;
+    created_at: string;
+    // PostgREST returns the embedded relation as either an object or an array
+    // depending on the FK shape; product_id is a 1:1 FK so it's an object here,
+    // but we defensively normalise so a schema cache hiccup can't crash render.
+    product: ProductWithVariants | ProductWithVariants[] | null;
+  };
+
+  const rows = (data ?? []) as unknown as JoinRow[];
+
+  return rows
+    .map((row) => {
+      const product = Array.isArray(row.product) ? row.product[0] : row.product;
+      if (!product) return null;
+      if (product.is_active === false) return null;
+      return { id: row.id, product } satisfies FeaturedHomepageRow;
+    })
+    .filter((r): r is FeaturedHomepageRow => r !== null);
+}
+
+/**
+ * Flat variant for the public homepage server component, which only needs the
+ * products themselves (no join-row ids — it never mutates the list). Kept as a
+ * thin wrapper so the page stays a one-liner and we don't accidentally couple
+ * the public render path to the admin-shaped row type.
+ */
+export async function getFeaturedHomepageProductsFlat(): Promise<ProductWithVariants[]> {
+  const rows = await getFeaturedHomepageProducts();
+  return rows.map((row) => row.product);
+}
