@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import sharp from "sharp";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin/auth";
 
@@ -7,6 +8,13 @@ export const runtime = "nodejs";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+// Pre-upload re-encode guardrail. Set IMAGE_REENCODE=off to bypass
+// (useful for diagnosing a sharp regression without redeploying the
+// route). Defaults to on per Phase 4 of the image-optimisation plan.
+const REENCODE_ENABLED = process.env.IMAGE_REENCODE !== "off";
+const MAX_DIMENSION_PX = 1600;
+const WEBP_QUALITY = 82;
 
 /**
  * Sniff the actual image MIME from the first bytes — `file.type` is
@@ -102,8 +110,8 @@ export async function POST(request: Request) {
   if (!ALLOWED.has(file.type))
     return NextResponse.json({ error: "file_type" }, { status: 415 });
 
-  const buf = Buffer.from(await file.arrayBuffer());
-  const sniffed = sniffImageMime(buf);
+  const rawBuf = Buffer.from(await file.arrayBuffer());
+  const sniffed = sniffImageMime(rawBuf);
   if (!sniffed) {
     return NextResponse.json({ error: "file_type" }, { status: 415 });
   }
@@ -115,16 +123,51 @@ export async function POST(request: Request) {
     );
   }
 
-  const ext = sniffed === "image/png" ? "png" : sniffed === "image/webp" ? "webp" : "jpg";
+  // Pre-upload re-encode: rotate per EXIF orientation, downscale the
+  // long edge to MAX_DIMENSION_PX, strip metadata, write WebP. Cuts
+  // the stored origin bytes by 60-90% vs an unmodified 2-3 MB PNG,
+  // which is the bulk of the page-load weight on backpacks/school-bags
+  // even after the Supabase transform endpoint kicks in.
+  // Typed as the loose Buffer so a sharp re-encode (which returns
+  // Buffer<ArrayBufferLike>) can be reassigned without TS narrowing
+  // it against the stricter Buffer<ArrayBuffer> rawBuf inherits.
+  let uploadBuf: Buffer = rawBuf;
+  let uploadContentType: string = sniffed;
+  let uploadExt = sniffed === "image/png" ? "png" : sniffed === "image/webp" ? "webp" : "jpg";
+  if (REENCODE_ENABLED) {
+    try {
+      uploadBuf = await sharp(rawBuf)
+        .rotate()
+        .resize({
+          width: MAX_DIMENSION_PX,
+          height: MAX_DIMENSION_PX,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .webp({ quality: WEBP_QUALITY })
+        .toBuffer();
+      uploadContentType = "image/webp";
+      uploadExt = "webp";
+    } catch (err) {
+      // Sharp shouldn't fail on a magic-byte-validated image, but if
+      // it does (truncated upload, unsupported colour space, …) fall
+      // back to the original bytes rather than 500ing the admin.
+      console.warn(
+        "[admin/products/upload] sharp re-encode failed, uploading original",
+        err,
+      );
+    }
+  }
+
   const today = new Date().toISOString().slice(0, 10);
-  const path = `${today}/${randomUUID()}.${ext}`;
+  const path = `${today}/${randomUUID()}.${uploadExt}`;
 
   try {
     const admin = getSupabaseAdminClient();
     const { error } = await admin.storage
       .from("products")
-      .upload(path, buf, {
-        contentType: sniffed,
+      .upload(path, uploadBuf, {
+        contentType: uploadContentType,
         upsert: false,
         cacheControl: "31536000",
       });

@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   // serverless bundle. They're loaded at runtime by /admin/reports/export-pdf
   // via the @sparticuz/chromium serverless build; bundling them through
   // webpack would mangle the native code paths.
-  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core", "sharp"],
   images: {
     remotePatterns: [
       ...(supabaseHostname
