@@ -55,12 +55,12 @@ export function WishlistButton({
         aria-label={label}
         aria-pressed={hydrated && isWishlisted ? "true" : "false"}
         className={cn(
-          "absolute z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-bg)]/90 text-[var(--color-text)] shadow-sm backdrop-blur transition hover:scale-105 hover:bg-[var(--color-bg)] ltr:right-3 rtl:left-3 top-3",
+          "absolute z-10 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-bg)]/90 text-[var(--color-text)] shadow-sm backdrop-blur transition hover:scale-105 hover:bg-[var(--color-bg)] ltr:right-3 rtl:left-3 top-3",
         )}
       >
         <Heart
           className={cn(
-            "h-4 w-4 transition",
+            "h-[18px] w-[18px] transition",
             hydrated && isWishlisted
               ? "fill-[var(--color-accent-dark)] stroke-[var(--color-accent-dark)]"
               : "stroke-[var(--color-text-secondary)]",

@@ -200,7 +200,7 @@ export function ProductActions({
                   aria-label={colorLabel(c)}
                   aria-pressed={isActive ? "true" : "false"}
                   className={cn(
-                    "relative h-10 w-10 rounded-full ring-offset-2 ring-offset-[var(--color-bg)] transition",
+                    "relative h-11 w-11 rounded-full ring-offset-2 ring-offset-[var(--color-bg)] transition",
                     isActive
                       ? "ring-2 ring-[var(--color-primary)]"
                       : "ring-1 ring-[var(--color-border)] hover:ring-[var(--color-accent)]",
@@ -209,7 +209,7 @@ export function ProductActions({
                   style={{ background: c.hex }}
                 >
                   {!stockedForColor && (
-                    <span className="absolute inset-0 m-auto block h-px w-7 rotate-45 bg-white/70" />
+                    <span className="absolute inset-0 m-auto block h-px w-8 rotate-45 bg-white/70" />
                   )}
                 </button>
               );
@@ -250,7 +250,7 @@ export function ProductActions({
                   onClick={() => setSelectedSize(s)}
                   aria-pressed={isActive ? "true" : "false"}
                   className={cn(
-                    "rounded-lg border px-4 py-2 text-sm font-mono transition",
+                    "inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border px-4 py-2 text-sm font-mono transition",
                     isActive
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
                       : "border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-accent)]",
@@ -334,10 +334,10 @@ export function ProductActions({
         ).map((label) => (
           <li
             key={label}
-            className="flex items-center gap-2 rounded-md bg-[var(--color-surface)] px-3 py-2"
+            className="flex min-w-0 items-center gap-2 rounded-md bg-[var(--color-surface)] px-3 py-2"
           >
-            <Check className="h-3.5 w-3.5 text-[var(--color-success)]" />
-            <span>{label}</span>
+            <Check className="h-3.5 w-3.5 shrink-0 text-[var(--color-success)]" />
+            <span className="min-w-0 leading-tight">{label}</span>
           </li>
         ))}
       </ul>
