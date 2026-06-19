@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import {
+  getProductFieldSuggestions,
   getProductForEdit,
   listAllCollections,
 } from "@/lib/queries/admin-products";
@@ -13,13 +14,17 @@ export const dynamic = "force-dynamic";
 
 export default async function EditProductPage({
   params,
+  searchParams,
 }: PageProps<"/admin/products/[id]/edit">) {
   const locale = await getAdminLocale();
   const isAr = locale === "ar";
   const { id } = await params;
-  const [product, collections] = await Promise.all([
+  const sp = await searchParams;
+  const justCreated = sp?.created === "1";
+  const [product, collections, suggestions] = await Promise.all([
     getProductForEdit(id),
     listAllCollections(),
+    getProductFieldSuggestions(),
   ]);
   if (!product) notFound();
 
@@ -53,7 +58,13 @@ export default async function EditProductPage({
         </p>
       </header>
 
-      <ProductForm product={product} collections={collections} locale={locale} />
+      <ProductForm
+        product={product}
+        collections={collections}
+        locale={locale}
+        suggestions={suggestions}
+        justCreated={justCreated}
+      />
 
       <div className="border-t border-[var(--color-border)] pt-6">
         <VariantsManager

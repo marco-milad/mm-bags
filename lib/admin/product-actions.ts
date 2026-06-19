@@ -182,7 +182,16 @@ const productSchema = z
   );
 
 export type ProductActionResult =
-  | { ok: true; id?: string }
+  | {
+      ok: true;
+      id?: string;
+      /** True only after a successful update — distinguishes a returned
+          state from the initial `{ok: true}` placeholder so the form
+          can show a transient "saved" banner without flashing one on
+          first render. Create successes redirect to /edit?created=1
+          and are surfaced separately via search params. */
+      saved?: true;
+    }
   | {
       ok: false;
       error: string;
@@ -350,7 +359,7 @@ export async function saveProduct(
       revalidatePath(`/ar/products/${prevRow.slug}`);
       revalidatePath(`/en/products/${prevRow.slug}`);
     }
-    return { ok: true, id };
+    return { ok: true, id, saved: true };
   }
 
   // Insert: assign the next sort_order so new products don't pile up
@@ -378,7 +387,10 @@ export async function saveProduct(
   revalidatePath("/admin/products");
   // redirect() throws NEXT_REDIRECT which a useActionState client
   // handles cleanly (it's the standard form-action pattern).
-  redirect(`/admin/products/${created.id}/edit`);
+  // `?created=1` lets the destination edit page render a one-shot
+  // success banner — the new-product flow has no other way to tell
+  // the user "yes, it saved" because we redirect off the New form.
+  redirect(`/admin/products/${created.id}/edit?created=1`);
 }
 
 // ─── Single-field flag toggles ──────────────────────────────────────

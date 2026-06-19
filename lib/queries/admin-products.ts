@@ -166,3 +166,88 @@ export async function listAllCollections(): Promise<Collection[]> {
     .order("name_ar", { ascending: true });
   return (data ?? []) as Collection[];
 }
+
+/**
+ * Bag-specific spec fields where the same value typically recurs
+ * across most products (TSA locks, polycarbonate, 360° spinner...).
+ * The product form pulls these into a combobox suggestion list so
+ * Marco can re-use existing values without re-typing — but can still
+ * enter a brand-new value as plain text. Tags is included because
+ * the same tags (`best-seller`, `set`) repeat on many products.
+ */
+export type ProductFieldSuggestions = {
+  material_type: string[];
+  wheel_type: string[];
+  lock_type: string[];
+  dimensions: string[];
+  tags: string[];
+};
+
+const SUGGEST_MAX_PER_FIELD = 50;
+
+/**
+ * Returns distinct existing values for each spec field, sorted by
+ * frequency descending then alphabetically. The 50-row cap per field
+ * keeps the combobox menu fast; in practice the catalog has at most
+ * a dozen unique values for any spec column.
+ *
+ * Implementation: one round-trip selecting only the columns we need,
+ * then aggregated in JS. PostgREST has no DISTINCT or GROUP BY for
+ * scalar selects, so the alternative would be an RPC — overkill for
+ * sub-100-product catalogs.
+ */
+export async function getProductFieldSuggestions(): Promise<ProductFieldSuggestions> {
+  const admin = getSupabaseAdminClient();
+  const { data } = await admin
+    .from("products")
+    .select("material_type, wheel_type, lock_type, dimensions, tags");
+
+  const counters: Record<keyof ProductFieldSuggestions, Map<string, number>> = {
+    material_type: new Map(),
+    wheel_type: new Map(),
+    lock_type: new Map(),
+    dimensions: new Map(),
+    tags: new Map(),
+  };
+
+  for (const row of data ?? []) {
+    const r = row as {
+      material_type: string | null;
+      wheel_type: string | null;
+      lock_type: string | null;
+      dimensions: string | null;
+      tags: string[] | null;
+    };
+    if (r.material_type) bump(counters.material_type, r.material_type);
+    if (r.wheel_type) bump(counters.wheel_type, r.wheel_type);
+    if (r.lock_type) bump(counters.lock_type, r.lock_type);
+    if (r.dimensions) bump(counters.dimensions, r.dimensions);
+    for (const t of r.tags ?? []) {
+      if (t && typeof t === "string") bump(counters.tags, t);
+    }
+  }
+
+  return {
+    material_type: topByFrequency(counters.material_type),
+    wheel_type: topByFrequency(counters.wheel_type),
+    lock_type: topByFrequency(counters.lock_type),
+    dimensions: topByFrequency(counters.dimensions),
+    tags: topByFrequency(counters.tags),
+  };
+}
+
+function bump(map: Map<string, number>, value: string): void {
+  const trimmed = value.trim();
+  if (!trimmed) return;
+  map.set(trimmed, (map.get(trimmed) ?? 0) + 1);
+}
+
+function topByFrequency(map: Map<string, number>): string[] {
+  return Array.from(map.entries())
+    .sort((a, b) => {
+      const c = b[1] - a[1];
+      return c !== 0 ? c : a[0].localeCompare(b[0]);
+    })
+    .slice(0, SUGGEST_MAX_PER_FIELD)
+    .map(([value]) => value);
+}

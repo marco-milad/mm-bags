@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Trash2 } from "lucide-react";
+import { CheckCircle2, Loader2, Trash2 } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -10,9 +10,11 @@ import {
   type ProductActionResult,
 } from "@/lib/admin/product-actions";
 import type { AdminLocale } from "@/lib/admin/locale";
+import type { ProductFieldSuggestions } from "@/lib/queries/admin-products";
 import type { Collection, Product } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 import { ImageManager } from "./ImageManager";
+import { SuggestInput } from "./SuggestInput";
 
 /**
  * Shared product form for /admin/products/new + /admin/products/[id]/edit.
@@ -30,15 +32,34 @@ export function ProductForm({
   product,
   collections,
   locale,
+  suggestions,
+  justCreated,
 }: {
   product?: Product;
   collections: Collection[];
   locale: AdminLocale;
+  /** Existing values from the rest of the catalog, surfaced by the
+      spec field comboboxes. Optional so older call-sites don't break;
+      an empty object falls through to a plain `<input>` behaviour. */
+  suggestions?: ProductFieldSuggestions;
+  /** Set to true when the user just landed here from a successful
+      "Create product" submit (the redirect attaches `?created=1`).
+      Triggers a one-shot success banner with the same auto-dismiss
+      as the edit-save banner. */
+  justCreated?: boolean;
 }) {
   const isAr = locale === "ar";
   const [slug, setSlug] = useState(product?.slug ?? "");
   const slugTouchedRef = useRef(slug !== "");
   const isEdit = !!product;
+  const sug: ProductFieldSuggestions =
+    suggestions ?? {
+      material_type: [],
+      wheel_type: [],
+      lock_type: [],
+      dimensions: [],
+      tags: [],
+    };
 
   // Slug auto-fill on EN-name blur until the admin types in the slug
   // input themselves.
@@ -75,8 +96,40 @@ export function ProductForm({
     saveState && !saveState.ok ? (saveState.fieldErrors ?? {}) : {};
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
+  // One-shot success banner — fires on a fresh `?created=1` landing
+  // or whenever the edit form returns `{ok: true, saved: true}`. The
+  // banner auto-dismisses so a repeated save isn't a no-op (the state
+  // would still be `saved=true` and the banner wouldn't re-flash).
+  const editJustSaved =
+    saveState && saveState.ok && "saved" in saveState && saveState.saved;
+  const [showSavedBanner, setShowSavedBanner] = useState(
+    Boolean(justCreated),
+  );
+  useEffect(() => {
+    if (editJustSaved) setShowSavedBanner(true);
+  }, [editJustSaved]);
+  useEffect(() => {
+    if (!showSavedBanner) return;
+    const t = window.setTimeout(() => setShowSavedBanner(false), 4500);
+    return () => window.clearTimeout(t);
+  }, [showSavedBanner]);
+
   return (
     <div className="space-y-6">
+      {showSavedBanner && (
+        <Banner kind="success">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span>
+            {justCreated
+              ? isAr
+                ? "تم إنشاء المنتج بنجاح."
+                : "Product created successfully."
+              : isAr
+                ? "تم حفظ التعديلات."
+                : "Changes saved."}
+          </span>
+        </Banner>
+      )}
       {saveState && !saveState.ok && (
         <Banner kind="error">
           {hasFieldErrors ? "يرجى تصحيح الأخطاء بالأسفل" : saveState.error}
@@ -211,31 +264,44 @@ export function ProductForm({
           </Row>
         </Section>
 
-        <Section title={isAr ? "المواصفات" : "Specifications"}>
+        <Section
+          title={isAr ? "المواصفات" : "Specifications"}
+          hint={
+            isAr
+              ? "اضغط على أي حقل لتظهر القيم اللي بنستخدمها مع باقي المنتجات، أو اكتب قيمة جديدة عادي."
+              : "Tap any field to see values already used on other products, or type a brand-new value."
+          }
+        >
           <Row>
             <Field id="material_type" label={isAr ? "نوع الخامة" : "Material type"}>
-              <input
+              <SuggestInput
                 id="material_type"
                 name="material_type"
                 defaultValue={product?.material_type ?? ""}
+                suggestions={sug.material_type}
+                isAr={isAr}
                 className={inputCls}
               />
             </Field>
             <Field id="wheel_type" label={isAr ? "نوع العجلات" : "Wheel type"}>
-              <input
+              <SuggestInput
                 id="wheel_type"
                 name="wheel_type"
                 defaultValue={product?.wheel_type ?? ""}
+                suggestions={sug.wheel_type}
+                isAr={isAr}
                 className={inputCls}
               />
             </Field>
           </Row>
           <Row>
             <Field id="lock_type" label={isAr ? "نوع القفل" : "Lock type"}>
-              <input
+              <SuggestInput
                 id="lock_type"
                 name="lock_type"
                 defaultValue={product?.lock_type ?? ""}
+                suggestions={sug.lock_type}
+                isAr={isAr}
                 className={inputCls}
               />
             </Field>
@@ -248,10 +314,12 @@ export function ProductForm({
                   : "Free-form, e.g. 44cm × 29.5cm × 23.5cm"
               }
             >
-              <input
+              <SuggestInput
                 id="dimensions"
                 name="dimensions"
                 defaultValue={product?.dimensions ?? ""}
+                suggestions={sug.dimensions}
+                isAr={isAr}
                 className={inputCls}
               />
             </Field>
@@ -373,8 +441,16 @@ export function ProductForm({
               label={isAr ? "وسوم" : "Tags"}
               hint={
                 isAr
-                  ? "مفصولة بفواصل، مثال: best-seller, set"
-                  : "Comma-separated, e.g. best-seller, set"
+                  ? `مفصولة بفواصل، مثال: best-seller, set${
+                      sug.tags.length > 0
+                        ? ` · موجود حالياً: ${sug.tags.slice(0, 6).join("، ")}`
+                        : ""
+                    }`
+                  : `Comma-separated, e.g. best-seller, set${
+                      sug.tags.length > 0
+                        ? ` · already in use: ${sug.tags.slice(0, 6).join(", ")}`
+                        : ""
+                    }`
               }
             >
               <input
@@ -481,16 +557,26 @@ function Banner({
 
 function Section({
   title,
+  hint,
   children,
 }: {
   title: string;
+  /** Optional one-liner under the section title — used by the specs
+      section to surface the new combobox autocomplete behaviour. */
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
-      <h2 className="mb-4 font-display text-lg text-[var(--color-text)]">
+      <h2 className="font-display text-lg text-[var(--color-text)]">
         {title}
       </h2>
+      {hint && (
+        <p className="mb-4 mt-1 text-[11px] text-[var(--color-text-secondary)]">
+          {hint}
+        </p>
+      )}
+      {!hint && <div className="mb-4" />}
       <div className="space-y-4">{children}</div>
     </section>
   );

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { listAllCollections } from "@/lib/queries/admin-products";
+import {
+  getProductFieldSuggestions,
+  listAllCollections,
+} from "@/lib/queries/admin-products";
 import { ProductForm } from "@/components/admin/products/ProductForm";
 import { getAdminLocale } from "@/lib/admin/locale";
 
@@ -9,7 +12,10 @@ export const dynamic = "force-dynamic";
 export default async function NewProductPage() {
   const locale = await getAdminLocale();
   const isAr = locale === "ar";
-  const collections = await listAllCollections();
+  const [collections, suggestions] = await Promise.all([
+    listAllCollections(),
+    getProductFieldSuggestions(),
+  ]);
   return (
     <div className="space-y-6">
       <Link
@@ -31,7 +37,11 @@ export default async function NewProductPage() {
         </p>
       </header>
 
-      <ProductForm collections={collections} locale={locale} />
+      <ProductForm
+        collections={collections}
+        locale={locale}
+        suggestions={suggestions}
+      />
     </div>
   );
 }
