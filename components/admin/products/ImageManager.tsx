@@ -8,13 +8,29 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { reorderProductImages } from "@/lib/admin/product-actions";
 import type { AdminLocale } from "@/lib/admin/locale";
 
 const MAX_IMAGES = 10;
+// Hard ceiling on the *original* file. Anything bigger than this is a
+// 4K-camera-RAW situation we don't want to spend canvas memory on.
+const MAX_INPUT_BYTES = 10 * 1024 * 1024;
+// Compress anything bigger than this. ~1.5 MB JPEGs upload fast on 4G
+// and stay well under Vercel's ~4.5 MB serverless body cap.
+const COMPRESS_THRESHOLD_BYTES = 1.5 * 1024 * 1024;
+// Belt-and-suspenders post-compression cap. Vercel's edge rejects any
+// body over ~4.5 MB with a generic transport-level error (no JSON), so
+// if compression failed or the result was still huge, fail fast here
+// with a readable message instead of submitting a doomed POST.
+const POST_COMPRESS_MAX_BYTES = 4 * 1024 * 1024;
+const COMPRESS_MAX_DIMENSION = 2000;
+const COMPRESS_QUALITY = 0.82;
+const UPLOAD_TIMEOUT_MS = 60_000;
 
-/** Map server-side error codes to admin-friendly messages. */
+/** Map server-side error codes (plus a few raw HTTP statuses that can
+ *  leak through from the Vercel edge before our handler runs) to
+ *  admin-friendly messages. */
 const UPLOAD_ERROR_MSG: Record<"ar" | "en", Record<string, string>> = {
   ar: {
     file_too_large: "الملف أكبر من 5 ميجا",
@@ -27,6 +43,8 @@ const UPLOAD_ERROR_MSG: Record<"ar" | "en", Record<string, string>> = {
     invalid_body: "طلب غير سليم — حدّث الصفحة وحاول",
     upload_failed: "خطأ في التخزين — حاول تاني",
     server_error: "خطأ في السيرفر — حاول تاني",
+    "413": "الملف كبير جداً — رفضه السيرفر قبل ما يوصل",
+    "504": "انتهت مهلة السيرفر — حاول تاني",
   },
   en: {
     file_too_large: "File over 5 MB",
@@ -39,8 +57,124 @@ const UPLOAD_ERROR_MSG: Record<"ar" | "en", Record<string, string>> = {
     invalid_body: "Bad request — refresh and retry",
     upload_failed: "Storage error — please retry",
     server_error: "Server error — please retry",
+    "413": "File too large — rejected before reaching our server",
+    "504": "Server timed out — please retry",
   },
 };
+
+type UploadProgress = { loaded: number; total: number };
+
+/**
+ * Best-effort client-side compression for camera-sized mobile photos.
+ *
+ * Why this exists: Vercel serverless functions cap request bodies at
+ * ~4.5 MB. An 8–10 MB phone photo POSTs straight past that ceiling and
+ * is rejected at the edge before the route handler runs — the browser
+ * sees a generic fetch error with no JSON body, which is why the old
+ * code surfaced a useless "خطأ في الشبكة" on mobile. Shrinking the body
+ * here keeps every upload comfortably under the limit. The server's
+ * sharp pipeline still does the final re-encode (1600 px WebP @ 82),
+ * so we don't have to be perfect — just small.
+ *
+ * Falls back to the original file when the input is already small,
+ * when `createImageBitmap` isn't available, or when anything in the
+ * pipeline throws — the upload at least gets a chance.
+ */
+async function maybeCompress(file: File): Promise<File> {
+  if (file.size < COMPRESS_THRESHOLD_BYTES) return file;
+  if (typeof window === "undefined" || !("createImageBitmap" in window)) {
+    return file;
+  }
+  let bitmap: ImageBitmap | null = null;
+  try {
+    // `imageOrientation: "from-image"` makes the bitmap honour the source's
+    // EXIF orientation tag. Without it, iPhone portrait shots (which the
+    // sensor records as landscape + a "rotate 90°" EXIF tag) decode sideways,
+    // and the JPEG we re-encode loses the EXIF tag so the server's
+    // sharp.rotate() can't fix it either. Wrap in try/catch because very old
+    // browsers may reject the option (Safari < 13.1).
+    try {
+      bitmap = await createImageBitmap(file, {
+        imageOrientation: "from-image",
+      });
+    } catch {
+      bitmap = await createImageBitmap(file);
+    }
+    const longEdge = Math.max(bitmap.width, bitmap.height);
+    const scale = Math.min(1, COMPRESS_MAX_DIMENSION / longEdge);
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    // Flatten any source alpha onto white before drawing — product photos
+    // are shot on white anyway, and JPEG output below has no alpha channel,
+    // so without this PNGs would render with black where they were
+    // transparent.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", COMPRESS_QUALITY),
+    );
+    if (!blob || blob.size >= file.size) return file;
+    const renamed =
+      file.name.replace(/\.(png|webp|jpe?g)$/i, "") + ".jpg";
+    return new File([blob], renamed, {
+      type: "image/jpeg",
+      lastModified: file.lastModified,
+    });
+  } catch {
+    return file;
+  } finally {
+    bitmap?.close?.();
+  }
+}
+
+/**
+ * `fetch()` doesn't expose upload progress; `XMLHttpRequest` does.
+ * A real per-file progress bar matters on mobile because a multi-MB
+ * upload over 4G can take 10+ seconds and silence reads as "frozen".
+ * The AbortSignal hook also gives a future Cancel button somewhere to
+ * land without another refactor.
+ */
+async function uploadWithProgress(
+  url: string,
+  body: FormData,
+  onProgress: (p: UploadProgress) => void,
+  signal: AbortSignal,
+): Promise<{
+  ok: boolean;
+  status: number;
+  json: { url?: string; error?: string };
+}> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.setRequestHeader("x-requested-with", "mm-admin");
+    xhr.responseType = "json";
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress({ loaded: e.loaded, total: e.total });
+    };
+    xhr.onload = () => {
+      const json = (xhr.response ?? {}) as { url?: string; error?: string };
+      resolve({
+        ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
+        json,
+      });
+    };
+    xhr.onerror = () => reject(new Error("network"));
+    xhr.ontimeout = () => reject(new Error("timeout"));
+    xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+    const abortHandler = () => xhr.abort();
+    signal.addEventListener("abort", abortHandler, { once: true });
+    xhr.send(body);
+  });
+}
 
 /**
  * Image manager for the product edit page.
@@ -58,6 +192,10 @@ const UPLOAD_ERROR_MSG: Record<"ar" | "en", Record<string, string>> = {
  *     this header).
  *   - Files past MAX_IMAGES surface a "Skipped N file(s)" warning
  *     rather than silently dropping them.
+ *   - Mobile-photo path: 10 MB pre-flight cap + client-side resize
+ *     to 2000 px @ JPEG 0.82 so the body fits under Vercel's ~4.5 MB
+ *     serverless body limit, with per-file XHR progress and granular
+ *     error messages (network vs timeout vs server code).
  */
 export function ImageManager({
   productId,
@@ -75,12 +213,21 @@ export function ImageManager({
   const [images, setImages] = useState<string[]>(initial);
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [progress, setProgress] = useState<Record<string, UploadProgress>>({});
   const [persistPending, startPersist] = useTransition();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // FIFO promise — each persist awaits its predecessor so the final
   // state of the DB matches the final on-screen state, regardless of
   // click rate.
   const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
+  // Tracks the latest committed images so an upload that started before a
+  // delete/reorder doesn't persist a stale snapshot back over the user's
+  // change. The async upload loop reads from imagesRef.current when it
+  // finally calls persist().
+  const imagesRef = useRef<string[]>(initial);
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
 
   function persist(next: string[]) {
     setImages(next);
@@ -106,33 +253,73 @@ export function ImageManager({
     const collected: string[] = [];
     const failures: string[] = [];
     setUploading(true);
+    setProgress({});
     try {
-      for (const file of files) {
-        const fd = new FormData();
-        fd.append("file", file);
-        let res: Response;
-        try {
-          res = await fetch("/api/admin/products/upload", {
-            method: "POST",
-            headers: { "x-requested-with": "mm-admin" },
-            body: fd,
-          });
-        } catch {
+      for (const original of files) {
+        if (original.size > MAX_INPUT_BYTES) {
           failures.push(
-            `${file.name}: ${isAr ? "خطأ في الشبكة" : "network error"}`,
+            `${original.name}: ${
+              isAr
+                ? "الملف أكبر من 10 ميجا — قلّل جودة الكاميرا"
+                : "file is over 10 MB — lower the camera quality"
+            }`,
           );
           continue;
         }
-        const json = (await res.json().catch(() => ({}))) as {
-          url?: string;
-          error?: string;
-        };
-        if (!res.ok || !json.url) {
-          const code = json.error ?? `${res.status}`;
-          failures.push(`${file.name}: ${errorTable[code] ?? code}`);
+        setProgress((p) => ({
+          ...p,
+          [original.name]: { loaded: 0, total: 1 },
+        }));
+
+        // Compression failures fall through to the raw file so the
+        // upload still has a chance; the server-side 5 MB cap then
+        // produces a clean `file_too_large` error.
+        let file: File;
+        try {
+          file = await maybeCompress(original);
+        } catch {
+          file = original;
+        }
+
+        const fd = new FormData();
+        fd.append("file", file);
+        const controller = new AbortController();
+        let result: Awaited<ReturnType<typeof uploadWithProgress>>;
+        try {
+          result = await uploadWithProgress(
+            "/api/admin/products/upload",
+            fd,
+            (p) =>
+              setProgress((prev) => ({ ...prev, [original.name]: p })),
+            controller.signal,
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          const reason =
+            msg === "timeout"
+              ? isAr
+                ? `انتهت مهلة الرفع (${Math.round(
+                    UPLOAD_TIMEOUT_MS / 1000,
+                  )} ثانية) — جرب اتصال أسرع`
+                : `upload timed out (${Math.round(
+                    UPLOAD_TIMEOUT_MS / 1000,
+                  )}s) — try a faster connection`
+              : msg === "network"
+                ? isAr
+                  ? "خطأ في الشبكة — تأكد من الاتصال وحاول تاني"
+                  : "network error — check your connection and retry"
+                : isAr
+                  ? `خطأ في الرفع: ${msg}`
+                  : `upload error: ${msg}`;
+          failures.push(`${original.name}: ${reason}`);
           continue;
         }
-        collected.push(json.url);
+        if (!result.ok || !result.json.url) {
+          const code = result.json.error ?? `${result.status}`;
+          failures.push(`${original.name}: ${errorTable[code] ?? code}`);
+          continue;
+        }
+        collected.push(result.json.url);
       }
       if (collected.length > 0) {
         persist([...images, ...collected]);
@@ -149,6 +336,7 @@ export function ImageManager({
       setErrors(reports);
     } finally {
       setUploading(false);
+      setProgress({});
     }
   }
 
@@ -163,6 +351,8 @@ export function ImageManager({
     const next = images.filter((_, i) => i !== index);
     persist(next);
   }
+
+  const progressEntries = Object.entries(progress);
 
   return (
     <div className="space-y-3">
@@ -293,6 +483,40 @@ export function ImageManager({
           className="hidden"
         />
       </div>
+
+      {uploading && progressEntries.length > 0 && (
+        <ul
+          className="space-y-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
+          aria-live="polite"
+        >
+          {progressEntries.map(([name, p]) => {
+            const pct = p.total > 0 ? Math.round((p.loaded / p.total) * 100) : 0;
+            return (
+              <li key={name} className="space-y-1">
+                <div className="flex items-center justify-between gap-2 font-mono text-[10px] text-[var(--color-text-secondary)]">
+                  <span className="truncate">{name}</span>
+                  <span>{pct}%</span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-valuenow={pct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={
+                    isAr ? `تقدّم رفع ${name}` : `Upload progress for ${name}`
+                  }
+                  className="h-1 overflow-hidden rounded-full bg-[var(--color-border)]"
+                >
+                  <div
+                    className="h-full bg-[var(--color-accent)] transition-[width] duration-150"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {errors.length > 0 && (
         // role=alert on a wrapping div so the inner <ul>/<li> keep
