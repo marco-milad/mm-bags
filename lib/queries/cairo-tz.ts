@@ -111,3 +111,16 @@ export function cairoTodayParts(now: Date = new Date()): {
 export function cairoTodayISO(now: Date = new Date()): string {
   return cairoDateOf(now);
 }
+
+/**
+ * ISO 8601 UTC instant at which Cairo midnight begins on the supplied
+ * YYYY-MM-DD. Convenience wrapper around `cairoMidnightUtcMs` for the
+ * common case of filtering a `timestamptz` column by a Cairo calendar
+ * date: `.gte(cairoDayStartISO(from))` is "from this Cairo morning",
+ * `.lt(cairoDayStartISO(to))` is "before this Cairo morning". Same
+ * shape the old `${iso}T00:00:00.000Z` literal had, just Cairo-aligned.
+ */
+export function cairoDayStartISO(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(cairoMidnightUtcMs(y, m, d)).toISOString();
+}

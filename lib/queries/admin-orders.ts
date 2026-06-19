@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { cairoDayStartISO } from "./cairo-tz";
 import type {
   CodTracking,
   Order,
@@ -71,8 +72,11 @@ export async function listAdminOrders(
 
   if (filters.status) q = q.eq("status", filters.status);
   if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
-  if (filters.from) q = q.gte("created_at", `${filters.from}T00:00:00.000Z`);
-  if (filters.to) q = q.lt("created_at", `${filters.to}T00:00:00.000Z`);
+  // Cairo-aligned bounds — an operator filtering "from 2026-06-18"
+  // expects every sale rung up after Cairo midnight that day, including
+  // the 22:00–24:00 Cairo June 17 tail that the old UTC literal missed.
+  if (filters.from) q = q.gte("created_at", cairoDayStartISO(filters.from));
+  if (filters.to) q = q.lt("created_at", cairoDayStartISO(filters.to));
 
   // order_number filter — exact-ish ilike since the user typically
   // remembers part of the trailing token.
