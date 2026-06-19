@@ -18,7 +18,9 @@ import {
   getRecentPosSales,
   getTodayStats,
 } from "@/lib/queries/admin-dashboard";
+import { getSupabaseUsage } from "@/lib/queries/admin-usage";
 import { RevenueChart } from "@/components/admin/dashboard/RevenueChart";
+import { SupabaseUsageCard } from "@/components/admin/dashboard/SupabaseUsageCard";
 import { getAdminLocale, type AdminLocale } from "@/lib/admin/locale";
 import { orderStatusLabel, paymentMethodLabel } from "@/lib/admin/labels";
 import { cn, formatPriceEGP } from "@/lib/utils";
@@ -36,6 +38,7 @@ export default async function AdminDashboard() {
     recentPos,
     lowStock,
     overdue,
+    usage,
   ] = await Promise.all([
     getTodayStats(),
     getMonthlyRevenue(),
@@ -43,7 +46,24 @@ export default async function AdminDashboard() {
     getRecentPosSales(5),
     getLowStockVariants(5, 12),
     getOverduePurchaseOrders(30, 5),
+    getSupabaseUsage(),
   ]);
+
+  // Derive the project ref from the Supabase URL so the widget's
+  // "open dashboard" links go straight to OUR project's usage page
+  // instead of the generic Supabase home. Same env var already used
+  // by the storefront — no new config required.
+  const supabaseProjectRef = (() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!url) return undefined;
+    try {
+      const host = new URL(url).hostname; // e.g. nrlcypdrfmjdwuvuaryp.supabase.co
+      const ref = host.split(".")[0];
+      return ref && ref.length > 0 ? ref : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
 
   return (
     <div className="space-y-8">
@@ -334,6 +354,13 @@ export default async function AdminDashboard() {
           )}
         </div>
       </section>
+
+      {/* ── Row 5: Supabase free-plan headroom ──────────────────── */}
+      <SupabaseUsageCard
+        usage={usage}
+        locale={locale}
+        supabaseProjectRef={supabaseProjectRef}
+      />
     </div>
   );
 }
