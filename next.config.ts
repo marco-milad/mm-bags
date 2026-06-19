@@ -22,6 +22,21 @@ const nextConfig: NextConfig = {
     "/admin/reports/export-pdf": [
       "./node_modules/@sparticuz/chromium/bin/**",
     ],
+    // Sharp uses the new split-package layout: @img/sharp-linux-x64 is
+    // the native binding (.node) and @img/sharp-libvips-linux-x64 ships
+    // libvips-cpp.so.8.x. Both are platform-specific optional deps that
+    // npm skips on a Windows dev box, so the lockfile is the only thing
+    // that tells Vercel they exist. Even with the lockfile entries in
+    // place, the tracer's static require()-graph walk doesn't see them
+    // (sharp resolves the binary path at runtime), so the lambda boots
+    // and then dies on first sharp() with ERR_DLOPEN_FAILED. Forcing
+    // the include here, scoped to the only route that uses sharp, makes
+    // both packages land at /var/task/node_modules/@img/* where sharp
+    // expects them.
+    "/api/admin/products/upload": [
+      "./node_modules/@img/sharp-linux-x64/**",
+      "./node_modules/@img/sharp-libvips-linux-x64/**",
+    ],
   },
   images: {
     remotePatterns: [
