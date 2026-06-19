@@ -9,6 +9,20 @@ const nextConfig: NextConfig = {
   // via the @sparticuz/chromium serverless build; bundling them through
   // webpack would mangle the native code paths.
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core", "sharp"],
+  // serverExternalPackages alone is not enough: Vercel's output tracer
+  // analyses static `require()` graphs, but @sparticuz/chromium resolves
+  // its brotli-compressed binary (bin/chromium.br + bin/al2023.tar.br +
+  // bin/fonts.tar.br + bin/swiftshader.tar.br) at runtime via path math
+  // the tracer can't see. Without this explicit include the lambda
+  // deploys with /var/task/node_modules/@sparticuz/chromium/bin missing
+  // and every PDF render 500s with
+  // `Error: The input directory ".../@sparticuz/chromium/bin" does not exist`.
+  // Scoped to the only route that actually needs it.
+  outputFileTracingIncludes: {
+    "/admin/reports/export-pdf": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+    ],
+  },
   images: {
     remotePatterns: [
       ...(supabaseHostname
