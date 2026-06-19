@@ -16,7 +16,9 @@ import {
 import { useMemo, useState, useTransition } from "react";
 import type { ProductWithVariants } from "@/lib/catalog-shared";
 import {
+  effectivePosPrice,
   effectivePrice,
+  hasStoreSpecificPrice,
   totalStock as productTotalStock,
 } from "@/lib/catalog-shared";
 import type { ProductVariant } from "@/lib/supabase/types";
@@ -147,7 +149,7 @@ export function POSScreen({
     if (stock <= 0) return;
     setCart((prev) => {
       const existing = prev.find((c) => c.variantId === v.id);
-      const unitPrice = v.price_override ?? effectivePrice(p);
+      const unitPrice = effectivePosPrice(p, v);
       if (existing) {
         return prev.map((c) =>
           c.variantId === v.id
@@ -271,7 +273,12 @@ export function POSScreen({
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {visibleProducts.map((p) => {
               const stock = productTotalStock(p);
-              const price = effectivePrice(p);
+              // Card shows the POS price by default — the cashier needs
+              // to see what they'll actually charge, not the website
+              // list price. The badge below flags rows where the two
+              // differ so a counter quote is never misread as published.
+              const price = effectivePosPrice(p);
+              const posSpecific = hasStoreSpecificPrice(p);
               const oos = stock === 0;
               const displayName = isAr
                 ? p.name_ar || p.name_en
@@ -307,9 +314,23 @@ export function POSScreen({
                       <p className="line-clamp-2 text-xs font-medium text-[var(--color-text)]">
                         {displayName}
                       </p>
-                      <p className="mt-auto font-mono text-[11px] font-semibold text-[var(--color-primary)]">
-                        {formatPriceEGP(price)}
-                      </p>
+                      <div className="mt-auto flex items-center justify-between gap-1">
+                        <p className="font-mono text-[11px] font-semibold text-[var(--color-primary)]">
+                          {formatPriceEGP(price)}
+                        </p>
+                        {posSpecific && (
+                          <span
+                            title={
+                              isAr
+                                ? `سعر الموقع: ${formatPriceEGP(effectivePrice(p))}`
+                                : `Website price: ${formatPriceEGP(effectivePrice(p))}`
+                            }
+                            className="rounded-sm bg-[var(--color-accent)]/20 px-1 py-px font-mono text-[8px] font-semibold uppercase tracking-wider text-[var(--color-accent-dark)]"
+                          >
+                            {isAr ? "سعر المحل" : "POS"}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </button>
                 </li>
@@ -654,8 +675,8 @@ function VariantPicker({
           {product.product_variants.map((v) => {
             const stock = v.stock_qty ?? 0;
             const oos = stock === 0;
-            const price =
-              v.price_override ?? effectivePrice(product);
+            const price = effectivePosPrice(product, v);
+            const posSpecific = hasStoreSpecificPrice(product, v);
             const colorLabel = isAr
               ? v.color_ar ?? v.color_en ?? "—"
               : v.color_en ?? v.color_ar ?? "—";
@@ -689,8 +710,26 @@ function VariantPicker({
                         ? `${stock} قطعة`
                         : `${stock} pcs`}
                   </span>
-                  <span className="font-mono text-sm font-semibold text-[var(--color-primary)]">
-                    {formatPriceEGP(price)}
+                  <span className="flex items-center gap-1.5">
+                    {posSpecific && (
+                      <span
+                        title={
+                          isAr
+                            ? `سعر الموقع: ${formatPriceEGP(
+                                v.price_override ?? effectivePrice(product),
+                              )}`
+                            : `Website price: ${formatPriceEGP(
+                                v.price_override ?? effectivePrice(product),
+                              )}`
+                        }
+                        className="rounded-sm bg-[var(--color-accent)]/20 px-1.5 py-px font-mono text-[9px] font-semibold uppercase tracking-wider text-[var(--color-accent-dark)]"
+                      >
+                        {isAr ? "سعر المحل" : "POS"}
+                      </span>
+                    )}
+                    <span className="font-mono text-sm font-semibold text-[var(--color-primary)]">
+                      {formatPriceEGP(price)}
+                    </span>
                   </span>
                 </button>
               </li>

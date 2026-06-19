@@ -7,6 +7,7 @@ import {
   recordPaymentForm,
 } from "@/lib/admin/supplier-actions";
 import { CancelPOButton } from "@/components/admin/purchase-orders/CancelPOButton";
+import { POShareButtons } from "@/components/admin/purchase-orders/POShareButtons";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { getAdminLocale, type AdminLocale } from "@/lib/admin/locale";
 import type { PurchaseOrderStatus } from "@/lib/supabase/types";
@@ -92,6 +93,19 @@ export default async function PurchaseOrderDetailPage({
           {statusLabel(status, locale)}
         </span>
       </header>
+
+      {/* Branded PDF + WhatsApp-to-supplier — sits above the totals so
+          the admin sees it before they even think about doing anything
+          to the PO. */}
+      <POShareButtons
+        poId={po.id}
+        poNumber={po.id.slice(0, 8).toUpperCase()}
+        supplierPhone={po.supplier_phone}
+        supplierName={po.supplier_name ?? (isAr ? "حضرتك" : "there")}
+        totalCost={Number(po.total_cost ?? 0)}
+        amountOwed={Number(po.amount_owed ?? 0)}
+        isAr={isAr}
+      />
 
       {/* Totals */}
       <section className="grid gap-3 md:grid-cols-3">

@@ -139,6 +139,9 @@ export type Database = {
           // show_in_store=true + is_active=false → POS-only product
           // (rings up at the till, hidden from /catalog).
           show_in_store: boolean;
+          // POS-only price. Null → POS uses website pricing.
+          // See migration 0007_store_specific_pricing.sql.
+          store_price: number | null;
           sort_order: number;
           created_at: string;
           updated_at: string;
@@ -170,6 +173,7 @@ export type Database = {
           image_aspect?: "square" | "landscape" | "portrait";
           is_active?: boolean;
           show_in_store?: boolean;
+          store_price?: number | null;
           sort_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -201,6 +205,7 @@ export type Database = {
           image_aspect?: "square" | "landscape" | "portrait";
           is_active?: boolean;
           show_in_store?: boolean;
+          store_price?: number | null;
           sort_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -229,6 +234,10 @@ export type Database = {
           sku: string | null;
           stock_qty: number;
           price_override: number | null;
+          /** POS-only per-variant price. Overrides products.store_price
+              for this variant. Null → falls through to product-level
+              store_price, then website pricing. */
+          store_price_override: number | null;
           created_at: string;
         };
         Insert: {
@@ -243,6 +252,7 @@ export type Database = {
           sku?: string | null;
           stock_qty?: number;
           price_override?: number | null;
+          store_price_override?: number | null;
           created_at?: string;
         };
         Update: {
@@ -257,6 +267,7 @@ export type Database = {
           sku?: string | null;
           stock_qty?: number;
           price_override?: number | null;
+          store_price_override?: number | null;
           created_at?: string;
         };
         Relationships: [

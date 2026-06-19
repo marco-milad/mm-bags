@@ -994,5 +994,182 @@ export async function renderDashboardPdf(
   return htmlToPdf(html, footer);
 }
 
+// ─── Purchase Order PDF ─────────────────────────────────────────────
+// A branded, printable PDF for a single purchase order — the document
+// Marco sends (via WhatsApp / email / hand) to the supplier so they
+// have an itemized record outside of any chat thread.
+
+export type PurchaseOrderPdfRow = {
+  productName: string;
+  variantLabel: string | null;
+  qty: number;
+  unitCost: number;
+  totalCost: number;
+};
+
+export type PurchaseOrderPdfOpts = {
+  poNumber: string; // short id or sequence
+  createdAt: string; // ISO timestamp
+  supplier: {
+    name: string;
+    phone: string | null;
+    address: string | null;
+  };
+  status: string; // already localized label
+  rows: PurchaseOrderPdfRow[];
+  totalCost: number;
+  amountPaid: number;
+  amountOwed: number;
+  notes: string | null;
+  adminName: string;
+  locale: Locale;
+};
+
+function purchaseOrderBody(opts: PurchaseOrderPdfOpts): string {
+  const {
+    poNumber,
+    createdAt,
+    supplier,
+    status,
+    rows,
+    totalCost,
+    amountPaid,
+    amountOwed,
+    notes,
+    locale,
+  } = opts;
+  const isAr = locale === "ar";
+
+  // Header strip: PO number + creation date + current status.
+  const createdAtStr = new Date(createdAt).toLocaleString(
+    isAr ? "ar-EG" : "en-US",
+    { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" },
+  );
+
+  const itemsHeader = isAr
+    ? ["المنتج", "الفاريانت", "الكمية", "سعر الوحدة", "الإجمالي"]
+    : ["Product", "Variant", "Qty", "Unit cost", "Total"];
+
+  const itemsRowsHtml =
+    rows.length === 0
+      ? `<tr><td colspan="5" class="empty">${esc(
+          isAr ? "لا توجد أصناف." : "No items.",
+        )}</td></tr>`
+      : rows
+          .map(
+            (r) => `<tr>
+              <td>${esc(r.productName)}</td>
+              <td class="mono" style="color:#6b7280;">${esc(r.variantLabel ?? "—")}</td>
+              <td class="num mono">${esc(fmtInt(r.qty, locale))}</td>
+              <td class="num mono">${esc(fmtEGP(r.unitCost, locale))}</td>
+              <td class="num mono">${esc(fmtEGP(r.totalCost, locale))}</td>
+            </tr>`,
+          )
+          .join("");
+
+  const totalsHtml = `
+    <table class="data" style="margin-top:14px; max-width: 320px; margin-left:auto; margin-right:auto;">
+      <tbody>
+        <tr>
+          <td>${esc(isAr ? "إجمالي التكلفة" : "Total cost")}</td>
+          <td class="num mono" style="font-weight:600;">${esc(fmtEGP(totalCost, locale))}</td>
+        </tr>
+        <tr>
+          <td>${esc(isAr ? "المدفوع" : "Paid")}</td>
+          <td class="num mono" style="color:#0f8f4a;">${esc(fmtEGP(amountPaid, locale))}</td>
+        </tr>
+        <tr>
+          <td>${esc(isAr ? "المستحق" : "Owed")}</td>
+          <td class="num mono" style="color:${amountOwed > 0 ? "#c0392b" : "#6b7280"}; font-weight:600;">${esc(fmtEGP(amountOwed, locale))}</td>
+        </tr>
+      </tbody>
+    </table>`;
+
+  const supplierBlockHtml = `
+    <table style="width:100%; margin: 16px 0 10px; border-collapse:collapse;">
+      <tr>
+        <td style="vertical-align:top; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; width:48%;">
+          <p style="font-size:8pt; color:#6b7280; letter-spacing:1.5px; text-transform:uppercase; margin:0 0 6px;">${esc(isAr ? "إلى المورد" : "Supplier")}</p>
+          <p style="font-size:11pt; font-weight:600; color:#0d2540; margin:0 0 2px;">${esc(supplier.name)}</p>
+          ${supplier.phone ? `<p style="font-size:9pt; color:#1f2937; margin:0 0 2px;" class="mono">${esc(supplier.phone)}</p>` : ""}
+          ${supplier.address ? `<p style="font-size:9pt; color:#1f2937; margin:0;">${esc(supplier.address)}</p>` : ""}
+        </td>
+        <td style="width:4%;"></td>
+        <td style="vertical-align:top; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; width:48%;">
+          <p style="font-size:8pt; color:#6b7280; letter-spacing:1.5px; text-transform:uppercase; margin:0 0 6px;">${esc(isAr ? "تفاصيل الأمر" : "PO details")}</p>
+          <p style="font-size:9pt; color:#1f2937; margin:0 0 2px;">
+            <span style="color:#6b7280;">${esc(isAr ? "الرقم: " : "PO #: ")}</span>
+            <span class="mono">${esc(poNumber)}</span>
+          </p>
+          <p style="font-size:9pt; color:#1f2937; margin:0 0 2px;">
+            <span style="color:#6b7280;">${esc(isAr ? "التاريخ: " : "Date: ")}</span>
+            ${esc(createdAtStr)}
+          </p>
+          <p style="font-size:9pt; color:#1f2937; margin:0;">
+            <span style="color:#6b7280;">${esc(isAr ? "الحالة: " : "Status: ")}</span>
+            <span class="badge">${esc(status)}</span>
+          </p>
+        </td>
+      </tr>
+    </table>`;
+
+  const notesHtml = notes
+    ? `<div style="margin-top:14px; padding:10px 12px; border:1px solid #e5e7eb; border-radius:6px; background:${PAPER};">
+        <p style="font-size:8pt; color:#6b7280; letter-spacing:1.5px; text-transform:uppercase; margin:0 0 6px;">${esc(isAr ? "ملاحظات" : "Notes")}</p>
+        <p style="font-size:10pt; color:#1f2937; margin:0; white-space:pre-wrap;">${esc(notes)}</p>
+      </div>`
+    : "";
+
+  return `
+    <div class="brand">
+      <div class="brand-name">M.M Bags</div>
+      <div class="brand-tag">TRAVEL · IN · STYLE</div>
+      <div class="brand-rule"></div>
+    </div>
+
+    <h1 class="report-title">${esc(isAr ? "أمر شراء" : "Purchase Order")}</h1>
+    <p class="report-subtitle">${esc(
+      isAr ? `رقم الأمر: ${poNumber}` : `PO #${poNumber}`,
+    )}</p>
+
+    ${supplierBlockHtml}
+
+    <h2 class="section-header">${esc(isAr ? "الأصناف" : "Items")}</h2>
+    <table class="data">
+      <thead>
+        <tr>
+          <th>${esc(itemsHeader[0])}</th>
+          <th>${esc(itemsHeader[1])}</th>
+          <th class="num">${esc(itemsHeader[2])}</th>
+          <th class="num">${esc(itemsHeader[3])}</th>
+          <th class="num">${esc(itemsHeader[4])}</th>
+        </tr>
+      </thead>
+      <tbody>${itemsRowsHtml}</tbody>
+    </table>
+
+    ${totalsHtml}
+    ${notesHtml}
+  `;
+}
+
+export async function renderPurchaseOrderPdf(
+  opts: PurchaseOrderPdfOpts,
+): Promise<Buffer> {
+  const html = pageShell({
+    locale: opts.locale,
+    title:
+      opts.locale === "ar"
+        ? `أمر شراء — ${opts.poNumber}`
+        : `Purchase Order — ${opts.poNumber}`,
+    bodyHtml: purchaseOrderBody(opts),
+  });
+  const footer = footerTemplate({
+    adminName: opts.adminName,
+    locale: opts.locale,
+  });
+  return htmlToPdf(html, footer);
+}
+
 // Re-export formatters used by the route to keep its imports tight.
 export { fmtEGP, fmtInt };

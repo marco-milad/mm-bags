@@ -139,6 +139,14 @@ const productSchema = z
     sale_price: optionalNumber(
       z.coerce.number().max(999999, "سعر التخفيض لازم يكون أقل من 999,999 جنيه"),
     ),
+    // POS-only price. Resolution rules in lib/catalog-shared.ts
+    // `effectivePosPrice`. Null/blank → POS uses website pricing.
+    store_price: optionalNumber(
+      z.coerce
+        .number()
+        .min(1, "سعر المحل لازم يكون من 1 جنيه على الأقل")
+        .max(999999, "سعر المحل لازم يكون أقل من 999,999 جنيه"),
+    ),
     material_type: optionalTrimmedString(60),
     wheel_type: optionalTrimmedString(60),
     lock_type: optionalTrimmedString(60),
@@ -231,6 +239,7 @@ export async function saveProduct(
     description_en: formData.get("description_en") ?? undefined,
     base_price: formData.get("base_price") ?? "",
     sale_price: formData.get("sale_price") ?? undefined,
+    store_price: formData.get("store_price") ?? undefined,
     material_type: formData.get("material_type") ?? undefined,
     wheel_type: formData.get("wheel_type") ?? undefined,
     lock_type: formData.get("lock_type") ?? undefined,
@@ -305,6 +314,10 @@ export async function saveProduct(
     // sale_price = 0 means "no sale" by convention; null it out.
     sale_price:
       rest.sale_price && rest.sale_price > 0 ? rest.sale_price : null,
+    // store_price = 0 means "no POS-specific price"; null it out so
+    // the POS falls back to the website pricing resolution chain.
+    store_price:
+      rest.store_price && rest.store_price > 0 ? rest.store_price : null,
     // Optional numerics treat blank as null (via preprocess) and 0 as
     // a real value — but for the body specs we want explicit 0 to
     // become null too (a 0 kg weight means "unset", not "0 kg").
@@ -509,6 +522,9 @@ const variantSchema = z.object({
   is_set: z.coerce.boolean().optional(),
   stock_qty: z.coerce.number().int().nonnegative(),
   price_override: optionalNumber(z.coerce.number().nonnegative()),
+  // POS-only per-variant price; resolution rules in
+  // lib/catalog-shared.ts `effectivePosPrice`.
+  store_price_override: optionalNumber(z.coerce.number().nonnegative()),
   sku: optionalTrimmedString(60),
 });
 
@@ -535,6 +551,8 @@ export async function saveVariant(
     size_label_ar: formData.get("size_label_ar") ?? undefined,
     stock_qty: formData.get("stock_qty") ?? "",
     price_override: formData.get("price_override") ?? undefined,
+    store_price_override:
+      formData.get("store_price_override") ?? undefined,
     sku: formData.get("sku") ?? undefined,
     is_set: formData.get("is_set") != null ? "true" : "false",
   };
@@ -587,6 +605,10 @@ export async function saveVariant(
     stock_qty: rest.stock_qty,
     price_override:
       rest.price_override !== undefined ? rest.price_override : null,
+    store_price_override:
+      rest.store_price_override !== undefined
+        ? rest.store_price_override
+        : null,
     sku: rest.sku || null,
   };
 

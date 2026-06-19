@@ -88,6 +88,11 @@ export async function listPurchaseOrders(
 
 export type PurchaseOrderDetail = PurchaseOrder & {
   supplier_name: string | null;
+  /** Contact details so the WhatsApp "send to supplier" button and
+      the printable PDF can include the supplier card without a
+      second round-trip to the suppliers table. */
+  supplier_phone: string | null;
+  supplier_address: string | null;
   items: Array<{
     id: string;
     product_id: string | null;
@@ -107,7 +112,7 @@ export async function getPurchaseOrderDetail(
   const { data } = await admin
     .from("purchase_orders")
     .select(
-      "*, supplier:suppliers(name), " +
+      "*, supplier:suppliers(name, phone, address), " +
       "items:purchase_order_items(id, product_id, variant_id, qty, unit_cost, total_cost, " +
       "product:products(name_ar, name_en), " +
       "variant:product_variants(color_ar, color_en, size_inches, size_label_ar))",
@@ -118,7 +123,10 @@ export async function getPurchaseOrderDetail(
   // Reverse-join inference (purchase_orders → items) still trips the
   // supabase-js type generator; cast through unknown.
   const row = data as unknown as PurchaseOrder & {
-    supplier: { name: string } | { name: string }[] | null;
+    supplier:
+      | { name: string; phone: string | null; address: string | null }
+      | Array<{ name: string; phone: string | null; address: string | null }>
+      | null;
     items:
       | Array<{
           id: string;
@@ -153,6 +161,8 @@ export async function getPurchaseOrderDetail(
   return {
     ...(row as unknown as PurchaseOrder),
     supplier_name: supplier?.name ?? null,
+    supplier_phone: supplier?.phone ?? null,
+    supplier_address: supplier?.address ?? null,
     items: items.map((it) => {
       const product = Array.isArray(it.product) ? it.product[0] : it.product;
       const variant = Array.isArray(it.variant) ? it.variant[0] : it.variant;

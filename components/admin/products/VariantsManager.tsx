@@ -70,6 +70,7 @@ export function VariantsManager({
               <Th>{isAr ? "وصف المقاس (عربي)" : "Size label AR"}</Th>
               <Th className="text-end">{isAr ? "المخزون" : "Stock"}</Th>
               <Th className="text-end">{isAr ? "سعر مختلف" : "Override"}</Th>
+              <Th className="text-end">{isAr ? "سعر المحل" : "POS price"}</Th>
               <Th>{isAr ? "SKU" : "SKU"}</Th>
               <Th>{isAr ? "طقم" : "Set"}</Th>
               <Th aria-label={isAr ? "إجراءات" : "Actions"}></Th>
@@ -220,6 +221,23 @@ function VariantRow({
             className={cn(cellInputCls, "w-20 text-end")}
           />
         </td>
+        <td className="px-2 py-1.5 text-end">
+          <input
+            name="store_price_override"
+            type="number"
+            min={0}
+            step="0.01"
+            defaultValue={variant.store_price_override ?? ""}
+            form={formId}
+            aria-label={isAr ? "سعر المحل (POS)" : "POS price override"}
+            title={
+              isAr
+                ? "سعر المحل لهذا الفاريانت فقط — مش بيظهر على الموقع"
+                : "POS-only price for this variant — never shown on the website"
+            }
+            className={cn(cellInputCls, "w-20 text-end")}
+          />
+        </td>
         <td className="px-2 py-1.5">
           <input
             name="sku"
@@ -263,7 +281,7 @@ function VariantRow({
       </tr>
       {state && !state.ok && (
         <tr>
-          <td colSpan={10} className="px-2 pb-1.5">
+          <td colSpan={11} className="px-2 pb-1.5">
             <p
               role="alert"
               className="rounded-md border border-[var(--color-error)]/40 bg-[var(--color-error)]/10 px-2 py-1 text-[11px] text-[var(--color-error)]"
@@ -405,6 +423,22 @@ function AddVariantRow({
             className={cn(cellInputCls, "w-20 text-end")}
           />
         </td>
+        <td className="px-2 py-1.5 text-end">
+          <input
+            name="store_price_override"
+            type="number"
+            min={0}
+            step="0.01"
+            form={formId}
+            aria-label={isAr ? "سعر المحل (POS)" : "POS price override"}
+            title={
+              isAr
+                ? "سعر المحل لهذا الفاريانت فقط — مش بيظهر على الموقع"
+                : "POS-only price for this variant — never shown on the website"
+            }
+            className={cn(cellInputCls, "w-20 text-end")}
+          />
+        </td>
         <td className="px-2 py-1.5">
           <input
             name="sku"
@@ -429,7 +463,7 @@ function AddVariantRow({
       </tr>
       {state && !state.ok && (
         <tr>
-          <td colSpan={10} className="px-2 pb-1.5">
+          <td colSpan={11} className="px-2 pb-1.5">
             <p
               role="alert"
               className="rounded-md border border-[var(--color-error)]/40 bg-[var(--color-error)]/10 px-2 py-1 text-[11px] text-[var(--color-error)]"

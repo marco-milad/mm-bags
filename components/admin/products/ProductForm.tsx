@@ -262,6 +262,28 @@ export function ProductForm({
               />
             </Field>
           </Row>
+          <Row>
+            <Field
+              id="store_price"
+              label={isAr ? "سعر المحل (اختياري)" : "Store price (optional)"}
+              hint={
+                isAr
+                  ? "اتركه فاضي لو نفس سعر الموقع. هيُستخدم فقط عند البيع من نقطة البيع (POS) — الموقع الإلكتروني مش هيتأثر."
+                  : "Leave blank to use the website price in-store too. Applied ONLY at POS — the storefront never reads this field."
+              }
+              error={fieldErrors.store_price}
+            >
+              <NumericInput
+                id="store_price"
+                name="store_price"
+                defaultValue={product?.store_price ?? ""}
+                placeholder={
+                  isAr ? "مثال: 1100 (للزبون اللي بيشتري من المحل)" : "e.g. 1100 (walk-in price)"
+                }
+                className={cn(inputCls, "font-mono")}
+              />
+            </Field>
+          </Row>
         </Section>
 
         <Section
