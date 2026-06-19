@@ -7,6 +7,7 @@ import {
   getStockValueReport,
   getSupplierLedger,
 } from "@/lib/queries/admin-reports";
+import { cairoDateOf, cairoTodayISO } from "@/lib/queries/cairo-tz";
 import { RevenueChart } from "@/components/admin/dashboard/RevenueChart";
 import { getAdminLocale, type AdminLocale } from "@/lib/admin/locale";
 import { cn, formatPriceEGP } from "@/lib/utils";
@@ -109,7 +110,7 @@ async function DailyTab({
   locale: AdminLocale;
 }) {
   const isAr = locale === "ar";
-  const iso = date ?? new Date().toISOString().slice(0, 10);
+  const iso = date ?? cairoTodayISO();
   const r = await getDailyReport(iso);
   return (
     <section className="space-y-4">
@@ -177,7 +178,7 @@ async function MonthlyTab({
   locale: AdminLocale;
 }) {
   const isAr = locale === "ar";
-  const yyyymm = month ?? new Date().toISOString().slice(0, 7);
+  const yyyymm = month ?? cairoTodayISO().slice(0, 7);
   const r = await getMonthlyReport(yyyymm);
   return (
     <section className="space-y-4">
@@ -254,10 +255,8 @@ async function BestSellersTab({
   locale: AdminLocale;
 }) {
   const isAr = locale === "ar";
-  const today = new Date().toISOString().slice(0, 10);
-  const defaultFrom = new Date(Date.now() - 30 * 86400_000)
-    .toISOString()
-    .slice(0, 10);
+  const today = cairoTodayISO();
+  const defaultFrom = cairoDateOf(new Date(Date.now() - 30 * 86400_000));
   const fromISO = from ?? defaultFrom;
   const toISO = to ?? today;
   const rows = await getBestSellers({

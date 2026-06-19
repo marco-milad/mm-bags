@@ -16,6 +16,7 @@ import {
   getTodayStats,
 } from "@/lib/queries/admin-dashboard";
 import { getAdminLocale } from "@/lib/admin/locale";
+import { cairoDateOf, cairoTodayISO } from "@/lib/queries/cairo-tz";
 import {
   fmtEGP,
   fmtInt,
@@ -86,18 +87,18 @@ export async function GET(request: Request) {
         adminName,
         locale,
       });
-      filename = `dashboard-${new Date().toISOString().slice(0, 10)}.pdf`;
+      filename = `dashboard-${cairoTodayISO()}.pdf`;
       break;
     }
     case "daily": {
-      const date = sp.get("date") ?? new Date().toISOString().slice(0, 10);
+      const date = sp.get("date") ?? cairoTodayISO();
       const detailed = await getDailyDetailedReport(date);
       pdf = await renderDailyPdf({ report: detailed, adminName, locale });
       filename = `daily-${detailed.date}.pdf`;
       break;
     }
     case "monthly": {
-      const month = sp.get("month") ?? new Date().toISOString().slice(0, 7);
+      const month = sp.get("month") ?? cairoTodayISO().slice(0, 7);
       const r = await getMonthlyReport(month);
       const columns: GenericColumn[] = [
         { header: { ar: "التاريخ", en: "Date" } },
@@ -143,10 +144,8 @@ export async function GET(request: Request) {
       break;
     }
     case "best-sellers": {
-      const today = new Date().toISOString().slice(0, 10);
-      const defaultFrom = new Date(Date.now() - 30 * 86400_000)
-        .toISOString()
-        .slice(0, 10);
+      const today = cairoTodayISO();
+      const defaultFrom = cairoDateOf(new Date(Date.now() - 30 * 86400_000));
       const from = sp.get("from") ?? defaultFrom;
       const to = sp.get("to") ?? today;
       const source =

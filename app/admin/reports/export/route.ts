@@ -8,6 +8,7 @@ import {
   getSupplierLedger,
   toCsv,
 } from "@/lib/queries/admin-reports";
+import { cairoDateOf, cairoTodayISO } from "@/lib/queries/cairo-tz";
 
 export const runtime = "nodejs";
 
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
 
   switch (report) {
     case "daily": {
-      const date = sp.get("date") ?? new Date().toISOString().slice(0, 10);
+      const date = sp.get("date") ?? cairoTodayISO();
       const r = await getDailyReport(date);
       csv = toCsv(
         ["metric", "value"],
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
       break;
     }
     case "monthly": {
-      const month = sp.get("month") ?? new Date().toISOString().slice(0, 7);
+      const month = sp.get("month") ?? cairoTodayISO().slice(0, 7);
       const r = await getMonthlyReport(month);
       csv = toCsv(
         ["date", "online_egp", "pos_egp", "total_egp"],
@@ -75,7 +76,7 @@ export async function GET(request: Request) {
     }
     case "best-sellers": {
       const from = sp.get("from") ?? defaultFromIso();
-      const to = sp.get("to") ?? new Date().toISOString().slice(0, 10);
+      const to = sp.get("to") ?? cairoTodayISO();
       const source =
         sp.get("source") === "online" || sp.get("source") === "pos"
           ? (sp.get("source") as "online" | "pos")
@@ -144,6 +145,7 @@ export async function GET(request: Request) {
 }
 
 function defaultFromIso(): string {
-  // Default best-sellers window: last 30 days.
-  return new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+  // Default best-sellers window: last 30 days, expressed as the Cairo
+  // calendar date 30 days back so it matches the picker default.
+  return cairoDateOf(new Date(Date.now() - 30 * 86400_000));
 }

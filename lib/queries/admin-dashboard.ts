@@ -7,6 +7,11 @@ import type {
   ProductVariant,
   PurchaseOrder,
 } from "@/lib/supabase/types";
+import {
+  cairoDateOf,
+  cairoMidnightUtcMs,
+  cairoTodayParts,
+} from "./cairo-tz";
 
 /**
  * Server-side aggregations for the admin overview dashboard.
@@ -34,20 +39,15 @@ export type TodayStats = {
   pendingReviews: number;
 };
 
-/** Returns the ISO date (YYYY-MM-DD) of "today" in the server's local TZ. */
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/** First day of "today"'s month, ISO date. */
-function monthStartISO(): string {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-}
-
 export async function getTodayStats(): Promise<TodayStats> {
   const admin = getSupabaseAdminClient();
-  const startOfDay = `${todayISO()}T00:00:00.000Z`;
+  // "Today" = the calendar day in Cairo. With a UTC server, the naïve
+  // `new Date().toISOString().slice(0,10)` flips to tomorrow's date at
+  // 22:00 Cairo (EEST) / 23:00 Cairo (EET), so the dashboard would
+  // briefly show an empty "today" every evening. Cairo midnight as a
+  // UTC instant keeps the window honest year-round, DST included.
+  const { y, m, d } = cairoTodayParts();
+  const startOfDay = new Date(cairoMidnightUtcMs(y, m, d)).toISOString();
 
   const [onlineRes, posRes, pendingOrdersRes, pendingReviewsRes] =
     await Promise.all([
@@ -103,45 +103,55 @@ export type DailyRevenuePoint = {
 
 export async function getMonthlyRevenue(): Promise<DailyRevenuePoint[]> {
   const admin = getSupabaseAdminClient();
-  const monthStart = `${monthStartISO()}T00:00:00.000Z`;
+  // Current month boundaries in Cairo time. Without this, around the
+  // last-of-month → 1st transition the server (UTC) and the till
+  // (Cairo) disagree on which month a 22:00-Cairo sale belongs to.
+  const { y, m } = cairoTodayParts();
+  const monthStart = new Date(cairoMidnightUtcMs(y, m, 1)).toISOString();
+  // Upper bound prevents next-month sales bleeding into the query when
+  // the dashboard runs in the early hours of the 1st (the chart drops
+  // them anyway because their cairoDateOf key isn't in dailyMap, but
+  // without `.lt` we'd pull megabytes of rows we silently throw away).
+  const nextY = m === 12 ? y + 1 : y;
+  const nextM = m === 12 ? 1 : m + 1;
+  const monthEnd = new Date(cairoMidnightUtcMs(nextY, nextM, 1)).toISOString();
 
   const [orders, posSales] = await Promise.all([
     admin
       .from("orders")
       .select("created_at, total, status")
       .gte("created_at", monthStart)
+      .lt("created_at", monthEnd)
       .neq("status", "cancelled"),
     admin
       .from("pos_sales")
       .select("created_at, total")
-      .gte("created_at", monthStart),
+      .gte("created_at", monthStart)
+      .lt("created_at", monthEnd),
   ]);
 
-  // Bucket by YYYY-MM-DD; one entry per day of the current month so
-  // the chart never has gaps.
+  // Bucket by YYYY-MM-DD in Cairo; one entry per day of the current
+  // month so the chart never has gaps. Days-in-month is a calendar
+  // fact independent of timezone, so plain UTC date math is fine for
+  // building the keys.
   const dailyMap = new Map<string, DailyRevenuePoint>();
-  const now = new Date();
-  const daysInMonth = new Date(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    0,
-  ).getDate();
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
   for (let d = 1; d <= daysInMonth; d++) {
-    const iso = new Date(now.getFullYear(), now.getMonth(), d)
-      .toISOString()
-      .slice(0, 10);
+    const iso = new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10);
     dailyMap.set(iso, { date: iso, online: 0, pos: 0 });
   }
 
   for (const row of orders.data ?? []) {
-    const day = row.created_at?.slice(0, 10);
-    if (!day) continue;
+    if (!row.created_at) continue;
+    // Bucket by Cairo wall-clock date — see admin-reports.ts for the
+    // 01:30-Cairo / 22:30-UTC example that motivates this.
+    const day = cairoDateOf(row.created_at);
     const point = dailyMap.get(day);
     if (point) point.online += Number(row.total ?? 0);
   }
   for (const row of posSales.data ?? []) {
-    const day = row.created_at?.slice(0, 10);
-    if (!day) continue;
+    if (!row.created_at) continue;
+    const day = cairoDateOf(row.created_at);
     const point = dailyMap.get(day);
     if (point) point.pos += Number(row.total ?? 0);
   }
