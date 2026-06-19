@@ -20,21 +20,94 @@ import type { DailyRevenuePoint } from "./admin-dashboard";
  */
 
 // ─── Common helpers ──────────────────────────────────────────────────
+const CAIRO_TZ = "Africa/Cairo";
+
+/**
+ * Returns the [start, exclusive-end) UTC instants that cover one
+ * calendar day in Africa/Cairo. Egypt observes DST again since 2023
+ * (EEST UTC+3 Apr–Oct, EET UTC+2 Nov–Mar); this honours whichever
+ * offset is active on the supplied date.
+ *
+ * Every `created_at` is `timestamptz` (stored UTC). A naïve
+ * `gte("YYYY-MM-DDT00:00:00Z")` window covers 02:00–25:59 Cairo time
+ * instead of 00:00–23:59 — losing the first 2–3h of the morning and
+ * bleeding the next day's pre-dawn hours in. Cairo-aligned boundaries
+ * put every sale under the date Marco actually rang it up on the till,
+ * matching what the report header promises and what the monthly
+ * breakdown buckets it under.
+ */
 function dayRange(iso: string): { from: string; to: string } {
-  // Returns the [start, exclusive-end) of the ISO date in UTC. Cheap
-  // and good enough — Egypt is UTC+2 so a midnight-aligned UTC window
-  // is off by 2h, which means "Monday EG" shows the last 2h of "Sunday
-  // UTC" sales under Sunday. Acceptable for an internal dashboard.
-  const from = `${iso}T00:00:00.000Z`;
-  const to = new Date(`${iso}T00:00:00.000Z`);
-  to.setUTCDate(to.getUTCDate() + 1);
-  return { from, to: to.toISOString() };
+  const [y, m, d] = iso.split("-").map(Number);
+  const fromUtcMs = cairoMidnightUtcMs(y, m, d);
+  return {
+    from: new Date(fromUtcMs).toISOString(),
+    to: new Date(fromUtcMs + 24 * 3_600_000).toISOString(),
+  };
 }
+
 function monthRange(yyyymm: string): { from: string; to: string } {
   const [y, m] = yyyymm.split("-").map(Number);
-  const from = new Date(Date.UTC(y, m - 1, 1)).toISOString();
-  const to = new Date(Date.UTC(y, m, 1)).toISOString();
-  return { from, to };
+  const nextY = m === 12 ? y + 1 : y;
+  const nextM = m === 12 ? 1 : m + 1;
+  return {
+    from: new Date(cairoMidnightUtcMs(y, m, 1)).toISOString(),
+    to: new Date(cairoMidnightUtcMs(nextY, nextM, 1)).toISOString(),
+  };
+}
+
+/** UTC ms at which the given Y-M-D calendar date begins in Cairo time. */
+function cairoMidnightUtcMs(y: number, m: number, d: number): number {
+  // Probe Cairo's offset at noon the same day — well clear of the local
+  // 02:00 DST transition, so we never accidentally read a half-hour
+  // gap or a duplicated hour on the spring-forward / fall-back day.
+  const probe = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const offsetHours = cairoOffsetHours(probe);
+  return Date.UTC(y, m - 1, d, 0, 0, 0) - offsetHours * 3_600_000;
+}
+
+/** Cairo's signed offset (hours) ahead of UTC at the supplied instant. */
+function cairoOffsetHours(at: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: CAIRO_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(at);
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? 0);
+  let hour = get("hour");
+  if (hour === 24) hour = 0; // Node ICU quirk: midnight can report as 24
+  const wallMs = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    hour,
+    get("minute"),
+    get("second"),
+  );
+  return (wallMs - at.getTime()) / 3_600_000;
+}
+
+/**
+ * YYYY-MM-DD that the supplied UTC instant falls on in Cairo. Used to
+ * bucket sales rows for the monthly breakdown after the SQL filter has
+ * narrowed the window — the row's own UTC date can be one day off
+ * around the midnight boundary, this is the calendar day the customer
+ * (and the till) saw.
+ */
+function cairoDateOf(input: string | Date): string {
+  // en-CA renders dates as YYYY-MM-DD by default — saves us a manual
+  // assemble from formatToParts.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: CAIRO_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(typeof input === "string" ? new Date(input) : input);
 }
 
 // ─── 1. Daily revenue ────────────────────────────────────────────────
@@ -306,14 +379,18 @@ export async function getMonthlyReport(
     dailyMap.set(iso, { date: iso, online: 0, pos: 0 });
   }
   for (const r of onlineRes.data ?? []) {
-    const day = r.created_at?.slice(0, 10);
-    if (!day) continue;
+    if (!r.created_at) continue;
+    // Bucket by Cairo wall-clock date, not the UTC date prefix — a sale at
+    // 01:30 Cairo June 18 stores as 22:30 UTC June 17 (EEST), and the UTC
+    // slice would put it under June 17. The till and the customer both
+    // saw June 18.
+    const day = cairoDateOf(r.created_at);
     const p = dailyMap.get(day);
     if (p) p.online += Number(r.total ?? 0);
   }
   for (const r of posRes.data ?? []) {
-    const day = r.created_at?.slice(0, 10);
-    if (!day) continue;
+    if (!r.created_at) continue;
+    const day = cairoDateOf(r.created_at);
     const p = dailyMap.get(day);
     if (p) p.pos += Number(r.total ?? 0);
   }
@@ -346,8 +423,12 @@ export async function getBestSellers(opts: {
   limit?: number;
 }): Promise<BestSellerRow[]> {
   const admin = getSupabaseAdminClient();
-  const fromISO = `${opts.from}T00:00:00.000Z`;
-  const toISO = `${opts.to}T00:00:00.000Z`;
+  // Reuse the Cairo-aware day boundary so best-sellers, daily, and
+  // monthly all agree on what "this date" means. `opts.to` is exclusive
+  // (the report uses [from, to)), so we want Cairo midnight of `to`
+  // itself, which is the *start* of its day range — i.e. dayRange.from.
+  const fromISO = dayRange(opts.from).from;
+  const toISO = dayRange(opts.to).from;
 
   // Online: gather non-cancelled order ids in range, then sum items by
   // product. POS: same against pos_sales.
