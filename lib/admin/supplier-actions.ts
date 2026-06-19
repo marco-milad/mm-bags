@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { PurchaseOrderStatus } from "@/lib/supabase/types";
 
 // ─── Suppliers ───────────────────────────────────────────────────────
 const supplierSchema = z.object({
@@ -218,23 +219,13 @@ export async function recordPurchaseOrderPayment(
   const payment = Math.min(amount, po.amount_owed);
   const newPaid = po.amount_paid + payment;
   const newOwed = Math.max(0, po.amount_owed - payment);
-  const newStatus =
-    newOwed === 0
-      ? po.status === "received"
-        ? "paid"
-        : po.status === "pending"
-          ? "paid"
-          : "paid"
-      : po.status === "received"
-        ? "received"
-        : "partial";
 
   await admin
     .from("purchase_orders")
     .update({
       amount_paid: newPaid,
       amount_owed: newOwed,
-      status: newStatus,
+      status: nextStatusAfterPayment(po.status, newOwed),
     })
     .eq("id", poId);
 
@@ -246,6 +237,77 @@ export async function recordPurchaseOrderPayment(
   revalidatePath("/admin/purchase-orders");
   revalidatePath(`/admin/purchase-orders/${poId}`);
   revalidatePath("/admin/suppliers");
+}
+
+/**
+ * Where the PO should land after a payment is applied. Three branches:
+ *   1. Fully paid → "paid", regardless of receive state. The previous
+ *      goods-in flow stays valid: a paid-but-unreceived PO still ages
+ *      until Mark Received runs.
+ *   2. Goods received, balance remaining → keep "received". The
+ *      received milestone is sticky; partial payments don't undo it.
+ *   3. Default (pending or partial with goods not yet received) →
+ *      "partial".
+ *
+ * Extracted because the original nested ternary collapsed several
+ * cases into the same outcome, which made it look broken even though
+ * it wasn't.
+ */
+function nextStatusAfterPayment(
+  currentStatus: PurchaseOrderStatus | null,
+  newOwed: number,
+): PurchaseOrderStatus {
+  if (newOwed === 0) return "paid";
+  if (currentStatus === "received") return "received";
+  return "partial";
+}
+
+/**
+ * Cancel a PO that hasn't been received yet. Pending POs are the only
+ * cancel-safe state — once goods are in, the cancellation would need
+ * to reverse stock movements (a separate "Return to supplier" flow we
+ * don't ship in this commit). Hard-deletes the row + child items;
+ * `purchase_order_items` has ON DELETE CASCADE.
+ *
+ * Also unwinds any up-front payment so the supplier's balance stays
+ * honest: a pending PO with `amount_paid > 0` (rare but possible)
+ * gets its credit returned to the supplier's running totals.
+ */
+export async function cancelPurchaseOrder(poId: string): Promise<void> {
+  const admin = getSupabaseAdminClient();
+  const { data: po } = await admin
+    .from("purchase_orders")
+    .select("status, supplier_id, amount_paid, amount_owed")
+    .eq("id", poId)
+    .maybeSingle();
+  if (!po || po.status !== "pending") return;
+
+  if (po.supplier_id) {
+    if (po.amount_paid > 0) {
+      // Reverse the cash-in: the supplier didn't sell us anything in
+      // the end, so any payment captured up-front is no longer owed
+      // to them.
+      await bumpSupplierTotals(po.supplier_id, -po.amount_paid);
+    }
+    if (po.amount_owed > 0) {
+      await addOwedToSupplier(po.supplier_id, -po.amount_owed);
+    }
+  }
+
+  await admin.from("purchase_orders").delete().eq("id", poId);
+
+  revalidatePath("/admin/purchase-orders");
+  revalidatePath("/admin/suppliers");
+}
+
+export async function cancelPurchaseOrderForm(
+  formData: FormData,
+): Promise<void> {
+  const id = formData.get("id");
+  if (typeof id === "string") {
+    await cancelPurchaseOrder(id);
+    redirect("/admin/purchase-orders");
+  }
 }
 
 // ─── Supplier total helpers ─────────────────────────────────────────

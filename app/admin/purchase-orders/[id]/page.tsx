@@ -6,6 +6,7 @@ import {
   markReceivedForm,
   recordPaymentForm,
 } from "@/lib/admin/supplier-actions";
+import { CancelPOButton } from "@/components/admin/purchase-orders/CancelPOButton";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { getAdminLocale, type AdminLocale } from "@/lib/admin/locale";
 import type { PurchaseOrderStatus } from "@/lib/supabase/types";
@@ -146,6 +147,9 @@ export default async function PurchaseOrderDetailPage({
               {isAr ? "تسجيل الدفع" : "Record payment"}
             </button>
           </form>
+        )}
+        {status === "pending" && (
+          <CancelPOButton id={po.id} isAr={isAr} />
         )}
       </div>
 

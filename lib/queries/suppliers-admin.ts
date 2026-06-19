@@ -42,7 +42,14 @@ export type PurchaseOrderRow = PurchaseOrder & {
 };
 
 export async function listPurchaseOrders(
-  filters: { status?: PurchaseOrderStatus; supplierId?: string } = {},
+  filters: {
+    status?: PurchaseOrderStatus;
+    supplierId?: string;
+    /** When true, restrict to POs that still owe the supplier money
+        AND were created more than 30 days ago. Matches the dashboard's
+        existing overdue threshold (lib/queries/admin-dashboard.ts). */
+    overdue?: boolean;
+  } = {},
 ): Promise<PurchaseOrderRow[]> {
   const admin = getSupabaseAdminClient();
   let q = admin
@@ -53,6 +60,10 @@ export async function listPurchaseOrders(
     .order("created_at", { ascending: false });
   if (filters.status) q = q.eq("status", filters.status);
   if (filters.supplierId) q = q.eq("supplier_id", filters.supplierId);
+  if (filters.overdue) {
+    const cutoff = new Date(Date.now() - 30 * 86400_000).toISOString();
+    q = q.gt("amount_owed", 0).lt("created_at", cutoff);
+  }
 
   const { data } = await q;
   // Supabase-js can't yet infer the reverse join's row shape; the

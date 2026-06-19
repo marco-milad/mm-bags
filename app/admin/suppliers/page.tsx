@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Power, PowerOff } from "lucide-react";
+import { FileText, Power, PowerOff } from "lucide-react";
 import { listSuppliers } from "@/lib/queries/suppliers-admin";
 import {
   saveSupplier,
@@ -7,6 +7,7 @@ import {
 } from "@/lib/admin/supplier-actions";
 import { getAdminLocale } from "@/lib/admin/locale";
 import { formatPriceEGP } from "@/lib/utils";
+import { SupplierEditDialog } from "@/components/admin/suppliers/SupplierEditDialog";
 
 export const dynamic = "force-dynamic";
 
@@ -30,15 +31,24 @@ export default async function SuppliersPage() {
   const suppliers = await listSuppliers();
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-3xl text-[var(--color-text)]">
-          {isAr ? "الموردين" : "Suppliers"}
-        </h1>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-          {isAr
-            ? "سجّل وأدر الموردين؛ الإجماليات بتتحدث تلقائيًا مع تسجيل أوامر الشراء والمدفوعات."
-            : "Register and manage suppliers; running totals are kept in sync as purchase orders are recorded and paid."}
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl text-[var(--color-text)]">
+            {isAr ? "الموردين" : "Suppliers"}
+          </h1>
+          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+            {isAr
+              ? "سجّل وأدر الموردين؛ الإجماليات بتتحدث تلقائيًا مع تسجيل أوامر الشراء والمدفوعات."
+              : "Register and manage suppliers; running totals are kept in sync as purchase orders are recorded and paid."}
+          </p>
+        </div>
+        <Link
+          href="/admin/reports?tab=suppliers"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] px-4 py-2 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          {isAr ? "تقرير سجل الموردين" : "Supplier ledger report"}
+        </Link>
       </header>
 
       {/* ─── Add form (server action) ────────────────────────────── */}
@@ -144,6 +154,16 @@ export default async function SuppliersPage() {
                     >
                       {isAr ? "عرض أوامر الشراء" : "View POs"}
                     </Link>
+                    <SupplierEditDialog
+                      supplier={{
+                        id: s.id,
+                        name: s.name,
+                        phone: s.phone,
+                        address: s.address,
+                        notes: s.notes,
+                      }}
+                      isAr={isAr}
+                    />
                     <form action={toggleSupplierActive.bind(null, s.id)}>
                       <button
                         type="submit"
