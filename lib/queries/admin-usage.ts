@@ -1,23 +1,20 @@
 import "server-only";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Supabase Free-Plan usage snapshot for the admin dashboard widget.
  *
- * What we CAN measure from inside the project (no extra RPC needed):
- *   - Storage bytes per bucket  → cap is 1 GB total across all buckets
- *   - Row counts for key tables → proxy for "is data growing fast?"
+ * Source: a single SECURITY DEFINER RPC (admin_supabase_usage, see
+ * migration 0008) that returns both the database size and the
+ * per-bucket storage breakdown. The RPC route exists because the
+ * `storage` schema isn't exposed via PostgREST by default, and
+ * `pg_database_size` is a built-in that needs a wrapper before
+ * PostgREST will call it as RPC.
  *
- * What we CANNOT measure here (Supabase doesn't expose them via the
- * REST API on the free tier without a custom RPC):
- *   - Total database size (`pg_database_size`) — would need a
- *     SECURITY DEFINER function. Worth adding if Marco ever asks; for
- *     now the storefront's text-only data stays in the low MB range
- *     so the 500 MB cap is unlikely to bite first.
- *   - Monthly bandwidth / egress — only the Supabase dashboard's
- *     usage page tracks this. The widget links out to it.
+ * The only metric we still link OUT for is monthly bandwidth /
+ * egress — that's tracked in the Supabase dashboard's billing page
+ * and isn't reflected anywhere queryable from the project.
  *
  * The free-plan caps below are the published 2026 limits. They're
  * baked into the response so the widget can render progress bars
@@ -48,55 +45,65 @@ export type SupabaseUsage = {
     pctOfLimit: number;
     buckets: BucketUsage[];
   };
+  database: {
+    /** Null when the RPC hasn't been migrated yet — the widget falls
+        back to "—" and a "run migration 0008" hint rather than break. */
+    totalBytes: number | null;
+    pctOfLimit: number | null;
+  };
   tables: TableCount[];
   authUsers: number | null;
 };
 
+type AdminUsageRpcRow = {
+  db_bytes: number | null;
+  buckets: Array<{
+    bucket_id: string | null;
+    file_count: number;
+    bytes: number;
+  }> | null;
+};
+
 /**
  * Fetches one usage snapshot. Designed to be cheap enough to run on
- * every dashboard load — the storage query is the heaviest line and
- * the catalog currently sits around 250 image rows.
+ * every dashboard load — the RPC executes a single GROUP BY + a
+ * built-in size lookup, both sub-millisecond on Supabase free tier.
  */
 export async function getSupabaseUsage(): Promise<SupabaseUsage> {
   const admin = getSupabaseAdminClient();
 
-  // Storage — pull every object's bucket + size metadata and aggregate
-  // in JS. Supabase doesn't expose a SUM aggregate on the storage.objects
-  // PostgREST view, so we do the math here.
-  //
-  // The project's generated `Database` type only declares the `public`
-  // schema, so `.schema("storage")` fails type-check. We cast to an
-  // unconstrained client for this one query — the runtime call is
-  // identical, and the only field we actually read (`metadata.size`)
-  // is asserted at the destructure below.
-  const storageAdmin =
-    admin as unknown as SupabaseClient<Record<string, unknown>>;
-  const { data: objects } = await storageAdmin
-    .schema("storage")
-    .from("objects")
-    .select("bucket_id, metadata")
-    .limit(10_000);
-
-  const bucketsMap = new Map<string, BucketUsage>();
+  // The RPC returns the canonical numbers from inside Postgres so the
+  // widget reflects deletes + uploads in real time on the very next
+  // dashboard load. The `rpc` call type-checks even though our
+  // generated Database type doesn't list the function explicitly —
+  // supabase-js falls back to a permissive shape for unknown RPCs.
   let storageTotalBytes = 0;
-  for (const row of (objects ?? []) as Array<{
-    bucket_id: string | null;
-    metadata: { size?: number } | null;
-  }>) {
-    const bucket = row.bucket_id ?? "(unknown)";
-    const size = Number(row.metadata?.size ?? 0);
-    storageTotalBytes += size;
-    const existing = bucketsMap.get(bucket);
-    if (existing) {
-      existing.fileCount += 1;
-      existing.bytes += size;
-    } else {
-      bucketsMap.set(bucket, { bucket, fileCount: 1, bytes: size });
-    }
-  }
-  const buckets = Array.from(bucketsMap.values()).sort(
-    (a, b) => b.bytes - a.bytes,
+  let buckets: BucketUsage[] = [];
+  let dbBytes: number | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC isn't in generated types
+  const { data: usageRow, error } = await (admin as any).rpc(
+    "admin_supabase_usage",
   );
+  if (!error && usageRow) {
+    const row = usageRow as AdminUsageRpcRow;
+    dbBytes = typeof row.db_bytes === "number" ? row.db_bytes : null;
+    for (const b of row.buckets ?? []) {
+      const bucket = b.bucket_id ?? "(unknown)";
+      const bytes = Number(b.bytes ?? 0);
+      const fileCount = Number(b.file_count ?? 0);
+      storageTotalBytes += bytes;
+      buckets.push({ bucket, fileCount, bytes });
+    }
+    buckets = buckets.sort((a, b) => b.bytes - a.bytes);
+  } else if (error) {
+    // Most likely the migration hasn't been applied yet. Don't
+    // crash the dashboard — the widget will render zeros with a
+    // hint and the rest of /admin keeps working.
+    console.warn(
+      "[admin-usage] admin_supabase_usage RPC failed",
+      error.message,
+    );
+  }
 
   // Row counts for the tables that grow fastest. HEAD requests with
   // count: "exact" give us the count without pulling rows.
@@ -148,6 +155,15 @@ export async function getSupabaseUsage(): Promise<SupabaseUsage> {
           (storageTotalBytes / FREE_PLAN_LIMITS.storageBytes) * 10_000,
         ) / 100,
       buckets,
+    },
+    database: {
+      totalBytes: dbBytes,
+      pctOfLimit:
+        dbBytes === null
+          ? null
+          : Math.round(
+              (dbBytes / FREE_PLAN_LIMITS.databaseBytes) * 10_000,
+            ) / 100,
     },
     tables: counts.sort((a, b) => b.rows - a.rows),
     authUsers,

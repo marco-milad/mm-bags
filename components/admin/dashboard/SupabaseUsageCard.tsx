@@ -117,14 +117,64 @@ export function SupabaseUsageCard({
           )}
         </div>
 
-        {/* ── Block 2: Tables ─────────────────────────────────────── */}
+        {/* ── Block 2: Database size + top tables ─────────────────── */}
         <div className="space-y-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
-            <Database className="h-3.5 w-3.5" />
-            <span>{isAr ? "أكبر الجداول (صفوف)" : "Top tables (rows)"}</span>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+              <Database className="h-3.5 w-3.5" />
+              <span>{isAr ? "قاعدة البيانات" : "Database"}</span>
+            </div>
+            {usage.database.pctOfLimit !== null && (
+              <span
+                className={cn(
+                  "font-mono text-[11px] font-semibold",
+                  toneTextClass(toneFromPct(usage.database.pctOfLimit)),
+                )}
+              >
+                {usage.database.pctOfLimit.toFixed(1)}%
+              </span>
+            )}
           </div>
-          <ul className="space-y-1 text-[11px]">
-            {usage.tables.slice(0, 6).map((t) => (
+
+          {usage.database.totalBytes !== null &&
+          usage.database.pctOfLimit !== null ? (
+            <>
+              <div
+                role="progressbar"
+                aria-valuenow={Math.min(
+                  100,
+                  Math.round(usage.database.pctOfLimit),
+                )}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={isAr ? "استهلاك قاعدة البيانات" : "DB usage"}
+                className="h-2 overflow-hidden rounded-full bg-[var(--color-border)]"
+              >
+                <div
+                  className={cn(
+                    "h-full transition-[width]",
+                    toneBgClass(toneFromPct(usage.database.pctOfLimit)),
+                  )}
+                  style={{
+                    width: `${Math.min(100, usage.database.pctOfLimit)}%`,
+                  }}
+                />
+              </div>
+              <p className="font-mono text-[11px] text-[var(--color-text-secondary)]">
+                {formatBytes(usage.database.totalBytes)} /{" "}
+                {formatBytes(FREE_PLAN_LIMITS.databaseBytes)}
+              </p>
+            </>
+          ) : (
+            <p className="rounded-md border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-2 py-1.5 text-[10px] text-[var(--color-warning)]">
+              {isAr
+                ? "حدث ترقية: شغّل migration 0008 في Supabase SQL Editor عشان نقدر نقرأ حجم قاعدة البيانات الفعلي."
+                : "Upgrade needed: run migration 0008 in Supabase SQL Editor to expose pg_database_size."}
+            </p>
+          )}
+
+          <ul className="space-y-1 pt-1 text-[11px]">
+            {usage.tables.slice(0, 5).map((t) => (
               <li
                 key={t.name}
                 className="flex items-center justify-between gap-2"
@@ -138,11 +188,6 @@ export function SupabaseUsageCard({
               </li>
             ))}
           </ul>
-          <p className="border-t border-[var(--color-border)] pt-2 text-[10px] text-[var(--color-text-secondary)]">
-            {isAr
-              ? "حد قاعدة البيانات: 500 ميجا. شوف الدشبورد للأرقام الفعلية."
-              : "DB cap: 500 MB. See dashboard for exact usage."}
-          </p>
         </div>
 
         {/* ── Block 3: Auth + Links ───────────────────────────────── */}
