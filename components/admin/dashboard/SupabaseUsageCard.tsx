@@ -1,4 +1,5 @@
-import { Database, ExternalLink, HardDrive, Users } from "lucide-react";
+import Link from "next/link";
+import { Database, ExternalLink, HardDrive, Trash2, Users } from "lucide-react";
 import {
   FREE_PLAN_LIMITS,
   formatBytes,
@@ -115,6 +116,14 @@ export function SupabaseUsageCard({
               ))}
             </ul>
           )}
+
+          <Link
+            href="/admin/cleanup"
+            className="inline-flex items-center gap-1 pt-1 text-[11px] font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
+          >
+            <Trash2 className="h-3 w-3" />
+            {isAr ? "تنظيف الملفات اليتيمة" : "Clean up orphan files"}
+          </Link>
         </div>
 
         {/* ── Block 2: Database size + top tables ─────────────────── */}
