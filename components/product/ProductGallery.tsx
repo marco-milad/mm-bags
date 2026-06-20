@@ -119,9 +119,15 @@ export function ProductGallery({
         <div
           className={cn(
             "flex overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-            // Keep all four toggled atoms (-mx-2 / gap-2 / px-2 / pb-1) in
-            // the same branch so the non-canary path is byte-identical
-            // to the previous static string.
+            // `py-0.5` on both branches gives the active thumb's
+            // `ring-2` (2 px outline) vertical room — `overflow-x: auto`
+            // forces overflow-y to a non-visible value, which would
+            // otherwise clip the ring top + bottom and leave only the
+            // left/right strokes visible on the selected tile.
+            "py-0.5",
+            // Keep the rest of the toggled atoms (-mx-2 / gap-2 / px-2 / pb-1)
+            // in the non-compact branch so the default rail stays byte-
+            // identical to the previous static string.
             compact ? "gap-1.5" : "-mx-2 gap-2 px-2 pb-1",
           )}
           aria-label={locale === "ar" ? "صور المنتج" : "Product images"}
