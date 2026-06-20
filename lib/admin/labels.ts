@@ -98,3 +98,57 @@ export const ORDER_STATUSES = [
   "delivered",
   "cancelled",
 ] as const;
+
+// ─── Returns ────────────────────────────────────────────────────────
+// Egyptian phrasing mirrors the /[locale]/refund-policy page so the
+// admin labels match the public commitment the customer reads.
+
+const RETURN_REASON_LABELS = {
+  ar: {
+    defective: "عيب تصنيع",
+    wrong_size: "مقاس مختلف",
+    wrong_color: "لون مختلف",
+    changed_mind: "غيّر رأيه",
+    damaged_in_shipping: "وصل تالف",
+    other: "سبب آخر",
+  } as Record<string, string>,
+  en: {
+    defective: "Manufacturing defect",
+    wrong_size: "Wrong size",
+    wrong_color: "Wrong colour",
+    changed_mind: "Changed mind",
+    damaged_in_shipping: "Damaged in shipping",
+    other: "Other",
+  } as Record<string, string>,
+} as const;
+
+const REFUND_METHOD_LABELS = {
+  ar: {
+    cash: "كاش",
+    card_original: "نفس الكارت الأصلي",
+    store_credit: "رصيد محل",
+    bank_transfer: "تحويل بنكي",
+  } as Record<string, string>,
+  en: {
+    cash: "Cash",
+    card_original: "Original card",
+    store_credit: "Store credit",
+    bank_transfer: "Bank transfer",
+  } as Record<string, string>,
+} as const;
+
+export function returnReasonLabel(
+  reason: string | null | undefined,
+  locale: AdminLocale,
+): string {
+  if (!reason) return "—";
+  return RETURN_REASON_LABELS[locale][reason] ?? reason.replace(/_/g, " ");
+}
+
+export function refundMethodLabel(
+  method: string | null | undefined,
+  locale: AdminLocale,
+): string {
+  if (!method) return "—";
+  return REFUND_METHOD_LABELS[locale][method] ?? method;
+}

@@ -4,17 +4,25 @@ import {
   getBestSellers,
   getDailyReport,
   getMonthlyReport,
+  getReturnsAnalytics,
   getStockValueReport,
   getSupplierLedger,
 } from "@/lib/queries/admin-reports";
 import { cairoDateOf, cairoTodayISO } from "@/lib/queries/cairo-tz";
 import { RevenueChart } from "@/components/admin/dashboard/RevenueChart";
 import { getAdminLocale, type AdminLocale } from "@/lib/admin/locale";
+import { refundMethodLabel, returnReasonLabel } from "@/lib/admin/labels";
 import { cn, formatPriceEGP } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-type Tab = "daily" | "monthly" | "best-sellers" | "stock" | "suppliers";
+type Tab =
+  | "daily"
+  | "monthly"
+  | "best-sellers"
+  | "stock"
+  | "suppliers"
+  | "returns";
 
 const TABS: ReadonlyArray<{ id: Tab; label_en: string; label_ar: string }> = [
   { id: "daily", label_en: "Daily revenue", label_ar: "إيراد يومي" },
@@ -22,6 +30,7 @@ const TABS: ReadonlyArray<{ id: Tab; label_en: string; label_ar: string }> = [
   { id: "best-sellers", label_en: "Best sellers", label_ar: "الأكثر مبيعاً" },
   { id: "stock", label_en: "Stock value", label_ar: "قيمة المخزون" },
   { id: "suppliers", label_en: "Supplier ledger", label_ar: "سجل الموردين" },
+  { id: "returns", label_en: "Returns", label_ar: "المرتجعات" },
 ];
 
 /**
@@ -97,6 +106,12 @@ export default async function ReportsPage({
       )}
       {tab === "stock" && <StockTab locale={locale} />}
       {tab === "suppliers" && <SuppliersTab locale={locale} />}
+      {tab === "returns" && (
+        <ReturnsTab
+          month={typeof sp?.month === "string" ? sp.month : undefined}
+          locale={locale}
+        />
+      )}
     </div>
   );
 }
@@ -136,7 +151,7 @@ async function DailyTab({
         <ExportLink query={`report=daily&date=${iso}`} locale={locale} />
       </form>
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
         <Stat
           label={isAr ? "إجمالي الإيراد" : "Total revenue"}
           value={formatPriceEGP(r.total)}
@@ -163,6 +178,26 @@ async function DailyTab({
         <Stat
           label={isAr ? "متوسط الطلب" : "Avg order value"}
           value={formatPriceEGP(r.averageOrderValue)}
+        />
+        <Stat
+          label={isAr ? "إجمالي المرتجعات" : "Total returns"}
+          value={formatPriceEGP(r.returns.refundTotal)}
+          tone={r.returns.refundTotal > 0 ? "error" : "muted"}
+          sub={
+            isAr
+              ? `أونلاين ${r.returns.online.count} · محل ${r.returns.pos.count}`
+              : `Online ${r.returns.online.count} · POS ${r.returns.pos.count}`
+          }
+        />
+        <Stat
+          label={isAr ? "صافي الإيراد" : "Net revenue"}
+          value={formatPriceEGP(r.netRevenue)}
+          tone="success"
+          sub={
+            isAr
+              ? "بعد خصم المرتجعات"
+              : "After refunds"
+          }
         />
       </div>
     </section>
@@ -229,6 +264,34 @@ async function MonthlyTab({
                 ? "success"
                 : "error"
           }
+        />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <Stat
+          label={isAr ? "المرتجعات (شهر)" : "Returns (month)"}
+          value={formatPriceEGP(r.returns.refundTotal)}
+          tone={r.returns.refundTotal > 0 ? "error" : "muted"}
+          sub={
+            isAr
+              ? `أونلاين ${r.returns.online.count} · محل ${r.returns.pos.count}`
+              : `Online ${r.returns.online.count} · POS ${r.returns.pos.count}`
+          }
+        />
+        <Stat
+          label={isAr ? "صافي الإيراد" : "Net revenue"}
+          value={formatPriceEGP(r.netRevenue)}
+          tone="success"
+          sub={isAr ? "بعد خصم المرتجعات" : "After refunds"}
+        />
+        <Stat
+          label={isAr ? "نسبة الإرجاع من الإيراد" : "Returns as % of gross"}
+          value={
+            r.total > 0
+              ? `${((r.returns.refundTotal / r.total) * 100).toFixed(1)}%`
+              : "—"
+          }
+          tone={r.returns.refundTotal > 0 ? "error" : "muted"}
         />
       </div>
 
@@ -475,6 +538,212 @@ async function SuppliersTab({ locale }: { locale: AdminLocale }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </section>
+  );
+}
+
+// ─── Tab 6: Returns analytics ───────────────────────────────────────
+async function ReturnsTab({
+  month,
+  locale,
+}: {
+  month?: string;
+  locale: AdminLocale;
+}) {
+  const isAr = locale === "ar";
+  const yyyymm = month ?? cairoTodayISO().slice(0, 7);
+  const r = await getReturnsAnalytics(yyyymm);
+  const totalReturns = r.totals.onlineReturns + r.totals.posReturns;
+  return (
+    <section className="space-y-4">
+      <form action="/admin/reports" className="flex items-end gap-2">
+        <input type="hidden" name="tab" value="returns" />
+        <label className="text-sm">
+          <span className="mb-1 block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
+            {isAr ? "الشهر" : "Month"}
+          </span>
+          <input
+            type="month"
+            name="month"
+            defaultValue={yyyymm}
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          />
+        </label>
+        <button
+          type="submit"
+          className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white"
+        >
+          {isAr ? "تطبيق" : "Apply"}
+        </button>
+        <ExportLink query={`report=returns&month=${yyyymm}`} locale={locale} />
+      </form>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <Stat
+          label={isAr ? "إجمالي عدد المرتجعات" : "Total returns"}
+          value={String(totalReturns)}
+          tone={totalReturns > 0 ? "error" : "muted"}
+          sub={
+            isAr
+              ? `أونلاين ${r.totals.onlineReturns} · محل ${r.totals.posReturns}`
+              : `Online ${r.totals.onlineReturns} · POS ${r.totals.posReturns}`
+          }
+        />
+        <Stat
+          label={isAr ? "إجمالي المسترد" : "Refund total"}
+          value={formatPriceEGP(r.totals.refundTotal)}
+          tone={r.totals.refundTotal > 0 ? "error" : "muted"}
+        />
+        <Stat
+          label={isAr ? "نسبة الإرجاع" : "Return rate"}
+          value={`${r.totals.returnRatePct.toFixed(2)}%`}
+          tone={r.totals.returnRatePct > 5 ? "error" : "muted"}
+          sub={
+            isAr
+              ? `من ${r.totals.onlineSalesCount + r.totals.posSalesCount} بيعة`
+              : `of ${r.totals.onlineSalesCount + r.totals.posSalesCount} sales`
+          }
+        />
+        <Stat
+          label={isAr ? "متوسط الاسترداد" : "Avg refund"}
+          value={
+            totalReturns > 0
+              ? formatPriceEGP(r.totals.refundTotal / totalReturns)
+              : "—"
+          }
+          tone="muted"
+        />
+      </div>
+
+      {/* By reason */}
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+        <p className="mb-3 text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
+          {isAr ? "الأسباب" : "By reason"}
+        </p>
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
+          <table className="w-full text-sm">
+            <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+              <tr>
+                <Th>{isAr ? "السبب" : "Reason"}</Th>
+                <Th className="text-end">{isAr ? "العدد" : "Count"}</Th>
+                <Th className="text-end">{isAr ? "المسترد" : "Refund total"}</Th>
+                <Th className="text-end">{isAr ? "النسبة" : "Share"}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.byReason.map((row) => (
+                <tr key={row.reason} className="border-t border-[var(--color-border)]">
+                  <td className="px-3 py-2">{returnReasonLabel(row.reason, locale)}</td>
+                  <td className="px-3 py-2 text-end font-mono text-sm">{row.count}</td>
+                  <td className="px-3 py-2 text-end font-mono text-sm font-semibold text-[var(--color-error)]">
+                    {formatPriceEGP(row.refundTotal)}
+                  </td>
+                  <td className="px-3 py-2 text-end font-mono text-sm text-[var(--color-text-secondary)]">
+                    {row.pct.toFixed(1)}%
+                  </td>
+                </tr>
+              ))}
+              {r.byReason.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
+                    {isAr ? "مفيش مرتجعات في الشهر ده." : "No returns this month."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Top returned products */}
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+        <p className="mb-3 text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
+          {isAr ? "أكثر المنتجات إرجاعاً" : "Top returned products"}
+        </p>
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
+          <table className="w-full text-sm">
+            <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+              <tr>
+                <Th>#</Th>
+                <Th>{isAr ? "المنتج" : "Product"}</Th>
+                <Th className="text-end">{isAr ? "القطع المرتجعة" : "Qty returned"}</Th>
+                <Th className="text-end">{isAr ? "المسترد" : "Refund total"}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.topReturnedProducts.map((row, i) => (
+                <tr key={row.productId} className="border-t border-[var(--color-border)]">
+                  <td className="px-3 py-2 text-[11px] text-[var(--color-text-secondary)]">
+                    {i + 1}
+                  </td>
+                  <td className="px-3 py-2">
+                    {row.productSlug ? (
+                      <Link
+                        href={`/ar/products/${row.productSlug}`}
+                        target="_blank"
+                        className="text-[var(--color-text)] hover:underline"
+                      >
+                        {row.productName}
+                      </Link>
+                    ) : (
+                      <span>{row.productName}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-end font-mono text-sm">
+                    {row.returnCount}
+                  </td>
+                  <td className="px-3 py-2 text-end font-mono text-sm font-semibold text-[var(--color-error)]">
+                    {formatPriceEGP(row.refundTotal)}
+                  </td>
+                </tr>
+              ))}
+              {r.topReturnedProducts.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
+                    {isAr ? "مفيش منتجات اترجعت." : "No returned products yet."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* By refund method */}
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+        <p className="mb-3 text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
+          {isAr ? "وسيلة الاسترداد" : "By refund method"}
+        </p>
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
+          <table className="w-full text-sm">
+            <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+              <tr>
+                <Th>{isAr ? "الوسيلة" : "Method"}</Th>
+                <Th className="text-end">{isAr ? "العدد" : "Count"}</Th>
+                <Th className="text-end">{isAr ? "إجمالي المسترد" : "Refund total"}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.byRefundMethod.map((row) => (
+                <tr key={row.method} className="border-t border-[var(--color-border)]">
+                  <td className="px-3 py-2">{refundMethodLabel(row.method, locale)}</td>
+                  <td className="px-3 py-2 text-end font-mono text-sm">{row.count}</td>
+                  <td className="px-3 py-2 text-end font-mono text-sm font-semibold">
+                    {formatPriceEGP(row.refundTotal)}
+                  </td>
+                </tr>
+              ))}
+              {r.byRefundMethod.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
+                    {isAr ? "لا يوجد بيانات." : "No data."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );

@@ -3,6 +3,7 @@ import "server-only";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { DailyRevenuePoint } from "./admin-dashboard";
 import { cairoDateOf, cairoMidnightUtcMs } from "./cairo-tz";
+import type { RefundMethod, ReturnReason } from "@/lib/supabase/types";
 
 /**
  * Report queries for the /admin/reports page.
@@ -53,13 +54,32 @@ export type DailyReport = {
   pos: { count: number; revenue: number; items: number };
   total: number;
   averageOrderValue: number;
+  /**
+   * Refund pressure for the day, split by channel + summed. `itemCount`
+   * is qty across every return-item row so the admin can see "today we
+   * lost X EGP across Y pieces" in one glance.
+   */
+  returns: {
+    online: { count: number; refundTotal: number; itemCount: number };
+    pos: { count: number; refundTotal: number; itemCount: number };
+    refundTotal: number;
+  };
+  /** total − returns.refundTotal — what actually stayed in the till. */
+  netRevenue: number;
 };
 
 export async function getDailyReport(iso: string): Promise<DailyReport> {
   const { from, to } = dayRange(iso);
   const admin = getSupabaseAdminClient();
 
-  const [ordersRes, posRes, orderItemsRes, posItemsRes] = await Promise.all([
+  const [
+    ordersRes,
+    posRes,
+    orderItemsRes,
+    posItemsRes,
+    orderReturnsRes,
+    posReturnsRes,
+  ] = await Promise.all([
     admin
       .from("orders")
       .select("id, total")
@@ -79,6 +99,16 @@ export async function getDailyReport(iso: string): Promise<DailyReport> {
     admin
       .from("pos_sale_items")
       .select("qty, sale_id"),
+    admin
+      .from("order_returns")
+      .select("id, refund_amount")
+      .gte("created_at", from)
+      .lt("created_at", to),
+    admin
+      .from("pos_returns")
+      .select("id, refund_amount")
+      .gte("created_at", from)
+      .lt("created_at", to),
   ]);
 
   const onlineIds = new Set((ordersRes.data ?? []).map((o) => o.id));
@@ -104,12 +134,61 @@ export async function getDailyReport(iso: string): Promise<DailyReport> {
   };
   const total = online.revenue + pos.revenue;
   const orderCount = online.count + pos.count;
+
+  // Returns — fetch matching return-item qty totals via the parent ids.
+  const onlineReturnIds = (orderReturnsRes.data ?? []).map((r) => r.id);
+  const posReturnIds = (posReturnsRes.data ?? []).map((r) => r.id);
+  const [onlineReturnItemsRes, posReturnItemsRes] = await Promise.all([
+    onlineReturnIds.length > 0
+      ? admin
+          .from("order_return_items")
+          .select("qty, return_id")
+          .in("return_id", onlineReturnIds)
+      : Promise.resolve({ data: [] as Array<{ qty: number; return_id: string }> }),
+    posReturnIds.length > 0
+      ? admin
+          .from("pos_return_items")
+          .select("qty, return_id")
+          .in("return_id", posReturnIds)
+      : Promise.resolve({ data: [] as Array<{ qty: number; return_id: string }> }),
+  ]);
+
+  const onlineReturns = {
+    count: orderReturnsRes.data?.length ?? 0,
+    refundTotal: (orderReturnsRes.data ?? []).reduce(
+      (s, r) => s + Number(r.refund_amount ?? 0),
+      0,
+    ),
+    itemCount: (onlineReturnItemsRes.data ?? []).reduce(
+      (s, r) => s + (r.qty ?? 0),
+      0,
+    ),
+  };
+  const posReturns = {
+    count: posReturnsRes.data?.length ?? 0,
+    refundTotal: (posReturnsRes.data ?? []).reduce(
+      (s, r) => s + Number(r.refund_amount ?? 0),
+      0,
+    ),
+    itemCount: (posReturnItemsRes.data ?? []).reduce(
+      (s, r) => s + (r.qty ?? 0),
+      0,
+    ),
+  };
+  const refundTotal = onlineReturns.refundTotal + posReturns.refundTotal;
+
   return {
     date: iso,
     online,
     pos,
     total,
     averageOrderValue: orderCount > 0 ? total / orderCount : 0,
+    returns: {
+      online: onlineReturns,
+      pos: posReturns,
+      refundTotal,
+    },
+    netRevenue: total - refundTotal,
   };
 }
 
@@ -271,6 +350,15 @@ export type MonthlyReport = {
   total: number;
   previousTotal: number;
   deltaPct: number | null;
+  /** Refund aggregates for the same month — same shape as DailyReport.returns
+      but without itemCount (the monthly view doesn't drill that deep). */
+  returns: {
+    online: { count: number; refundTotal: number };
+    pos: { count: number; refundTotal: number };
+    refundTotal: number;
+  };
+  /** total − returns.refundTotal */
+  netRevenue: number;
 };
 
 export async function getMonthlyReport(
@@ -282,7 +370,14 @@ export async function getMonthlyReport(
   const { from: prevFrom, to: prevTo } = monthRange(prevYYYYMM);
 
   const admin = getSupabaseAdminClient();
-  const [onlineRes, posRes, prevOnlineRes, prevPosRes] = await Promise.all([
+  const [
+    onlineRes,
+    posRes,
+    prevOnlineRes,
+    prevPosRes,
+    onlineReturnsRes,
+    posReturnsRes,
+  ] = await Promise.all([
     admin
       .from("orders")
       .select("created_at, total, status")
@@ -305,6 +400,16 @@ export async function getMonthlyReport(
       .select("total")
       .gte("created_at", prevFrom)
       .lt("created_at", prevTo),
+    admin
+      .from("order_returns")
+      .select("id, refund_amount")
+      .gte("created_at", from)
+      .lt("created_at", to),
+    admin
+      .from("pos_returns")
+      .select("id, refund_amount")
+      .gte("created_at", from)
+      .lt("created_at", to),
   ]);
 
   // Build the daily point map (every day in the month).
@@ -339,7 +444,35 @@ export async function getMonthlyReport(
   const deltaPct =
     previousTotal > 0 ? ((total - previousTotal) / previousTotal) * 100 : null;
 
-  return { yyyymm, daily, total, previousTotal, deltaPct };
+  const onlineReturns = {
+    count: onlineReturnsRes.data?.length ?? 0,
+    refundTotal: (onlineReturnsRes.data ?? []).reduce(
+      (s, r) => s + Number(r.refund_amount ?? 0),
+      0,
+    ),
+  };
+  const posReturns = {
+    count: posReturnsRes.data?.length ?? 0,
+    refundTotal: (posReturnsRes.data ?? []).reduce(
+      (s, r) => s + Number(r.refund_amount ?? 0),
+      0,
+    ),
+  };
+  const refundTotal = onlineReturns.refundTotal + posReturns.refundTotal;
+
+  return {
+    yyyymm,
+    daily,
+    total,
+    previousTotal,
+    deltaPct,
+    returns: {
+      online: onlineReturns,
+      pos: posReturns,
+      refundTotal,
+    },
+    netRevenue: total - refundTotal,
+  };
 }
 
 // ─── 3. Best-selling products ────────────────────────────────────────
@@ -608,6 +741,247 @@ export async function getSupplierLedger(): Promise<SupplierLedgerRow[]> {
       poCount: entry.count,
     };
   });
+}
+
+// ─── 6. Returns analytics ────────────────────────────────────────────
+/**
+ * One month of return activity, aggregated for Phase 3b dashboards.
+ *
+ * `returnRatePct` denominator counts gross sales in the month (orders
+ * + POS sales) — NOT net-of-returns — so the rate answers "how often
+ * did a transaction end up coming back?", which is what the merchandiser
+ * actually wants to monitor.
+ *
+ * `byReason.pct` shares each reason out of the total return count for
+ * the month (online + POS combined). Adds up to ~100 modulo rounding.
+ */
+export type ReturnsAnalytics = {
+  yyyymm: string;
+  totals: {
+    onlineReturns: number;
+    posReturns: number;
+    refundTotal: number;
+    onlineSalesCount: number;
+    posSalesCount: number;
+    returnRatePct: number;
+  };
+  byReason: Array<{
+    reason: ReturnReason;
+    count: number;
+    refundTotal: number;
+    pct: number;
+  }>;
+  topReturnedProducts: Array<{
+    productId: string;
+    productName: string;
+    productSlug: string;
+    returnCount: number;
+    refundTotal: number;
+  }>;
+  byRefundMethod: Array<{
+    method: RefundMethod;
+    count: number;
+    refundTotal: number;
+  }>;
+};
+
+export async function getReturnsAnalytics(
+  yyyymm: string,
+): Promise<ReturnsAnalytics> {
+  const { from, to } = monthRange(yyyymm);
+  const admin = getSupabaseAdminClient();
+
+  const [
+    onlineReturnsRes,
+    posReturnsRes,
+    onlineSalesCountRes,
+    posSalesCountRes,
+  ] = await Promise.all([
+    admin
+      .from("order_returns")
+      .select("id, reason, refund_method, refund_amount")
+      .gte("created_at", from)
+      .lt("created_at", to),
+    admin
+      .from("pos_returns")
+      .select("id, reason, refund_method, refund_amount")
+      .gte("created_at", from)
+      .lt("created_at", to),
+    admin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", from)
+      .lt("created_at", to)
+      .neq("status", "cancelled"),
+    admin
+      .from("pos_sales")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", from)
+      .lt("created_at", to),
+  ]);
+
+  const onlineReturns = onlineReturnsRes.data ?? [];
+  const posReturns = posReturnsRes.data ?? [];
+
+  // Pull items joined to product name/slug so the top-returned table
+  // can render the friendly name without a second roundtrip per row.
+  // We fire both sides in parallel and merge by product_id.
+  const onlineReturnIds = onlineReturns.map((r) => r.id);
+  const posReturnIds = posReturns.map((r) => r.id);
+  const [onlineItemsRes, posItemsRes] = await Promise.all([
+    onlineReturnIds.length > 0
+      ? admin
+          .from("order_return_items")
+          .select(
+            "product_id, qty, total_amount, product:products(name_ar, name_en, slug)",
+          )
+          .in("return_id", onlineReturnIds)
+      : Promise.resolve({
+          data: [] as Array<{
+            product_id: string | null;
+            qty: number;
+            total_amount: number;
+            product:
+              | { name_ar: string; name_en: string; slug: string }
+              | Array<{ name_ar: string; name_en: string; slug: string }>
+              | null;
+          }>,
+        }),
+    posReturnIds.length > 0
+      ? admin
+          .from("pos_return_items")
+          .select(
+            "product_id, qty, total_amount, product:products(name_ar, name_en, slug)",
+          )
+          .in("return_id", posReturnIds)
+      : Promise.resolve({
+          data: [] as Array<{
+            product_id: string | null;
+            qty: number;
+            total_amount: number;
+            product:
+              | { name_ar: string; name_en: string; slug: string }
+              | Array<{ name_ar: string; name_en: string; slug: string }>
+              | null;
+          }>,
+        }),
+  ]);
+
+  const refundTotal =
+    onlineReturns.reduce((s, r) => s + Number(r.refund_amount ?? 0), 0) +
+    posReturns.reduce((s, r) => s + Number(r.refund_amount ?? 0), 0);
+  const onlineSalesCount = onlineSalesCountRes.count ?? 0;
+  const posSalesCount = posSalesCountRes.count ?? 0;
+  const totalReturns = onlineReturns.length + posReturns.length;
+  const totalSales = onlineSalesCount + posSalesCount;
+  const returnRatePct =
+    totalSales > 0 ? (totalReturns / totalSales) * 100 : 0;
+
+  // ─── By reason ───────────────────────────────────────────────────
+  const reasonMap = new Map<
+    ReturnReason,
+    { count: number; refundTotal: number }
+  >();
+  for (const r of [...onlineReturns, ...posReturns]) {
+    const reason = r.reason as ReturnReason;
+    const e = reasonMap.get(reason) ?? { count: 0, refundTotal: 0 };
+    e.count += 1;
+    e.refundTotal += Number(r.refund_amount ?? 0);
+    reasonMap.set(reason, e);
+  }
+  const byReason = Array.from(reasonMap.entries())
+    .map(([reason, v]) => ({
+      reason,
+      count: v.count,
+      refundTotal: v.refundTotal,
+      pct: totalReturns > 0 ? (v.count / totalReturns) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  // ─── By refund method ────────────────────────────────────────────
+  const methodMap = new Map<
+    RefundMethod,
+    { count: number; refundTotal: number }
+  >();
+  for (const r of [...onlineReturns, ...posReturns]) {
+    const method = r.refund_method as RefundMethod;
+    const e = methodMap.get(method) ?? { count: 0, refundTotal: 0 };
+    e.count += 1;
+    e.refundTotal += Number(r.refund_amount ?? 0);
+    methodMap.set(method, e);
+  }
+  const byRefundMethod = Array.from(methodMap.entries())
+    .map(([method, v]) => ({
+      method,
+      count: v.count,
+      refundTotal: v.refundTotal,
+    }))
+    .sort((a, b) => b.refundTotal - a.refundTotal);
+
+  // ─── Top returned products ───────────────────────────────────────
+  const productMap = new Map<
+    string,
+    {
+      productName: string;
+      productSlug: string;
+      returnCount: number;
+      refundTotal: number;
+    }
+  >();
+  const allItems = [
+    ...((onlineItemsRes.data ?? []) as Array<{
+      product_id: string | null;
+      qty: number;
+      total_amount: number;
+      product:
+        | { name_ar: string; name_en: string; slug: string }
+        | Array<{ name_ar: string; name_en: string; slug: string }>
+        | null;
+    }>),
+    ...((posItemsRes.data ?? []) as Array<{
+      product_id: string | null;
+      qty: number;
+      total_amount: number;
+      product:
+        | { name_ar: string; name_en: string; slug: string }
+        | Array<{ name_ar: string; name_en: string; slug: string }>
+        | null;
+    }>),
+  ];
+  for (const it of allItems) {
+    if (!it.product_id) continue;
+    const p = Array.isArray(it.product) ? it.product[0] : it.product;
+    const name = p?.name_ar ?? p?.name_en ?? "(deleted)";
+    const slug = p?.slug ?? "";
+    const e = productMap.get(it.product_id) ?? {
+      productName: name,
+      productSlug: slug,
+      returnCount: 0,
+      refundTotal: 0,
+    };
+    e.returnCount += it.qty ?? 0;
+    e.refundTotal += Number(it.total_amount ?? 0);
+    productMap.set(it.product_id, e);
+  }
+  const topReturnedProducts = Array.from(productMap.entries())
+    .map(([productId, v]) => ({ productId, ...v }))
+    .sort((a, b) => b.returnCount - a.returnCount)
+    .slice(0, 10);
+
+  return {
+    yyyymm,
+    totals: {
+      onlineReturns: onlineReturns.length,
+      posReturns: posReturns.length,
+      refundTotal,
+      onlineSalesCount,
+      posSalesCount,
+      returnRatePct,
+    },
+    byReason,
+    topReturnedProducts,
+    byRefundMethod,
+  };
 }
 
 // ─── CSV serialisation ────────────────────────────────────────────────

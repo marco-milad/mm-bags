@@ -4,6 +4,7 @@ import {
   getBestSellers,
   getDailyDetailedReport,
   getMonthlyReport,
+  getReturnsAnalytics,
   getStockValueReport,
   getSupplierLedger,
 } from "@/lib/queries/admin-reports";
@@ -267,6 +268,54 @@ export async function GET(request: Request) {
         locale,
       });
       filename = "suppliers.pdf";
+      break;
+    }
+    case "returns": {
+      // Returns PDF: top-returned products is the primary table (same
+      // pick as the CSV). Subtitle carries the month + headline rate
+      // so the page communicates the "why look at this" up front.
+      const month = sp.get("month") ?? cairoTodayISO().slice(0, 7);
+      const r = await getReturnsAnalytics(month);
+      const columns: GenericColumn[] = [
+        { header: { ar: "#", en: "#" }, align: "center" },
+        { header: { ar: "المنتج", en: "Product" } },
+        { header: { ar: "القطع المرتجعة", en: "Qty returned" }, align: "numeric" },
+        { header: { ar: "المسترد", en: "Refund total" }, align: "numeric" },
+      ];
+      const rows = r.topReturnedProducts.map((row, i) => [
+        String(i + 1),
+        row.productName,
+        fmtInt(row.returnCount, locale),
+        fmtEGP(row.refundTotal, locale),
+      ]);
+      const totalQty = r.topReturnedProducts.reduce(
+        (s, row) => s + row.returnCount,
+        0,
+      );
+      const totalRefund = r.topReturnedProducts.reduce(
+        (s, row) => s + row.refundTotal,
+        0,
+      );
+      const totalReturns =
+        r.totals.onlineReturns + r.totals.posReturns;
+      const subtitle = isAr
+        ? `شهر ${month} · ${totalReturns} مرتجع · نسبة الإرجاع ${r.totals.returnRatePct.toFixed(2)}% · إجمالي مسترد ${fmtEGP(r.totals.refundTotal, locale)}`
+        : `Month ${month} · ${totalReturns} returns · return rate ${r.totals.returnRatePct.toFixed(2)}% · refunded ${fmtEGP(r.totals.refundTotal, locale)}`;
+      pdf = await renderGenericPdf({
+        title: { ar: "تقرير المرتجعات", en: "Returns report" },
+        subtitle,
+        columns,
+        rows,
+        footer: [
+          "",
+          isAr ? "الإجمالي" : "Total",
+          fmtInt(totalQty, locale),
+          fmtEGP(totalRefund, locale),
+        ],
+        adminName,
+        locale,
+      });
+      filename = `returns-${month}.pdf`;
       break;
     }
     default:

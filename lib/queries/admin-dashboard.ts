@@ -265,6 +265,146 @@ export async function getOverduePurchaseOrders(
   }) as OverduePurchaseOrder[];
 }
 
+// ─── High return rate alert ──────────────────────────────────────────
+export type HighReturnProduct = {
+  productId: string;
+  productSlug: string;
+  productName: string;
+  unitsSold: number; // total qty sold in window (online + POS)
+  unitsReturned: number; // total qty returned in window
+  returnRatePct: number; // unitsReturned / unitsSold * 100, rounded to 1 dp
+};
+
+/**
+ * Products whose return rate exceeds `thresholdPct` in the last
+ * `daysWindow` days AND have at least `minUnitsSold` units sold (so a
+ * 1-of-1 outlier doesn't dominate the list). Sorted by returnRatePct
+ * desc. Returns up to `limit`.
+ *
+ * PostgREST doesn't expose UNION ALL, so we issue four small `select`s
+ * (sales+returns × online+POS), aggregate in JS, then JOIN products for
+ * the winning rows only. At our volume this is single-digit ms and
+ * keeps the query surface tiny.
+ */
+export async function getHighReturnProducts(
+  daysWindow = 30,
+  thresholdPct = 10,
+  minUnitsSold = 3,
+  limit = 5,
+): Promise<HighReturnProduct[]> {
+  const admin = getSupabaseAdminClient();
+  const cutoff = new Date(Date.now() - daysWindow * 86400_000).toISOString();
+
+  const [
+    onlineSalesRes,
+    posSalesRes,
+    onlineReturnsRes,
+    posReturnsRes,
+  ] = await Promise.all([
+    admin
+      .from("order_items")
+      .select("product_id, qty, order:orders!inner(created_at, status)")
+      .gte("order.created_at", cutoff)
+      .neq("order.status", "cancelled"),
+    admin
+      .from("pos_sale_items")
+      .select("product_id, qty, sale:pos_sales!inner(created_at)")
+      .gte("sale.created_at", cutoff),
+    admin
+      .from("order_return_items")
+      .select("product_id, qty, return:order_returns!inner(created_at)")
+      .gte("return.created_at", cutoff),
+    admin
+      .from("pos_return_items")
+      .select("product_id, qty, return:pos_returns!inner(created_at)")
+      .gte("return.created_at", cutoff),
+  ]);
+
+  // Aggregate qty per product across both sales channels.
+  const soldByProduct = new Map<string, number>();
+  for (const row of onlineSalesRes.data ?? []) {
+    if (!row.product_id) continue;
+    soldByProduct.set(
+      row.product_id,
+      (soldByProduct.get(row.product_id) ?? 0) + Number(row.qty ?? 0),
+    );
+  }
+  for (const row of posSalesRes.data ?? []) {
+    if (!row.product_id) continue;
+    soldByProduct.set(
+      row.product_id,
+      (soldByProduct.get(row.product_id) ?? 0) + Number(row.qty ?? 0),
+    );
+  }
+
+  const returnedByProduct = new Map<string, number>();
+  for (const row of onlineReturnsRes.data ?? []) {
+    if (!row.product_id) continue;
+    returnedByProduct.set(
+      row.product_id,
+      (returnedByProduct.get(row.product_id) ?? 0) + Number(row.qty ?? 0),
+    );
+  }
+  for (const row of posReturnsRes.data ?? []) {
+    if (!row.product_id) continue;
+    returnedByProduct.set(
+      row.product_id,
+      (returnedByProduct.get(row.product_id) ?? 0) + Number(row.qty ?? 0),
+    );
+  }
+
+  // Compute candidates: only products with both enough sales volume
+  // (so 1-of-1 doesn't dominate) AND at least one return.
+  type Candidate = { productId: string; unitsSold: number; unitsReturned: number; returnRatePct: number };
+  const candidates: Candidate[] = [];
+  for (const [productId, unitsReturned] of returnedByProduct.entries()) {
+    const unitsSold = soldByProduct.get(productId) ?? 0;
+    if (unitsSold < minUnitsSold) continue;
+    if (unitsReturned <= 0) continue;
+    const rate = (unitsReturned / unitsSold) * 100;
+    if (rate < thresholdPct) continue;
+    candidates.push({
+      productId,
+      unitsSold,
+      unitsReturned,
+      returnRatePct: Math.round(rate * 10) / 10,
+    });
+  }
+
+  candidates.sort((a, b) => b.returnRatePct - a.returnRatePct);
+  const top = candidates.slice(0, limit);
+  if (top.length === 0) return [];
+
+  // JOIN products for the surviving rows only.
+  const { data: products } = await admin
+    .from("products")
+    .select("id, name_ar, slug")
+    .in(
+      "id",
+      top.map((c) => c.productId),
+    );
+
+  const productMap = new Map<string, { name_ar: string; slug: string }>();
+  for (const p of products ?? []) {
+    productMap.set(p.id, { name_ar: p.name_ar, slug: p.slug });
+  }
+
+  return top.flatMap((c) => {
+    const p = productMap.get(c.productId);
+    if (!p) return [];
+    return [
+      {
+        productId: c.productId,
+        productSlug: p.slug,
+        productName: p.name_ar,
+        unitsSold: c.unitsSold,
+        unitsReturned: c.unitsReturned,
+        returnRatePct: c.returnRatePct,
+      },
+    ];
+  });
+}
+
 // ─── Type re-export for callers that need raw rows (unused today but
 //   re-exported so a future filter can import without two paths). ──
 export type { ProductVariant };

@@ -4,6 +4,7 @@ import {
   getBestSellers,
   getDailyReport,
   getMonthlyReport,
+  getReturnsAnalytics,
   getStockValueReport,
   getSupplierLedger,
   toCsv,
@@ -129,6 +130,24 @@ export async function GET(request: Request) {
         ]),
       );
       filename = "suppliers.csv";
+      break;
+    }
+    case "returns": {
+      // Top returned products is the most operationally useful slice —
+      // tells Marco which SKUs to look at first. Headers + totals row
+      // for context; the other dimensions (reason / method) are visible
+      // in the UI and the PDF.
+      const month = sp.get("month") ?? cairoTodayISO().slice(0, 7);
+      const r = await getReturnsAnalytics(month);
+      csv = toCsv(
+        ["product", "qty_returned", "refund_total_egp"],
+        r.topReturnedProducts.map((p) => [
+          p.productName,
+          p.returnCount,
+          p.refundTotal,
+        ]),
+      );
+      filename = `returns-${month}.csv`;
       break;
     }
     default:

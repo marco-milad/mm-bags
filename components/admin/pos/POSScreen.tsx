@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   Banknote,
   CreditCard,
   Loader2,
   Minus,
   Plus,
+  RotateCcw,
   Search,
   Smartphone,
   Trash2,
@@ -248,6 +250,18 @@ export function POSScreen({
       <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
         {/* ─── LEFT COLUMN: search + grid + cart ──────────────────── */}
         <div className="flex min-h-[60vh] flex-col gap-4">
+          {/* Secondary action — returning a sale is a less-common
+              path than ringing one up, so it lives as a small text
+              link above the search rather than a CTA-sized button. */}
+          <div className="flex items-center justify-end">
+            <Link
+              href="/admin/pos/returns"
+              className="inline-flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] underline-offset-4 transition hover:text-[var(--color-text)] hover:underline"
+            >
+              <RotateCcw className="h-3 w-3" />
+              {isAr ? "إرجاع بيعة" : "Return a sale"}
+            </Link>
+          </div>
           {/* Search */}
           <div className="relative">
             <Search

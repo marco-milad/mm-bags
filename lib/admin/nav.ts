@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Mail,
   Package,
+  RotateCcw,
   ShoppingCart,
   Star,
   Truck,
@@ -88,6 +89,13 @@ export const ADMIN_NAV: ReadonlyArray<AdminNavSection> = [
         label_en: "POS",
         icon: ShoppingCart,
         // Every signed-in staffer can ring up a sale.
+      },
+      {
+        href: "/admin/pos/returns",
+        label_ar: "إرجاع بيعة",
+        label_en: "POS returns",
+        icon: RotateCcw,
+        allowedRoles: ["admin", "manager", "cashier"],
       },
       {
         href: "/admin/orders",

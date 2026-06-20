@@ -36,6 +36,20 @@ export type StockMovementType =
   | "return"
   | "transfer";
 
+// ─── Returns (migration 0010) ──────────────────────────────────────
+export type ReturnReason =
+  | "defective"
+  | "wrong_size"
+  | "wrong_color"
+  | "changed_mind"
+  | "damaged_in_shipping"
+  | "other";
+export type RefundMethod =
+  | "cash"
+  | "card_original"
+  | "store_credit"
+  | "bank_transfer";
+
 export interface ShippingAddress {
   name: string;
   phone: string;
@@ -299,6 +313,12 @@ export type Database = {
           total: number;
           shipping_address: ShippingAddress;
           referral_code: string | null;
+          /** Denormalised flag — true if any order_returns row points
+              at this order. Maintained by createOrderReturn(). */
+          has_returns: boolean;
+          /** Sum of refund_amount across all order_returns rows for
+              this order. Used in net-revenue reports. */
+          returns_total: number;
           created_at: string;
           updated_at: string;
         };
@@ -319,6 +339,8 @@ export type Database = {
           total: number;
           shipping_address: ShippingAddress;
           referral_code?: string | null;
+          has_returns?: boolean;
+          returns_total?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -339,6 +361,8 @@ export type Database = {
           total?: number;
           shipping_address?: ShippingAddress;
           referral_code?: string | null;
+          has_returns?: boolean;
+          returns_total?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -834,6 +858,9 @@ export type Database = {
           payment_method: PosPaymentMethod;
           payment_ref: string | null;
           notes: string | null;
+          /** Denormalised — maintained by createPosReturn(). */
+          has_returns: boolean;
+          returns_total: number;
           created_at: string;
         };
         Insert: {
@@ -846,6 +873,8 @@ export type Database = {
           payment_method: PosPaymentMethod;
           payment_ref?: string | null;
           notes?: string | null;
+          has_returns?: boolean;
+          returns_total?: number;
           created_at?: string;
         };
         Update: {
@@ -858,6 +887,8 @@ export type Database = {
           payment_method?: PosPaymentMethod;
           payment_ref?: string | null;
           notes?: string | null;
+          has_returns?: boolean;
+          returns_total?: number;
           created_at?: string;
         };
         Relationships: [
@@ -993,6 +1024,180 @@ export type Database = {
         ];
       };
 
+      // ─── Returns system (0010_returns_system.sql) ────────────────
+      order_returns: {
+        Row: {
+          id: string;
+          order_id: string;
+          reason: ReturnReason;
+          refund_method: RefundMethod;
+          refund_amount: number;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          reason: ReturnReason;
+          refund_method: RefundMethod;
+          refund_amount: number;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          reason?: ReturnReason;
+          refund_method?: RefundMethod;
+          refund_amount?: number;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_returns_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      order_return_items: {
+        Row: {
+          id: string;
+          return_id: string;
+          order_item_id: string | null;
+          product_id: string | null;
+          variant_id: string | null;
+          qty: number;
+          unit_price: number;
+          total_amount: number; // GENERATED
+        };
+        Insert: {
+          id?: string;
+          return_id: string;
+          order_item_id?: string | null;
+          product_id?: string | null;
+          variant_id?: string | null;
+          qty: number;
+          unit_price: number;
+          // total_amount is GENERATED, never written.
+        };
+        Update: {
+          id?: string;
+          return_id?: string;
+          order_item_id?: string | null;
+          product_id?: string | null;
+          variant_id?: string | null;
+          qty?: number;
+          unit_price?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_return_items_return_id_fkey";
+            columns: ["return_id"];
+            isOneToOne: false;
+            referencedRelation: "order_returns";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_return_items_order_item_id_fkey";
+            columns: ["order_item_id"];
+            isOneToOne: false;
+            referencedRelation: "order_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      pos_returns: {
+        Row: {
+          id: string;
+          sale_id: string;
+          reason: ReturnReason;
+          refund_method: RefundMethod;
+          refund_amount: number;
+          notes: string | null;
+          cashier_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sale_id: string;
+          reason: ReturnReason;
+          refund_method: RefundMethod;
+          refund_amount: number;
+          notes?: string | null;
+          cashier_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          sale_id?: string;
+          reason?: ReturnReason;
+          refund_method?: RefundMethod;
+          refund_amount?: number;
+          notes?: string | null;
+          cashier_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pos_returns_sale_id_fkey";
+            columns: ["sale_id"];
+            isOneToOne: false;
+            referencedRelation: "pos_sales";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      pos_return_items: {
+        Row: {
+          id: string;
+          return_id: string;
+          sale_item_id: string | null;
+          product_id: string | null;
+          variant_id: string | null;
+          qty: number;
+          unit_price: number;
+          total_amount: number; // GENERATED
+        };
+        Insert: {
+          id?: string;
+          return_id: string;
+          sale_item_id?: string | null;
+          product_id?: string | null;
+          variant_id?: string | null;
+          qty: number;
+          unit_price: number;
+          // total_amount is GENERATED, never written.
+        };
+        Update: {
+          id?: string;
+          return_id?: string;
+          sale_item_id?: string | null;
+          product_id?: string | null;
+          variant_id?: string | null;
+          qty?: number;
+          unit_price?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pos_return_items_return_id_fkey";
+            columns: ["return_id"];
+            isOneToOne: false;
+            referencedRelation: "pos_returns";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
       // ─── Storefront merchandising (0006_homepage_featured_products.sql) ──
       homepage_featured_products: {
         Row: {
@@ -1042,6 +1247,18 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      restock_atomic: {
+        Args: {
+          p_variant_id: string;
+          p_qty: number;
+          p_reference_type: string;
+          p_reference_id: string;
+          p_created_by: string | null;
+          p_movement_type?: "return" | "adjustment";
+          p_notes?: string | null;
+        };
+        Returns: void;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
@@ -1080,3 +1297,7 @@ export type PosSale = Tables<"pos_sales">;
 export type PosSaleItem = Tables<"pos_sale_items">;
 export type StockMovement = Tables<"stock_movements">;
 export type HomepageFeaturedProduct = Tables<"homepage_featured_products">;
+export type OrderReturn = Tables<"order_returns">;
+export type OrderReturnItem = Tables<"order_return_items">;
+export type PosReturn = Tables<"pos_returns">;
+export type PosReturnItem = Tables<"pos_return_items">;

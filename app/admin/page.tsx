@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  AlertOctagon,
   AlertTriangle,
   Banknote,
   Clock,
@@ -11,6 +12,7 @@ import {
   Wallet,
 } from "lucide-react";
 import {
+  getHighReturnProducts,
   getLowStockVariants,
   getMonthlyRevenue,
   getOverduePurchaseOrders,
@@ -38,6 +40,7 @@ export default async function AdminDashboard() {
     recentPos,
     lowStock,
     overdue,
+    highReturnProducts,
     usage,
   ] = await Promise.all([
     getTodayStats(),
@@ -46,6 +49,7 @@ export default async function AdminDashboard() {
     getRecentPosSales(5),
     getLowStockVariants(5, 12),
     getOverduePurchaseOrders(30, 5),
+    getHighReturnProducts(),
     getSupabaseUsage(),
   ]);
 
@@ -355,7 +359,55 @@ export default async function AdminDashboard() {
         </div>
       </section>
 
-      {/* ── Row 5: Supabase free-plan headroom ──────────────────── */}
+      {/* ── Row 5: High return rate alert ───────────────────────── */}
+      <section aria-label={isAr ? "معدّل الإرجاع" : "Return rate"}>
+        <div className="rounded-xl border border-[var(--color-error)]/40 bg-[var(--color-error)]/5 p-5">
+          <header className="mb-3 flex items-center gap-2">
+            <AlertOctagon className="h-4 w-4 text-[var(--color-error)]" />
+            <h2 className="font-display text-base text-[var(--color-text)]">
+              {isAr ? "منتجات بمعدّل إرجاع مرتفع" : "High return rate products"}
+            </h2>
+            <Link
+              href="/admin/reports?tab=returns"
+              className="ms-auto text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"
+            >
+              {isAr ? "التقرير ←" : "Report →"}
+            </Link>
+          </header>
+          {highReturnProducts.length === 0 ? (
+            <p className="rounded-md bg-[var(--color-bg)] px-3 py-3 text-xs text-[var(--color-text-secondary)]">
+              {isAr
+                ? "كل المنتجات بمعدّل إرجاع طبيعي خلال آخر 30 يوم."
+                : "All products within normal return rates over the last 30 days."}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {highReturnProducts.map((p) => (
+                <li
+                  key={p.productId}
+                  className="flex items-center gap-3 rounded-md bg-[var(--color-bg)] px-3 py-2 text-sm"
+                >
+                  <Link
+                    href={`/ar/products/${p.productSlug}`}
+                    className="flex-1 truncate text-[var(--color-text)] hover:underline"
+                    target="_blank"
+                  >
+                    {p.productName}
+                  </Link>
+                  <span className="font-mono text-[11px] text-[var(--color-text-secondary)]">
+                    {p.unitsReturned}/{p.unitsSold} {isAr ? "قطعة" : "units"}
+                  </span>
+                  <span className="rounded-full bg-[var(--color-error)]/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-[var(--color-error)]">
+                    {p.returnRatePct.toFixed(1)}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+
+      {/* ── Row 6: Supabase free-plan headroom ──────────────────── */}
       <SupabaseUsageCard
         usage={usage}
         locale={locale}

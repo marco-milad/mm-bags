@@ -3,14 +3,21 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getAdminOrderDetail } from "@/lib/queries/admin-orders";
+import {
+  getReturnableQuantitiesForOrder,
+  listReturnsForOrder,
+} from "@/lib/queries/admin-returns";
 import { saveCodTracking } from "@/lib/admin/order-actions";
 import { StatusDropdown } from "@/components/admin/orders/StatusDropdown";
 import { PrintInvoiceButton } from "@/components/admin/orders/PrintButton";
+import { ReturnOrderDialog } from "@/components/admin/orders/ReturnOrderDialog";
 import { getAdminLocale } from "@/lib/admin/locale";
 import {
   orderStatusLabel,
   paymentMethodLabel,
   paymentStatusLabel,
+  refundMethodLabel,
+  returnReasonLabel,
 } from "@/lib/admin/labels";
 import type { OrderStatus } from "@/lib/supabase/types";
 import { cn, formatPriceEGP } from "@/lib/utils";
@@ -44,6 +51,11 @@ export default async function OrderDetailPage({
   const { id } = await params;
   const order = await getAdminOrderDetail(id);
   if (!order) notFound();
+
+  const [returnable, existingReturns] = await Promise.all([
+    getReturnableQuantitiesForOrder(order.id),
+    listReturnsForOrder(order.id),
+  ]);
 
   const status = order.status ?? "pending";
   const cod = order.cod_tracking;
@@ -294,8 +306,81 @@ export default async function OrderDetailPage({
               current={status}
               locale={locale}
             />
+            <div className="ms-3 inline-block">
+              <ReturnOrderDialog
+                orderId={order.id}
+                returnable={returnable}
+                locale={locale}
+              />
+            </div>
           </div>
         </section>
+
+        {(order.has_returns || existingReturns.length > 0) && (
+          <section className="rounded-xl border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/5 p-5 print:hidden">
+            <header className="mb-3">
+              <h2 className="font-display text-base text-[var(--color-text)]">
+                {isAr ? "الإرجاعات السابقة" : "Previous returns"}
+              </h2>
+              <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
+                {isAr
+                  ? `إجمالي مسترد: ${formatPriceEGP(order.returns_total ?? 0)}`
+                  : `Total refunded: ${formatPriceEGP(order.returns_total ?? 0)}`}
+              </p>
+            </header>
+            {existingReturns.length === 0 ? (
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                {isAr ? "مفيش تفاصيل" : "No details"}
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {existingReturns.map((r) => (
+                  <li
+                    key={r.id}
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-3"
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-text-secondary)]">
+                        {new Date(r.createdAt).toLocaleString(
+                          isAr ? "ar-EG" : "en-US",
+                          { dateStyle: "medium", timeStyle: "short" },
+                        )}
+                      </span>
+                      <span className="font-mono text-sm font-semibold text-[var(--color-primary)]">
+                        {formatPriceEGP(r.refundAmount)}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-3 text-xs text-[var(--color-text)]">
+                      <span>
+                        <span className="text-[var(--color-text-secondary)]">
+                          {isAr ? "السبب: " : "Reason: "}
+                        </span>
+                        {returnReasonLabel(r.reason, locale)}
+                      </span>
+                      <span>
+                        <span className="text-[var(--color-text-secondary)]">
+                          {isAr ? "طريقة الاسترداد: " : "Refund: "}
+                        </span>
+                        {refundMethodLabel(r.refundMethod, locale)}
+                      </span>
+                      <span>
+                        <span className="text-[var(--color-text-secondary)]">
+                          {isAr ? "عدد الأصناف: " : "Items: "}
+                        </span>
+                        {r.itemCount}
+                      </span>
+                    </div>
+                    {r.notes ? (
+                      <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+                        {r.notes}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         {/* COD tracking */}
         <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5 print:hidden">
