@@ -162,3 +162,64 @@ export async function reorderFeaturedProducts(
   }
   revalidateAll();
 }
+
+/**
+ * Set the single product that appears in the homepage spotlight
+ * section (rendered by components/home/FeaturedProduct.tsx). Upserts
+ * the single row of `homepage_featured_spotlight` keyed on the
+ * `id = true` singleton constraint — replacing whatever was there.
+ *
+ * No add/remove/reorder semantics like the best-sellers list: this
+ * surface only ever holds one product. To clear it entirely, call
+ * `clearFeaturedSpotlight` below.
+ */
+export async function setFeaturedSpotlight(formData: FormData): Promise<void> {
+  try {
+    await requireAdmin();
+  } catch {
+    return;
+  }
+  const product_id = formData.get("product_id");
+  if (typeof product_id !== "string" || product_id.length === 0) return;
+
+  const admin = getSupabaseAdminClient();
+  const { error } = await admin
+    .from("homepage_featured_spotlight")
+    .upsert(
+      {
+        id: true,
+        product_id,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
+    );
+  if (error) {
+    console.error("[setFeaturedSpotlight] upsert failed", error);
+    return;
+  }
+  revalidateAll();
+}
+
+/**
+ * Clear the spotlight — deletes the singleton row. The homepage falls
+ * back to the legacy `tags @> ['featured']` pick via getFeaturedProduct
+ * so the section doesn't blink to empty, and the admin sees an empty
+ * "currently set" pane.
+ */
+export async function clearFeaturedSpotlight(): Promise<void> {
+  try {
+    await requireAdmin();
+  } catch {
+    return;
+  }
+  const admin = getSupabaseAdminClient();
+  const { error } = await admin
+    .from("homepage_featured_spotlight")
+    .delete()
+    .eq("id", true);
+  if (error) {
+    console.error("[clearFeaturedSpotlight] delete failed", error);
+    return;
+  }
+  revalidateAll();
+}

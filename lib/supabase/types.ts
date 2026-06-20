@@ -1228,6 +1228,35 @@ export type Database = {
           },
         ];
       };
+
+      // ─── Spotlight singleton (0011_homepage_featured_spotlight.sql) ──
+      // Always exactly 0 or 1 rows (enforced by `id boolean check (id = true)`).
+      homepage_featured_spotlight: {
+        Row: {
+          id: boolean;
+          product_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: boolean;
+          product_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: boolean;
+          product_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "homepage_featured_spotlight_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: true;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
 
     Views: Record<string, never>;

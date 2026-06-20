@@ -56,8 +56,15 @@ export function FeaturedProduct({
           </h2>
         </header>
 
-        {/* Body — 2-col on lg, stacked below */}
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:items-start lg:gap-12 xl:gap-16">
+        {/* Body — 2-col on lg, stacked below. `[&>*]:min-w-0` overrides
+            CSS Grid's default min-width: auto (= min-content) on items
+            below the lg breakpoint, where the explicit minmax(0, ...)
+            tracks aren't active yet. Without it the gallery's intrinsic
+            image width drags the single mobile column past 100 vw and
+            `overflow-x-clip` on <main> hides the bleed — the screenshot
+            symptom: image card pinned to the start, empty trailing
+            white space. Same fix shape as ProductDetailLayout.tsx:106. */}
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:items-start lg:gap-12 xl:gap-16 [&>*]:min-w-0">
           {/* LEFT — gallery (interactive thumb-swap lives in the client subtree
               for everything below the eyebrow; gallery is part of it). */}
           {/* RIGHT — eyebrow + name + price + specs + swatches + CTAs */}

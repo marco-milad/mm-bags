@@ -163,12 +163,45 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
 }
 
 /**
- * Returns the single product tagged 'featured', joined with its collection for
- * the eyebrow on the homepage Featured section. Picks the lowest sort_order if
- * multiple products carry the tag so the choice is stable.
+ * Returns the single product picked for the homepage spotlight section
+ * (rendered by components/home/FeaturedProduct.tsx). Reads the singleton
+ * `homepage_featured_spotlight` row that the admin manages from
+ * /admin/homepage — replaces the legacy `tags @> ['featured']` selector
+ * (migration 0011) so admin merchandising decisions don't require
+ * editing product tags.
+ *
+ * Falls back to the tag-based pick if (a) the singleton row hasn't been
+ * set yet, or (b) it references an inactive / deleted product — keeps
+ * the homepage from blinking to "nothing featured" during the cutover.
  */
 export async function getFeaturedProduct(): Promise<ProductDetail | null> {
   const supabase = await createSupabaseServerClient();
+
+  // Primary path: the admin-managed singleton.
+  const { data: pickRow, error: pickErr } = await supabase
+    .from("homepage_featured_spotlight")
+    .select(
+      "product:products(*, product_variants(*), collection:collections(*))",
+    )
+    .maybeSingle();
+  if (pickErr) {
+    throw new Error(`getFeaturedProduct failed (singleton): ${pickErr.message}`);
+  }
+  if (pickRow) {
+    // PostgREST returns the embedded relation as object or array depending
+    // on the FK shape; defensive normalisation matches the pattern in
+    // getFeaturedHomepageProducts above.
+    const embedded = (pickRow as { product: ProductDetail | ProductDetail[] | null })
+      .product;
+    const product = Array.isArray(embedded) ? embedded[0] : embedded;
+    if (product && product.is_active !== false) return product;
+    // Singleton row points at an inactive product — fall through to the
+    // tag-based fallback below so the homepage still gets a card.
+  }
+
+  // Fallback: legacy `featured` tag. Kept so the homepage doesn't go
+  // empty if (a) migration 0011 hasn't been applied yet or (b) the
+  // admin cleared the singleton and we'd rather show *something*.
   const { data, error } = await supabase
     .from("products")
     .select("*, product_variants(*), collection:collections(*)")
@@ -177,9 +210,26 @@ export async function getFeaturedProduct(): Promise<ProductDetail | null> {
     .order("sort_order", { ascending: true })
     .limit(1);
 
-  if (error) throw new Error(`getFeaturedProduct failed: ${error.message}`);
+  if (error) throw new Error(`getFeaturedProduct failed (fallback): ${error.message}`);
   const row = data?.[0];
   return (row ?? null) as ProductDetail | null;
+}
+
+/**
+ * Returns the spotlight's product id (or null if nothing is set). Used
+ * by the admin manager to pre-select the current pick in the picker UI
+ * without re-fetching the full product detail.
+ */
+export async function getFeaturedSpotlightProductId(): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("homepage_featured_spotlight")
+    .select("product_id")
+    .maybeSingle();
+  if (error) {
+    throw new Error(`getFeaturedSpotlightProductId failed: ${error.message}`);
+  }
+  return (data?.product_id as string | null) ?? null;
 }
 
 /**
