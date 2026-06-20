@@ -37,6 +37,10 @@ import { ProductAccordion } from "./ProductAccordion";
 // Add other crowded collections here when they need the same treatment.
 const COMPACT_COLLECTION_SLUGS: ReadonlySet<string> = new Set([
   "milano-series",
+  // Calvin Klein luggage ships 14 images — without the compact strip
+  // the thumbnail rail's min-content reaches ~1024 px on mobile and
+  // drags the whole grid column past the viewport.
+  "calvin-klein",
 ]);
 
 export function ProductDetailLayout({
@@ -91,7 +95,15 @@ export function ProductDetailLayout({
   }, [hoveredColor, colorOrder, product.images.length]);
 
   return (
-    <div className="grid gap-8 md:grid-cols-2 md:gap-12">
+    // `[&>*]:min-w-0` overrides the CSS Grid default of `min-width:
+    // auto` (= min-content) on both columns. Without it, any wide
+    // descendant — a 14-thumb gallery rail, a long unbreakable word in
+    // the description — drags the single-column mobile track past the
+    // viewport, and `overflow-x-clip` on <main> hides the bleed
+    // instead of preventing it. Tailwind's `md:grid-cols-2` already
+    // resolves to `minmax(0, 1fr)` on desktop, so this only changes
+    // mobile / sub-md behavior.
+    <div className="grid gap-8 md:grid-cols-2 md:gap-12 [&>*]:min-w-0">
       <ProductGallery
         images={product.images}
         name={name}
