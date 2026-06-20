@@ -1,15 +1,39 @@
 import "server-only";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { cairoDayStartISO, cairoMidnightUtcMs } from "@/lib/queries/cairo-tz";
+
+/**
+ * Strict YMD validator. Accepts only real calendar dates — rejects
+ * `2026-02-29`, `2026-13-01`, `2026-04-31`, etc. that the shape-only
+ * regex would let through and that `new Date(...)` would silently
+ * normalize to a different day (causing the date filter to surface
+ * the WRONG day's sales while the UI labels them as the queried one).
+ */
+function parseStrictYMD(
+  input: string,
+): { y: number; m: number; d: number } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input)) return null;
+  const [y, m, d] = input.split("-").map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const probe = new Date(Date.UTC(y, m - 1, d));
+  if (
+    probe.getUTCFullYear() !== y ||
+    probe.getUTCMonth() !== m - 1 ||
+    probe.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  return { y, m, d };
+}
 
 /**
  * Server queries for the POS-returns admin screen.
  *
  * Two surfaces:
- *   - `findPosSalesForReturn(query)` — typeahead search the cashier
- *     uses to locate the original sale. Matches against `sale_number`
- *     (ilike) primarily; we don't try guest-phone lookups because
- *     POS sales don't carry a phone field on `pos_sales`.
+ *   - `findPosSalesForReturn({ query, date })` — search the cashier
+ *     uses to locate the original sale. Filters by sale_number (ilike),
+ *     by a specific Cairo day (date), or by BOTH ANDed together.
  *   - `getReturnableQuantitiesForPosSale(saleId)` — once a sale is
  *     picked, return the full breakdown of line items + how many
  *     units are still returnable (sold − already-returned).
@@ -25,34 +49,81 @@ export type PosSaleSearchResult = {
   hasReturns: boolean;
 };
 
+export type PosSaleSearchFilters = {
+  /** Substring match on sale_number (ilike). Optional. */
+  query?: string;
+  /** Cairo calendar date (YYYY-MM-DD). Returns every sale rung up on
+      this day in Cairo time, regardless of when UTC midnight lands.
+      Optional. */
+  date?: string;
+};
+
 /**
- * Searches by sale_number (ilike). Returns up to 10 most-recent.
+ * Filters pos_sales by sale_number and/or Cairo day. Returns up to
+ * 50 most-recent matches when a date is set (a busy day can have a
+ * lot of sales) or 10 when only the text search is used.
  *
- * The brief mentions searching by "order phone" as a fallback —
- * `pos_sales` doesn't have a customer-phone column today (POS is
- * walk-in, no contact details captured), so we omit that branch.
- * If a phone-attached POS schema lands later this is the place to
- * add the second pass mirroring `listAdminOrders`'s fallback.
+ * If both filters are empty, returns an empty list — the caller's
+ * responsibility to surface a "type something" hint to the operator.
+ *
+ * Why Cairo time: the dashboard + reports already align day buckets
+ * to Africa/Cairo (see lib/queries/cairo-tz.ts), so picking the date
+ * "2026-06-20" must mean "every sale Marco rang up on the till
+ * during that calendar day in Cairo", NOT the UTC window of the
+ * same name.
  */
 export async function findPosSalesForReturn(
-  query: string,
+  filters: PosSaleSearchFilters,
 ): Promise<PosSaleSearchResult[]> {
-  const trimmed = query.trim();
-  if (!trimmed) return [];
-  const admin = getSupabaseAdminClient();
-  // Strip wildcard / parenthesis chars so a stray "%" from a paste
-  // doesn't turn into an ilike escape sequence.
-  const safe = trimmed.replace(/[*,()%_]/g, " ");
+  const trimmedQuery = filters.query?.trim() ?? "";
+  const rawDate = filters.date?.trim() ?? "";
+  // Validate up-front. An invalid date string is treated as no date
+  // filter at all (instead of silently bypassing the .gte/.lt while
+  // still tripping the larger 50-row limit, which would return the
+  // 50 most-recent sales as if they belonged to the queried day).
+  const ymd = rawDate ? parseStrictYMD(rawDate) : null;
+  if (!trimmedQuery && !ymd) return [];
 
-  const { data, error } = await admin
+  const admin = getSupabaseAdminClient();
+  let q = admin
     .from("pos_sales")
     .select(
       "id, sale_number, created_at, total, payment_method, returns_total, has_returns",
     )
-    .ilike("sale_number", `%${safe}%`)
-    .order("created_at", { ascending: false })
-    .limit(10);
+    .order("created_at", { ascending: false });
 
+  if (trimmedQuery) {
+    // Strip wildcard / parenthesis chars so a stray "%" from a paste
+    // doesn't turn into an ilike escape sequence.
+    const safe = trimmedQuery.replace(/[*,()%_]/g, " ");
+    q = q.ilike("sale_number", `%${safe}%`);
+  }
+
+  if (ymd) {
+    // Cairo midnight today → Cairo midnight tomorrow, expressed as
+    // UTC instants. Computing the next calendar day via the parsed
+    // components (then re-probing Cairo's offset) handles DST
+    // transitions correctly — across spring-forward / fall-back the
+    // day is 23 / 25 hours wall-clock, not a flat 24.
+    const from = cairoDayStartISO(rawDate);
+    const next = new Date(Date.UTC(ymd.y, ymd.m - 1, ymd.d + 1));
+    const to = new Date(
+      cairoMidnightUtcMs(
+        next.getUTCFullYear(),
+        next.getUTCMonth() + 1,
+        next.getUTCDate(),
+      ),
+    ).toISOString();
+    q = q.gte("created_at", from).lt("created_at", to);
+  }
+
+  // 50 rows when a VALID date filter is set (a busy till day can have
+  // many sales), 10 when only a text search is provided. Reading the
+  // validated `ymd` here — not the raw input — so a malformed date
+  // doesn't widen the cap.
+  q = q.limit(ymd ? 50 : 10);
+
+  const { data, error } = await q;
   if (error) {
     throw new Error(`findPosSalesForReturn failed: ${error.message}`);
   }

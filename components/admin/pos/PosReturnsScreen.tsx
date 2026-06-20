@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
+  Calendar,
   Check,
   Loader2,
   Minus,
@@ -57,9 +58,19 @@ export function PosReturnsScreen({ locale }: { locale: AdminLocale }) {
 
   // ─── Search step state ───────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
+  // Cairo calendar date (YYYY-MM-DD). Empty string when no date
+  // filter is set. Picking a date dumps every sale rung up that
+  // Cairo day so the cashier can locate a receipt the customer
+  // brought back even if they don't remember the sale number.
+  const [searchDate, setSearchDate] = useState("");
   const [searchResults, setSearchResults] = useState<PosSaleSearchResult[]>([]);
   const [searchPending, startSearchTransition] = useTransition();
   const [searchTouched, setSearchTouched] = useState(false);
+  // Snapshot of the filters used for the last completed search. The
+  // result-count header reads from these (not the live input state)
+  // so that editing the search box AFTER getting results doesn't make
+  // the header lie about which day the listed receipts belong to.
+  const [lastSearchedDate, setLastSearchedDate] = useState("");
 
   // ─── Form step state ─────────────────────────────────────────────
   const [sale, setSale] = useState<ReturnableSaleSummary | null>(null);
@@ -113,10 +124,19 @@ export function PosReturnsScreen({ locale }: { locale: AdminLocale }) {
 
   // ─── Handlers ────────────────────────────────────────────────────
   function runSearch() {
-    if (!searchQuery.trim()) return;
+    const hasQuery = !!searchQuery.trim();
+    const hasDate = !!searchDate.trim();
+    if (!hasQuery && !hasDate) return;
     setSearchTouched(true);
+    // Snapshot the date the user is searching for, BEFORE the await,
+    // so the result header below renders the filter that actually
+    // produced the listed rows (not whatever the user has since typed).
+    setLastSearchedDate(hasDate ? searchDate : "");
     startSearchTransition(async () => {
-      const results = await searchPosSalesForReturn(searchQuery);
+      const results = await searchPosSalesForReturn({
+        query: hasQuery ? searchQuery : undefined,
+        date: hasDate ? searchDate : undefined,
+      });
       setSearchResults(results);
     });
   }
@@ -159,6 +179,8 @@ export function PosReturnsScreen({ locale }: { locale: AdminLocale }) {
     setPickedQty({});
     setSearchResults([]);
     setSearchQuery("");
+    setSearchDate("");
+    setLastSearchedDate("");
     setSearchTouched(false);
     setSubmitError(null);
     setSuccessPayload(null);
@@ -515,46 +537,87 @@ export function PosReturnsScreen({ locale }: { locale: AdminLocale }) {
   }
 
   // Step 1: search
+  const hasAnyFilter = !!searchQuery.trim() || !!searchDate.trim();
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
-        <label
-          htmlFor="pos-return-search"
-          className="block text-xs uppercase tracking-wider text-[var(--color-text-secondary)]"
-        >
-          {isAr ? "رقم البيعة" : "Sale number"}
-        </label>
-        <div className="mt-2 flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-secondary)]"
-            />
-            <input
-              id="pos-return-search"
-              type="search"
-              autoFocus
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  runSearch();
+        <p className="mb-3 text-[11px] text-[var(--color-text-secondary)]">
+          {isAr
+            ? "اكتب رقم البيعة، أو اختار التاريخ عشان تشوف كل بيعات اليوم ده — أو الاتنين مع بعض."
+            : "Type the sale number, pick a date to browse all sales from that day, or use both together."}
+        </p>
+        <div className="grid gap-3 md:grid-cols-[2fr_1fr_auto] md:items-end">
+          {/* Sale number */}
+          <div>
+            <label
+              htmlFor="pos-return-search"
+              className="block text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]"
+            >
+              {isAr ? "رقم البيعة (اختياري)" : "Sale number (optional)"}
+            </label>
+            <div className="relative mt-1">
+              <Search
+                aria-hidden
+                className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-secondary)]"
+              />
+              <input
+                id="pos-return-search"
+                type="search"
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runSearch();
+                  }
+                }}
+                placeholder={
+                  isAr
+                    ? "مثال POS-2026-ABC123"
+                    : "e.g. POS-2026-ABC123"
                 }
-              }}
-              placeholder={
-                isAr
-                  ? "اكتب رقم البيعة (مثال POS-2026-ABC123)"
-                  : "Type sale number (e.g. POS-2026-ABC123)"
-              }
-              className="h-11 w-full rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] ps-10 pe-4 text-sm shadow-sm transition focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30"
-            />
+                className="h-11 w-full rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] ps-10 pe-4 text-sm shadow-sm transition focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30"
+              />
+            </div>
           </div>
+
+          {/* Date */}
+          <div>
+            <label
+              htmlFor="pos-return-date"
+              className="block text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]"
+            >
+              {isAr ? "تاريخ البيعة (اختياري)" : "Sale date (optional)"}
+            </label>
+            <div className="relative mt-1">
+              <Calendar
+                aria-hidden
+                className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-secondary)]"
+              />
+              <input
+                id="pos-return-date"
+                type="date"
+                value={searchDate}
+                onChange={(e) => setSearchDate(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runSearch();
+                  }
+                }}
+                aria-label={isAr ? "تاريخ البيعة" : "Sale date"}
+                className="h-11 w-full rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] ps-10 pe-4 text-sm shadow-sm transition focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30"
+              />
+            </div>
+          </div>
+
+          {/* Search button */}
           <button
             type="button"
             onClick={runSearch}
-            disabled={searchPending || !searchQuery.trim()}
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary)]/90 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={searchPending || !hasAnyFilter}
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary)]/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {searchPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -585,11 +648,26 @@ export function PosReturnsScreen({ locale }: { locale: AdminLocale }) {
           ) : searchResults.length === 0 ? (
             <p className="rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-8 text-center text-xs text-[var(--color-text-secondary)]">
               {isAr
-                ? "مفيش بيعات بالرقم ده. حاول تاني."
-                : "No sales match. Try again."}
+                ? "مفيش بيعات مطابقة. جرّب رقم تاني أو تاريخ تاني."
+                : "No sales match. Try a different number or date."}
             </p>
           ) : (
-            <ul className="divide-y divide-[var(--color-border)]">
+            <>
+              {/* Result count header — useful when a date returns many.
+                  Reads `lastSearchedDate` (snapshot at search time), not
+                  the live `searchDate` input, so editing the date box
+                  after results land doesn't relabel the listed rows. */}
+              <p className="border-b border-[var(--color-border)] px-3 pb-2 pt-1 text-[11px] text-[var(--color-text-secondary)]">
+                {isAr
+                  ? `${searchResults.length} بيعة`
+                  : `${searchResults.length} sale${searchResults.length === 1 ? "" : "s"}`}
+                {lastSearchedDate
+                  ? isAr
+                    ? ` في تاريخ ${lastSearchedDate}`
+                    : ` on ${lastSearchedDate}`
+                  : ""}
+              </p>
+              <ul className="divide-y divide-[var(--color-border)]">
               {searchResults.map((s) => (
                 <li key={s.id}>
                   <button
@@ -624,6 +702,7 @@ export function PosReturnsScreen({ locale }: { locale: AdminLocale }) {
                 </li>
               ))}
             </ul>
+            </>
           )}
         </div>
       )}

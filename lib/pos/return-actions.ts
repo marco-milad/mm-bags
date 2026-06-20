@@ -13,6 +13,7 @@ import {
 import {
   findPosSalesForReturn,
   getReturnableQuantitiesForPosSale,
+  type PosSaleSearchFilters,
   type PosSaleSearchResult,
   type ReturnablePosLine,
 } from "@/lib/queries/admin-pos-returns";
@@ -250,17 +251,24 @@ export async function createPosReturn(
  * components MUST go through this action instead of importing it
  * directly — otherwise Next would pull the supabase admin client
  * into the browser bundle.
+ *
+ * Accepts an optional `query` (sale_number ilike) and an optional
+ * `date` (YYYY-MM-DD, interpreted in Cairo time). Either or both —
+ * if both empty, returns []. See findPosSalesForReturn for the
+ * matching rules.
  */
 export async function searchPosSalesForReturn(
-  query: string,
+  filters: PosSaleSearchFilters,
 ): Promise<PosSaleSearchResult[]> {
   try {
     await requireAdmin(["admin", "manager", "cashier"]);
   } catch {
     return [];
   }
-  if (!query.trim()) return [];
-  return findPosSalesForReturn(query);
+  const q = filters.query?.trim() ?? "";
+  const d = filters.date?.trim() ?? "";
+  if (!q && !d) return [];
+  return findPosSalesForReturn({ query: q || undefined, date: d || undefined });
 }
 
 export type LoadReturnableSaleResult =
