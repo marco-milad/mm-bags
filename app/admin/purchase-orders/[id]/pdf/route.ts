@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/admin/auth";
 import { getPurchaseOrderDetail } from "@/lib/queries/suppliers-admin";
 import { getAdminLocale } from "@/lib/admin/locale";
 import { renderPurchaseOrderPdf } from "@/lib/admin/reports/pdf";
@@ -34,27 +35,30 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return new NextResponse("unauthorized", { status: 401 });
-
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const role = (user.user_metadata as { role?: string } | null)?.role;
-  const isAdmin =
-    role === "admin" || (adminEmail && user.email === adminEmail);
-  if (!isAdmin) return new NextResponse("forbidden", { status: 403 });
+  // Admin auth via shared helper (no user_metadata.role trust).
+  try {
+    await requireAdmin(["admin", "manager"]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "forbidden";
+    return new NextResponse(msg.toLowerCase(), {
+      status: msg === "UNAUTHORIZED" ? 401 : 403,
+    });
+  }
 
   const { id } = await params;
   const po = await getPurchaseOrderDetail(id);
   if (!po) return new NextResponse("not found", { status: 404 });
 
+  // Non-authoritative read for the "rendered by" PDF footer string.
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const locale = await getAdminLocale();
   const isAr = locale === "ar";
-  const meta = user.user_metadata as { full_name?: string; name?: string } | null;
+  const meta = user?.user_metadata as { full_name?: string; name?: string } | null;
   const adminName =
-    meta?.full_name ?? meta?.name ?? user.email?.split("@")[0] ?? "admin";
+    meta?.full_name ?? meta?.name ?? user?.email?.split("@")[0] ?? "admin";
 
   const statusKey = (po.status ?? "pending") as PurchaseOrderStatus;
   const statusLabel = isAr ? STATUS_AR[statusKey] : STATUS_EN[statusKey];

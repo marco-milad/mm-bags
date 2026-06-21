@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/admin/auth";
 import { sendWhatsApp } from "@/lib/twilio";
 import { buildPostDeliveryMessage } from "@/lib/reviews/post-delivery";
 import type { Locale } from "@/lib/i18n-config";
@@ -33,20 +33,17 @@ export async function POST(
   _req: Request,
   ctx: RouteContext<"/api/orders/[id]/mark-delivered">,
 ) {
-  // ── Admin auth — same gate as app/admin/layout.tsx ────────────────
-  const userClient = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await userClient.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const role = (user.user_metadata as { role?: string } | null)?.role;
-  const isAdmin =
-    role === "admin" || (adminEmail && user.email === adminEmail);
-  if (!isAdmin) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  // ── Admin auth ────────────────────────────────────────────────────
+  // Delegate to the shared helper so we get the staff-table lookup
+  // (and so user_metadata.role is NOT trusted — see lib/admin/auth.ts).
+  try {
+    await requireAdmin(["admin", "manager"]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "forbidden";
+    return NextResponse.json(
+      { error: msg.toLowerCase() },
+      { status: msg === "UNAUTHORIZED" ? 401 : 403 },
+    );
   }
 
   const { id: orderId } = await ctx.params;

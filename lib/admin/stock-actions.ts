@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/admin/auth";
 
 const adjustSchema = z.object({
   variantId: z.uuid(),
@@ -34,6 +35,9 @@ export type AdjustResult = { ok: true; newQty: number } | { ok: false; error: st
 export async function adjustStock(
   raw: z.infer<typeof adjustSchema>,
 ): Promise<AdjustResult> {
+  // Inventory mutations are admin+manager — cashiers post sales
+  // through the POS path which already has its own auth gate.
+  await requireAdmin(["admin", "manager"]);
   const parsed = adjustSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };

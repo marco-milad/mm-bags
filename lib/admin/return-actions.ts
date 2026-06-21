@@ -28,9 +28,14 @@ import {
 export async function createOrderReturn(
   raw: CreateOrderReturnInput,
 ): Promise<ReturnActionResult> {
+  // Result-returning action — surface auth as typed error, rethrow
+  // any other unexpected failure so transient Supabase issues don't
+  // get mis-reported as "not authorised".
   try {
-    await requireAdmin();
-  } catch {
+    await requireAdmin(["admin", "manager"]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg !== "UNAUTHORIZED" && msg !== "FORBIDDEN") throw err;
     return { ok: false, error: "Not authorised" };
   }
 

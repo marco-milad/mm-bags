@@ -74,11 +74,7 @@ type Subscription = {
 export async function sendVariantNotificationsForm(
   formData: FormData,
 ): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  await requireAdmin(["admin", "manager"]);
   const variantId = formData.get("variantId");
   if (typeof variantId !== "string") return;
   await dispatchForVariant(variantId);
@@ -88,11 +84,7 @@ export async function sendVariantNotificationsForm(
 
 /** Bulk dispatcher — every variant with pending rows, capped per run. */
 export async function sendAllPendingNotifications(): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  await requireAdmin(["admin", "manager"]);
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("notification_subscriptions")

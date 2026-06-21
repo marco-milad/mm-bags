@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/admin/auth";
 import {
   listAdminOrders,
   type ListOrderFilters,
@@ -13,20 +13,19 @@ export const runtime = "nodejs";
  * GET /admin/orders/export?status=&method=&from=&to=&q=
  *
  * Streams the filtered order list as CSV with a downloadable
- * Content-Disposition. Admin-gated against the same checks as the
- * other report exports.
+ * Content-Disposition. Admin-gated via the shared helper so
+ * user_metadata.role is NOT trusted (the staff table is the only
+ * source of truth — see lib/admin/auth.ts).
  */
 export async function GET(request: Request) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return new NextResponse("unauthorized", { status: 401 });
-
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const role = (user.user_metadata as { role?: string } | null)?.role;
-  const isAdmin = role === "admin" || (adminEmail && user.email === adminEmail);
-  if (!isAdmin) return new NextResponse("forbidden", { status: 403 });
+  try {
+    await requireAdmin(["admin", "manager"]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "forbidden";
+    return new NextResponse(msg.toLowerCase(), {
+      status: msg === "UNAUTHORIZED" ? 401 : 403,
+    });
+  }
 
   const sp = new URL(request.url).searchParams;
   const filters: ListOrderFilters = {

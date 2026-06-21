@@ -44,7 +44,16 @@ export function ReviewForm({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/reviews/upload", { method: "POST", body: fd });
+      // `x-requested-with` is required by /api/reviews/upload as a
+      // CSRF gate — multipart/form-data is CORS-simple but custom
+      // headers force a preflight, which a malicious cross-site form
+      // can't satisfy. Header value must stay in lockstep with
+      // app/api/reviews/upload/route.ts.
+      const res = await fetch("/api/reviews/upload", {
+        method: "POST",
+        body: fd,
+        headers: { "x-requested-with": "mm-reviews" },
+      });
       const json = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !json.url) {
         setUploadError(

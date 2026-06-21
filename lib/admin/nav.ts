@@ -29,7 +29,10 @@ import type { StaffRole } from "@/lib/supabase/types";
  * are built.
  */
 /** Resolved role for the current admin session. "admin" comes from
-    user_metadata.role / ADMIN_EMAIL; the others from the staff table. */
+    ADMIN_EMAIL or an active row in the staff table with role='admin';
+    the others come from the staff table. `user_metadata.role` is
+    intentionally NOT consulted — it is client-writable and would
+    allow privilege escalation. */
 export type EffectiveRole = StaffRole | "admin";
 
 export type AdminNavItem = {

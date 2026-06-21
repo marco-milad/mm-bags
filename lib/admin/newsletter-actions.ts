@@ -35,11 +35,11 @@ export type BroadcastResult =
 export async function toggleSubscriberActive(
   formData: FormData,
 ): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  // Void-returning action — let auth errors bubble so the Next.js
+  // error overlay surfaces them in the admin UI rather than silently
+  // no-opping (the previous swallow turned every auth failure into
+  // a fail-open HTTP 200).
+  await requireAdmin(["admin", "manager"]);
   const id = formData.get("id");
   if (typeof id !== "string") return;
   const admin = getSupabaseAdminClient();
@@ -61,9 +61,14 @@ export async function sendBroadcast(
   _prev: BroadcastResult,
   formData: FormData,
 ): Promise<BroadcastResult> {
+  // Result-returning action — surface auth failure to the UI as a
+  // typed error, but rethrow any OTHER unexpected error so transient
+  // Supabase issues etc. don't get mis-reported as "not authorised".
   try {
-    await requireAdmin();
-  } catch {
+    await requireAdmin(["admin", "manager"]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg !== "UNAUTHORIZED" && msg !== "FORBIDDEN") throw err;
     return { ok: false, error: "Not authorised" };
   }
   const parsed = broadcastSchema.safeParse({

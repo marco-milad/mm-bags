@@ -36,9 +36,13 @@ const PATH_PATTERN = /^[A-Za-z0-9_\-/.]{1,200}$/;
 export async function deleteOrphanProductFiles(
   formData: FormData,
 ): Promise<CleanupResult> {
+  // Result-returning action — surface auth as typed error, but
+  // rethrow any other unexpected failure so we don't mis-report it.
   try {
     await requireAdmin(["admin"]);
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg !== "UNAUTHORIZED" && msg !== "FORBIDDEN") throw err;
     return { ok: false, error: "Not authorised" };
   }
 

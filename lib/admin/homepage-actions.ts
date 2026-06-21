@@ -37,11 +37,9 @@ function revalidateAll(): void {
  * harmless — both rows land at the same index until the next reorder.
  */
 export async function addFeaturedProduct(formData: FormData): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  // Void-returning action — let auth throws bubble so stale-cookie
+  // clicks surface explicitly instead of fail-open silence.
+  await requireAdmin(["admin", "manager"]);
   const product_id = formData.get("product_id");
   if (typeof product_id !== "string" || product_id.length === 0) return;
 
@@ -87,11 +85,9 @@ export async function addFeaturedProduct(formData: FormData): Promise<void> {
 export async function removeFeaturedProduct(
   formData: FormData,
 ): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  // Void-returning action — let auth throws bubble so stale-cookie
+  // clicks surface explicitly instead of fail-open silence.
+  await requireAdmin(["admin", "manager"]);
   const id = formData.get("id");
   if (typeof id !== "string" || id.length === 0) return;
 
@@ -123,11 +119,9 @@ export async function removeFeaturedProduct(
 export async function reorderFeaturedProducts(
   formData: FormData,
 ): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  // Void-returning action — let auth throws bubble so stale-cookie
+  // clicks surface explicitly instead of fail-open silence.
+  await requireAdmin(["admin", "manager"]);
   const raw = formData.get("ordered_ids");
   if (typeof raw !== "string" || raw.length === 0) return;
   if (raw.length > 20_000) return; // hard cap to dodge OOM on hostile input
@@ -174,11 +168,9 @@ export async function reorderFeaturedProducts(
  * `clearFeaturedSpotlight` below.
  */
 export async function setFeaturedSpotlight(formData: FormData): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  // Void-returning action — let auth throws bubble so stale-cookie
+  // clicks surface explicitly instead of fail-open silence.
+  await requireAdmin(["admin", "manager"]);
   const product_id = formData.get("product_id");
   if (typeof product_id !== "string" || product_id.length === 0) return;
 
@@ -207,11 +199,9 @@ export async function setFeaturedSpotlight(formData: FormData): Promise<void> {
  * "currently set" pane.
  */
 export async function clearFeaturedSpotlight(): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  // Void-returning action — let auth throws bubble so stale-cookie
+  // clicks surface explicitly instead of fail-open silence.
+  await requireAdmin(["admin", "manager"]);
   const admin = getSupabaseAdminClient();
   const { error } = await admin
     .from("homepage_featured_spotlight")

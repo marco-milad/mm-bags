@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/admin/auth";
 import type { PurchaseOrderStatus } from "@/lib/supabase/types";
 
 // ─── Suppliers ───────────────────────────────────────────────────────
@@ -17,6 +18,7 @@ const supplierSchema = z.object({
 });
 
 export async function saveSupplier(formData: FormData): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
   const parsed = supplierSchema.safeParse({
     id: formData.get("id") || undefined,
     name: formData.get("name"),
@@ -36,6 +38,7 @@ export async function saveSupplier(formData: FormData): Promise<void> {
 }
 
 export async function toggleSupplierActive(id: string): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("suppliers")
@@ -72,6 +75,7 @@ type CreatePOResult =
 export async function createPurchaseOrder(
   raw: z.input<typeof createPurchaseOrderSchema>,
 ): Promise<CreatePOResult> {
+  await requireAdmin(["admin", "manager"]);
   const parsed = createPurchaseOrderSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -143,6 +147,7 @@ export async function createPurchaseOrder(
  * received).
  */
 export async function markPurchaseOrderReceived(poId: string): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
   const admin = getSupabaseAdminClient();
   const { data: po } = await admin
     .from("purchase_orders")
@@ -208,6 +213,7 @@ export async function recordPurchaseOrderPayment(
   poId: string,
   amount: number,
 ): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
   if (!Number.isFinite(amount) || amount <= 0) return;
   const admin = getSupabaseAdminClient();
   const { data: po } = await admin
@@ -274,6 +280,7 @@ function nextStatusAfterPayment(
  * gets its credit returned to the supplier's running totals.
  */
 export async function cancelPurchaseOrder(poId: string): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
   const admin = getSupabaseAdminClient();
   const { data: po } = await admin
     .from("purchase_orders")
@@ -303,6 +310,7 @@ export async function cancelPurchaseOrder(poId: string): Promise<void> {
 export async function cancelPurchaseOrderForm(
   formData: FormData,
 ): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
   const id = formData.get("id");
   if (typeof id === "string") {
     await cancelPurchaseOrder(id);
@@ -351,6 +359,7 @@ async function addOwedToSupplier(
 
 // ─── Server-action-friendly wrappers for form posts ─────────────────
 export async function createPurchaseOrderForm(formData: FormData): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
   const raw = formData.get("payload");
   if (typeof raw !== "string") return;
   let parsed: z.input<typeof createPurchaseOrderSchema>;
@@ -366,11 +375,13 @@ export async function createPurchaseOrderForm(formData: FormData): Promise<void>
 }
 
 export async function markReceivedForm(formData: FormData): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
   const id = formData.get("id");
   if (typeof id === "string") await markPurchaseOrderReceived(id);
 }
 
 export async function recordPaymentForm(formData: FormData): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
   const id = formData.get("id");
   const amount = Number(formData.get("amount"));
   if (typeof id === "string") await recordPurchaseOrderPayment(id, amount);

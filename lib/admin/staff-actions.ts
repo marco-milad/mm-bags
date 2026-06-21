@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/admin/auth";
 import type { StaffRole } from "@/lib/supabase/types";
 
 const ROLES = ["cashier", "manager", "admin"] as const;
@@ -36,6 +37,9 @@ export type CreateStaffResult =
  *     delete the auth user to keep the system consistent.
  */
 export async function createStaff(formData: FormData): Promise<CreateStaffResult> {
+  // Admin-only — managers cannot invite new staff or grant the admin
+  // role. Let the throw bubble; the form caller surfaces the error.
+  await requireAdmin(["admin"]);
   const parsed = createSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -56,7 +60,12 @@ export async function createStaff(formData: FormData): Promise<CreateStaffResult
     email,
     password: tempPassword,
     email_confirm: true,
-    user_metadata: { name, role },
+    // Intentionally NOT writing `role` here. user_metadata is
+    // client-writable via supabase.auth.updateUser, so persisting a
+    // role there would tempt future code into trusting it for
+    // authorization. The staff table insert below is the source of
+    // truth; only the display-only `name` lives in user_metadata.
+    user_metadata: { name },
   });
   if (authErr || !created.user) {
     return { ok: false, error: authErr?.message ?? "Auth user create failed" };
@@ -87,6 +96,9 @@ const updateSchema = z.object({
 });
 
 export async function updateStaff(formData: FormData): Promise<void> {
+  // Admin-only — same rationale as createStaff (role changes must
+  // not be self-serve).
+  await requireAdmin(["admin"]);
   const parsed = updateSchema.safeParse({
     id: formData.get("id"),
     role: formData.get("role") || undefined,
@@ -107,24 +119,27 @@ export async function updateStaff(formData: FormData): Promise<void> {
 }
 
 /**
- * Resolve the currently-signed-in user's staff role (or admin via the
- * pre-existing `ADMIN_EMAIL` / `user_metadata.role` mechanism). Used
- * by the layout to drive sidebar filtering.
+ * Resolve the currently-signed-in user's staff role. Used by the
+ * admin layout to drive sidebar filtering and the layout's redirect.
+ *
+ * Resolution order:
+ *   1. user.email === ADMIN_EMAIL (bootstrap)
+ *   2. active row in the staff table
+ *
+ * `user_metadata.role` is intentionally NOT consulted — it is
+ * client-writable via `supabase.auth.updateUser` and would allow any
+ * authenticated customer to self-elevate to admin from the browser.
+ * The staff table is the single source of truth.
  */
 export async function getCurrentRole(): Promise<{
   role: StaffRole | "admin";
-  source: "metadata" | "email" | "staff";
+  source: "email" | "staff";
 } | null> {
   const userClient = await createSupabaseServerClient();
   const {
     data: { user },
   } = await userClient.auth.getUser();
   if (!user) return null;
-
-  // user_metadata.role wins so the original admin pathway keeps
-  // working even before the user has a staff record.
-  const metaRole = (user.user_metadata as { role?: string } | null)?.role;
-  if (metaRole === "admin") return { role: "admin", source: "metadata" };
 
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail && user.email === adminEmail) {

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/admin/auth";
 
 export type ApproveResult = { ok: true } | { ok: false; error: string };
 
@@ -17,6 +18,7 @@ export async function approveReview(
   reviewId: string,
   productSlug: string | null,
 ): Promise<ApproveResult> {
+  await requireAdmin(["admin", "manager"]);
   if (!reviewId || typeof reviewId !== "string") {
     return { ok: false, error: "Missing review id" };
   }
@@ -43,6 +45,7 @@ export async function approveReview(
  * worth. Approved reviews never reach this code path.
  */
 export async function rejectReview(reviewId: string): Promise<ApproveResult> {
+  await requireAdmin(["admin", "manager"]);
   if (!reviewId || typeof reviewId !== "string") {
     return { ok: false, error: "Missing review id" };
   }

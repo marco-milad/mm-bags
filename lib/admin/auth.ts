@@ -16,9 +16,16 @@ export type EffectiveRole = StaffRole | "admin";
  * helper at the top.
  *
  * Resolution order matches lib/admin/staff-actions.getCurrentRole():
- *   1. user_metadata.role === "admin"
- *   2. user.email === ADMIN_EMAIL
- *   3. active staff row with one of the requested roles
+ *   1. user.email === ADMIN_EMAIL (bootstrap escape hatch for the
+ *      very first admin login on a fresh environment)
+ *   2. active staff row with one of the requested roles
+ *
+ * NOTE: `user_metadata.role` is intentionally NOT consulted. That
+ * field is writable by the end user via `supabase.auth.updateUser`
+ * (it sits under the caller's JWT with no server-side check), so any
+ * authenticated customer could otherwise self-elevate to admin by
+ * pasting one line in DevTools. The staff table is the single source
+ * of truth.
  *
  * Returns the resolved role on success; throws on failure so the
  * caller can let it bubble (Next.js shows the standard error). If
@@ -33,9 +40,6 @@ export async function requireAdmin(
     data: { user },
   } = await userClient.auth.getUser();
   if (!user) throw new Error("UNAUTHORIZED");
-
-  const metaRole = (user.user_metadata as { role?: string } | null)?.role;
-  if (metaRole === "admin" && allowed.includes("admin")) return "admin";
 
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail && user.email === adminEmail && allowed.includes("admin")) {

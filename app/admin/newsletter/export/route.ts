@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    await requireAdmin(["admin", "manager"]);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "forbidden";
     return new NextResponse(msg, {

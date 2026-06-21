@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/admin/auth";
 
 const slugRe = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -47,6 +48,7 @@ function revalidatePublic() {
 }
 
 export async function createCollection(formData: FormData) {
+  await requireAdmin(["admin", "manager"]);
   const parsed = collectionInputSchema.safeParse(pick(formData));
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Invalid input");
@@ -70,6 +72,7 @@ export async function createCollection(formData: FormData) {
 }
 
 export async function updateCollection(id: string, formData: FormData) {
+  await requireAdmin(["admin", "manager"]);
   const parsed = collectionInputSchema.safeParse(pick(formData));
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Invalid input");
@@ -96,6 +99,7 @@ export async function updateCollection(id: string, formData: FormData) {
 }
 
 export async function toggleCollectionActive(id: string, nextActive: boolean) {
+  await requireAdmin(["admin", "manager"]);
   const admin = getSupabaseAdminClient();
   const { error } = await admin
     .from("collections")
@@ -106,6 +110,7 @@ export async function toggleCollectionActive(id: string, nextActive: boolean) {
 }
 
 export async function deleteCollection(id: string) {
+  await requireAdmin(["admin", "manager"]);
   const admin = getSupabaseAdminClient();
   // Products' collection_id will be set to NULL via the ON DELETE SET NULL FK.
   const { error } = await admin.from("collections").delete().eq("id", id);

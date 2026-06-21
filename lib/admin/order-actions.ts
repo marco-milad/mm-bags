@@ -38,12 +38,9 @@ export async function updateOrderStatus(formData: FormData): Promise<void> {
   // Server Actions are addressable POST endpoints — the layout guard
   // doesn't protect them. Without this check any authenticated
   // visitor could update any order's status and trigger a paid
-  // Twilio send.
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  // Twilio send. Let the throw bubble so a stale-cookie click surfaces
+  // an explicit error in the admin UI instead of fail-open silence.
+  await requireAdmin(["admin", "manager"]);
 
   const parsed = z
     .object({
@@ -155,11 +152,7 @@ const codSchema = z.object({
 });
 
 export async function saveCodTracking(formData: FormData): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  await requireAdmin(["admin", "manager"]);
   const parsed = codSchema.safeParse({
     orderId: formData.get("orderId"),
     courierName: formData.get("courierName") || undefined,

@@ -219,9 +219,13 @@ export async function saveProduct(
   _prev: unknown,
   formData: FormData,
 ): Promise<ProductActionResult> {
+  // Result-returning action — surface auth as typed error, rethrow
+  // any other unexpected failure.
   try {
-    await requireAdmin();
-  } catch {
+    await requireAdmin(["admin", "manager"]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg !== "UNAUTHORIZED" && msg !== "FORBIDDEN") throw err;
     return { ok: false, error: "Not authorised" };
   }
 
@@ -411,11 +415,8 @@ async function toggleFlag(
   formData: FormData,
   column: "is_active" | "show_in_store",
 ): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  // Void-returning action — let auth throws bubble.
+  await requireAdmin(["admin", "manager"]);
   const id = formData.get("id");
   if (typeof id !== "string") return;
   const admin = getSupabaseAdminClient();
@@ -452,9 +453,13 @@ export async function deleteProduct(
   _prev: unknown,
   formData: FormData,
 ): Promise<DeleteResult> {
+  // Result-returning action — surface auth as typed error, rethrow
+  // any other unexpected failure.
   try {
-    await requireAdmin();
-  } catch {
+    await requireAdmin(["admin", "manager"]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg !== "UNAUTHORIZED" && msg !== "FORBIDDEN") throw err;
     return { ok: false, error: "Not authorised" };
   }
   const id = formData.get("id");
@@ -479,11 +484,8 @@ export async function deleteProduct(
 export async function reorderProductImages(
   formData: FormData,
 ): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  // Void-returning action — let auth throws bubble.
+  await requireAdmin(["admin", "manager"]);
   const id = formData.get("id");
   const images_json = formData.get("images_json");
   if (typeof id !== "string" || typeof images_json !== "string") return;
@@ -536,9 +538,13 @@ export async function saveVariant(
   _prev: unknown,
   formData: FormData,
 ): Promise<VariantActionResult> {
+  // Result-returning action — surface auth as typed error, rethrow
+  // any other unexpected failure.
   try {
-    await requireAdmin();
-  } catch {
+    await requireAdmin(["admin", "manager"]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg !== "UNAUTHORIZED" && msg !== "FORBIDDEN") throw err;
     return { ok: false, error: "Not authorised" };
   }
   const raw: Record<string, unknown> = {
@@ -637,11 +643,8 @@ export async function saveVariant(
 }
 
 export async function deleteVariant(formData: FormData): Promise<void> {
-  try {
-    await requireAdmin();
-  } catch {
-    return;
-  }
+  // Void-returning action — let auth throws bubble.
+  await requireAdmin(["admin", "manager"]);
   const id = formData.get("id");
   const product_id = formData.get("product_id");
   if (typeof id !== "string") return;

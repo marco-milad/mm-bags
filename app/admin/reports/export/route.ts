@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/admin/auth";
 import {
   getBestSellers,
   getDailyReport,
@@ -23,21 +23,18 @@ export const runtime = "nodejs";
  *                          ?report=suppliers
  *
  * Returns the CSV with Content-Disposition: attachment so the browser
- * triggers a download. Admin auth is enforced by checking the user
- * up front — same logic as app/admin/layout.tsx so a stale cookie
- * can't slurp data.
+ * triggers a download. Admin auth delegated to the shared helper so
+ * user_metadata.role is NOT trusted.
  */
 export async function GET(request: Request) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return new NextResponse("unauthorized", { status: 401 });
-
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const role = (user.user_metadata as { role?: string } | null)?.role;
-  const isAdmin = role === "admin" || (adminEmail && user.email === adminEmail);
-  if (!isAdmin) return new NextResponse("forbidden", { status: 403 });
+  try {
+    await requireAdmin(["admin", "manager"]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "forbidden";
+    return new NextResponse(msg.toLowerCase(), {
+      status: msg === "UNAUTHORIZED" ? 401 : 403,
+    });
+  }
 
   const sp = new URL(request.url).searchParams;
   const report = sp.get("report");
