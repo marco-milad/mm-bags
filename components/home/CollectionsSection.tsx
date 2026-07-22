@@ -41,6 +41,25 @@ export function CollectionsSection({
   const isRTL = locale === "ar";
   const Forward = isRTL ? ArrowLeft : ArrowRight;
 
+  // Featured-tile treatment is count-aware. The first card wants
+  // md:col-span-2 (magazine-style hero); we only apply it when doing
+  // so leaves ZERO empty cells at the tail of the desktop 3-col grid.
+  // Otherwise the last row becomes a lonely "[card] [ ] [ ]" (Marco's
+  // exact complaint at n=6). Math per candidate count:
+  //   without featured: emptyTail = (3 − n % 3) % 3
+  //   with featured:    emptyTail = (3 − (n + 1) % 3) % 3
+  //   use featured when it strictly reduces the tail.
+  //
+  //   n = 3, 6, 9  → no featured (both give 0 or featured makes it worse)
+  //   n = 2, 5, 8  → featured (0 empty vs 1)
+  //   n = 4, 7, 10 → featured (1 empty vs 2)
+  // Mobile stays symmetric 2-col regardless — col-span-2 is only
+  // applied at md+ so the mobile grid is untouched.
+  const n = categories.length;
+  const emptyWithoutFeatured = (3 - (n % 3)) % 3;
+  const emptyWithFeatured = (3 - ((n + 1) % 3)) % 3;
+  const useFeatured = n >= 2 && emptyWithFeatured < emptyWithoutFeatured;
+
   return (
     <section className="mx-auto max-w-[1360px] px-6 py-12 md:px-12 md:py-24">
       <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4">
@@ -67,7 +86,7 @@ export function CollectionsSection({
       <ul className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
         {categories.map((cat, i) => {
           const stagger = (i % 3) * 80;
-          const featured = i === 0;
+          const featured = useFeatured && i === 0;
           return (
             <Reveal
               key={cat.slug}
