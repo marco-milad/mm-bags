@@ -15,6 +15,11 @@ import { QuickViewTrigger } from "@/components/product/QuickViewTrigger";
  */
 const DEFAULT_SIZES = "(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw";
 
+/** Cap on how many colour dots to render inline on the card. Beyond
+    this we render `+N` to signal "more colours available" without
+    overflowing the compact card footprint. */
+const MAX_SWATCHES = 5;
+
 export function ProductCard({
   product,
   locale,
@@ -43,6 +48,20 @@ export function ProductCard({
       : 0;
   const stock = totalStock(product);
   const isOOS = stock === 0;
+
+  // Distinct colour hexes in the order they first appear in the
+  // variant list (same order the PDP swatches use, so the card and
+  // detail page stay visually aligned).
+  const colourHexes: string[] = [];
+  const seenHex = new Set<string>();
+  for (const v of product.product_variants) {
+    if (v.color_hex && !seenHex.has(v.color_hex)) {
+      seenHex.add(v.color_hex);
+      colourHexes.push(v.color_hex);
+    }
+  }
+  const visibleSwatches = colourHexes.slice(0, MAX_SWATCHES);
+  const overflowSwatches = colourHexes.length - visibleSwatches.length;
   // Two distinct low-stock displays.
   // - "urgent": opt-in via urgencyStockThreshold. Shows fire + warning red
   //   for any value within the threshold; ≤5 also pulses.
@@ -138,6 +157,41 @@ export function ProductCard({
               ? `باقي ${stock} قطعة فقط! 🔥`
               : `Only ${stock} left! 🔥`}
           </p>
+        )}
+
+        {/* Colour swatches — answers "does this come in a colour I
+            like?" without requiring a click into the PDP. Standard
+            e-commerce pattern (ASOS / Zalando / Zara). Renders up to
+            MAX_SWATCHES dots + a "+N" pill when there are more. Order
+            matches the PDP's swatch rail so the card and detail page
+            read as the same product. Hidden entirely when the product
+            has no colour-hex data. */}
+        {visibleSwatches.length > 0 && (
+          <div
+            className="flex items-center gap-1.5"
+            aria-label={
+              locale === "ar"
+                ? `${colourHexes.length} ألوان متاحة`
+                : `${colourHexes.length} colours available`
+            }
+          >
+            {visibleSwatches.map((hex) => (
+              <span
+                key={hex}
+                aria-hidden
+                className="h-3 w-3 rounded-full ring-1 ring-inset ring-black/10"
+                style={{ background: hex }}
+              />
+            ))}
+            {overflowSwatches > 0 && (
+              <span
+                aria-hidden
+                className="ml-0.5 font-mono text-[10px] font-semibold text-[var(--color-text-secondary)]"
+              >
+                +{overflowSwatches}
+              </span>
+            )}
+          </div>
         )}
 
         {/* Up to 3 spec chips — skipped automatically when product has no specs */}

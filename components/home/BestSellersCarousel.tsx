@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";
 import type { Locale } from "@/lib/i18n-config";
 import type { ProductWithVariants } from "@/lib/catalog-shared";
@@ -33,6 +34,7 @@ export function BestSellersCarousel({
 
   const Prev = locale === "ar" ? ChevronRight : ChevronLeft;
   const Next = locale === "ar" ? ChevronLeft : ChevronRight;
+  const Forward = locale === "ar" ? ArrowLeft : ArrowRight;
 
   return (
     // `id` used as an in-page anchor target from the Hero's
@@ -43,10 +45,12 @@ export function BestSellersCarousel({
         <header className="mb-5 flex items-end justify-between gap-4 md:mb-8">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-brass-700">
-              {locale === "ar" ? "اختيار العملاء" : "Best sellers"}
+              {locale === "ar"
+                ? "اختيار عملائنا هذا الشهر"
+                : "This month's picks"}
             </p>
             <h2 className="font-display mt-1 text-2xl text-navy-900 md:mt-2 md:text-4xl">
-              {locale === "ar" ? "الأكثر مبيعاً" : "Customer favourites"}
+              {locale === "ar" ? "الأكثر طلباً" : "Most wanted"}
             </h2>
           </div>
 
@@ -92,6 +96,21 @@ export function BestSellersCarousel({
             </li>
           ))}
         </ul>
+
+        {/* Bottom-of-rail CTA — same pattern as CollectionsSection.
+            Catches the scroll-to-end intent (user browsed the rail and
+            wants "and what else?" without hunting for a top-nav catalog
+            link). Navy button matches the "See all N collections" CTA
+            visual for cross-section consistency. */}
+        <div className="mt-8 flex justify-center md:mt-12">
+          <Link
+            href={`/${locale}/catalog`}
+            className="inline-flex items-center gap-2 rounded-full border border-navy-900 bg-navy-900 px-7 py-3.5 text-sm font-semibold text-paper transition hover:bg-navy-800"
+          >
+            {locale === "ar" ? "شوف كل المنتجات" : "See all products"}
+            <Forward className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
     </section>
   );

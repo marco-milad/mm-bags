@@ -17,10 +17,18 @@ import { Marquee } from "@/components/home/Marquee";
 import { CollectionsSection } from "@/components/home/CollectionsSection";
 import { FounderMoment } from "@/components/home/FounderMoment";
 import { BestSellersCarousel } from "@/components/home/BestSellersCarousel";
-import { MoodBoard } from "@/components/home/MoodBoard";
-import { VideosStrip } from "@/components/home/VideosStrip";
+// MoodBoard / VideosStrip / PromiseSection intentionally NOT imported —
+// unmounted from the homepage during the homepage-polish sprint:
+//   - MoodBoard    → pure editorial mood; no product, no conversion path.
+//   - VideosStrip  → 3 more autoplaying videos on top of the Hero video
+//                    added heavy bandwidth + attention weight with no CTA.
+//   - PromiseSection → its 4 promises (quality / price / warranty / support)
+//                    are all already covered by the Hero trust row + the
+//                    Marquee trust ticker; a third repetition just diluted.
+// Files are left in the repo under components/home/ in case a future
+// storytelling page wants to reuse them; only the homepage stopped
+// mounting them.
 import { StatsStrip } from "@/components/home/StatsStrip";
-import { PromiseSection } from "@/components/home/PromiseSection";
 import { ReviewsReel } from "@/components/home/ReviewsReel";
 import { FeaturedProduct } from "@/components/home/FeaturedProduct";
 import { ShopByMaterial } from "@/components/home/ShopByMaterial";
@@ -92,13 +100,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
         <BestSellersCarousel locale={locale} products={bestSellers} />
       )}
 
-      <MoodBoard locale={locale} />
-
-      <VideosStrip locale={locale} />
-
       <StatsStrip locale={locale} />
-
-      <PromiseSection locale={locale} />
 
       {homeReviews.length > 0 && (
         <ReviewsReel locale={locale} reviews={homeReviews} />
