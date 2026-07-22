@@ -12,6 +12,14 @@ export type TopLevelCategory = Collection & {
    * Unsplash placeholder from `categoryImage(slug)` when no products exist.
    */
   coverImage: string;
+  /**
+   * Lowest effective price (sale_price ?? base_price) across the
+   * collection's full scope (parent + child collections), used by the
+   * homepage collection card's "from X EGP" hint. `null` when no active
+   * products live in this scope. Variant-level price_override is NOT
+   * consulted — it's rare and inspecting it would double the query cost.
+   */
+  minPrice: number | null;
 };
 
 /**
@@ -32,17 +40,18 @@ export async function getTopLevelCategoriesWithCounts(): Promise<TopLevelCategor
 
   if (!collections) return [];
 
-  // One round-trip pulls every active product's collection + images + order.
-  // We use the same payload for counts (per row) and cover-image lookup (first
-  // row in sort_order per collection_id with a non-empty images array).
+  // One round-trip pulls every active product's collection + images + order
+  // + price fields. We use the same payload for counts, cover-image lookup,
+  // and per-collection minPrice (min of sale_price ?? base_price).
   const { data: productRows } = await supabase
     .from("products")
-    .select("collection_id, images, sort_order")
+    .select("collection_id, images, sort_order, base_price, sale_price")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
 
   const directCounts = new Map<string, number>();
   const firstImageByCollection = new Map<string, string>();
+  const directMinPrice = new Map<string, number>();
   for (const row of productRows ?? []) {
     if (!row.collection_id) continue;
     directCounts.set(row.collection_id, (directCounts.get(row.collection_id) ?? 0) + 1);
@@ -54,6 +63,20 @@ export async function getTopLevelCategoriesWithCounts(): Promise<TopLevelCategor
       row.images[0].length > 0
     ) {
       firstImageByCollection.set(row.collection_id, row.images[0]);
+    }
+    // Effective price = sale_price when set, else base_price. Guard
+    // against non-numeric rows (nullable columns per schema).
+    const eff =
+      typeof row.sale_price === "number" && row.sale_price > 0
+        ? row.sale_price
+        : typeof row.base_price === "number" && row.base_price > 0
+          ? row.base_price
+          : null;
+    if (eff !== null) {
+      const current = directMinPrice.get(row.collection_id);
+      if (current === undefined || eff < current) {
+        directMinPrice.set(row.collection_id, eff);
+      }
     }
   }
 
@@ -90,10 +113,24 @@ export async function getTopLevelCategoriesWithCounts(): Promise<TopLevelCategor
         }
       }
 
+      // minPrice: min of the parent's own direct minPrice and each
+      // child's directMinPrice. Undefined when no priced product exists
+      // anywhere in the scope — the card just hides the "من X" chip.
+      let minPrice: number | null = null;
+      const parentMin = directMinPrice.get(c.id);
+      if (parentMin !== undefined) minPrice = parentMin;
+      for (const child of children) {
+        const childMin = directMinPrice.get(child.id);
+        if (childMin !== undefined && (minPrice === null || childMin < minPrice)) {
+          minPrice = childMin;
+        }
+      }
+
       return {
         ...c,
         productCount: direct + childTotal,
         coverImage: coverImage ?? categoryImage(c.slug),
+        minPrice,
       };
     });
 }
