@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -101,15 +102,23 @@ export function FounderMoment({ locale }: { locale: Locale }) {
               </filter>
               <rect width="100%" height="100%" filter="url(#fm-avatar-grain)" />
             </svg>
-            {/* Founder monogram — italic Cormorant reads as a
-                deliberate signature mark rather than a bold "logo
-                placeholder". Same MM letters, elevated treatment. */}
-            <span
-              aria-hidden
-              className="font-display absolute inset-0 flex items-center justify-center text-6xl italic text-brass-300 md:text-7xl"
-            >
-              MM
-            </span>
+            {/* Brand logo — same navbar mark used in the Footer /
+                Admin sidebar (the `-light` variant is the light-on-
+                dark version, matched to this section's navy bg).
+                Centered inside the circular frame; the horizontal
+                wordmark is scaled to ~65% of the circle diameter so
+                it breathes without touching the ring. Ships from
+                /public so no image loader / remote fetch overhead. */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Image
+                src="/assets/logos/logo-navbar-light.svg"
+                alt="M.M Bags"
+                width={232}
+                height={64}
+                className="h-auto w-28 md:w-36"
+                priority={false}
+              />
+            </div>
             {/* Brass plate caption */}
             <span className="absolute inset-x-4 bottom-3 rounded-sm bg-brass-500 px-2 py-1 text-center font-mono text-[9px] uppercase tracking-wider text-navy-900">
               {locale === "ar" ? "ماركو ميلاد · المؤسس" : "Marco Milad · Founder"}
@@ -162,16 +171,17 @@ export function FounderMoment({ locale }: { locale: Locale }) {
               : "Marco Milad, a developer and entrepreneur in Cairo. He started M.M Bags because he searched hard for quality travel bags at fair prices in Egypt — and couldn't find any."}
           </p>
 
-          {/* Credibility pill — small brass tag with the concrete
-              "who + where + when" facts. In a section that's otherwise
-              entirely brand voice, three plain data points act as a
-              trust anchor. Update the year here if the founding date
-              shifts. */}
+          {/* Credibility pill — the concrete facts anchor the section
+              in something the visitor can verify. Two branches in
+              Sohag governorate + the 1998 founding date give the
+              brand a real physical + temporal footprint that pure
+              copy can't. Update either value in place if operations
+              change. */}
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-brass-500/40 bg-brass-500/10 px-3 py-1 text-[11px] font-medium text-brass-100">
             <MapPin className="h-3 w-3 text-brass-300" aria-hidden />
             {locale === "ar"
-              ? "من القاهرة · تأسست 2025"
-              : "From Cairo · Est. 2025"}
+              ? "لدينا فرعين في محافظة سوهاج · تأسست 1998"
+              : "Two branches in Sohag governorate · Est. 1998"}
           </span>
 
           {/* Promoted CTA — outlined brass button instead of the
