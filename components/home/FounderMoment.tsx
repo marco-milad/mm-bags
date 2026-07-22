@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
 
@@ -74,14 +74,39 @@ export function FounderMoment({ locale }: { locale: Locale }) {
           style={slide(startX)}
         >
           <div className="relative h-44 w-44 shrink-0 overflow-hidden rounded-full ring-2 ring-brass-500/50 ring-offset-4 ring-offset-navy-900 md:h-56 md:w-56">
+            {/* Warmer brass-tinted gradient — replaces the flat navy
+                stack with a subtle brass wash top-left → deep navy
+                bottom-right. Reads as "portrait frame" rather than
+                the previous "empty-state" flat fill. */}
             <div
               aria-hidden
-              className="absolute inset-0 bg-gradient-to-br from-navy-700 via-navy-800 to-navy-900"
+              className="absolute inset-0 bg-gradient-to-br from-brass-900/30 via-navy-800 to-navy-900"
             />
-            {/* Marco placeholder: monogram on navy until real portrait lands */}
+            {/* Subtle grain — SVG turbulence at low opacity, blended
+                into the gradient. Small viewport (176–224 px sq) so
+                the feTurbulence cost is negligible. Reads as a
+                printed / handcrafted texture, not the perfect-fill
+                blankness the old gradient had. Filter id is prefixed
+                so it can't collide with other SVGs on the page. */}
+            <svg
+              aria-hidden
+              className="pointer-events-none absolute inset-0 h-full w-full mix-blend-overlay opacity-30"
+            >
+              <filter id="fm-avatar-grain">
+                <feTurbulence
+                  type="fractalNoise"
+                  baseFrequency="0.9"
+                  numOctaves="2"
+                />
+              </filter>
+              <rect width="100%" height="100%" filter="url(#fm-avatar-grain)" />
+            </svg>
+            {/* Founder monogram — italic Cormorant reads as a
+                deliberate signature mark rather than a bold "logo
+                placeholder". Same MM letters, elevated treatment. */}
             <span
               aria-hidden
-              className="font-display absolute inset-0 flex items-center justify-center text-7xl font-bold text-brass-400 md:text-8xl"
+              className="font-display absolute inset-0 flex items-center justify-center text-6xl italic text-brass-300 md:text-7xl"
             >
               MM
             </span>
@@ -112,15 +137,51 @@ export function FounderMoment({ locale }: { locale: Locale }) {
             </p>
           </blockquote>
 
+          {/* Signature strip — italic name flanked by brass hairlines.
+              Serves the same purpose a handwritten signature would on
+              a printed letter: it puts a human name at the end of the
+              quote without needing a photograph. Cheap trust primitive
+              that costs nothing but reads intimate. */}
+          <div className="flex items-center gap-3">
+            <span
+              aria-hidden
+              className="h-px flex-1 bg-brass-500/30"
+            />
+            <span className="font-display text-lg italic text-brass-300 md:text-xl">
+              — {locale === "ar" ? "ماركو" : "Marco"} —
+            </span>
+            <span
+              aria-hidden
+              className="h-px flex-1 bg-brass-500/30"
+            />
+          </div>
+
           <p className="text-sm text-navy-200">
             {locale === "ar"
               ? "ماركو ميلاد، مطوّر ورائد أعمال من القاهرة. بدأ M.M Bags لأنه دوّر كتير على شنط سفر بجودة حقيقية وسعر معقول في مصر — وملقاش."
               : "Marco Milad, a developer and entrepreneur in Cairo. He started M.M Bags because he searched hard for quality travel bags at fair prices in Egypt — and couldn't find any."}
           </p>
 
+          {/* Credibility pill — small brass tag with the concrete
+              "who + where + when" facts. In a section that's otherwise
+              entirely brand voice, three plain data points act as a
+              trust anchor. Update the year here if the founding date
+              shifts. */}
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-brass-500/40 bg-brass-500/10 px-3 py-1 text-[11px] font-medium text-brass-100">
+            <MapPin className="h-3 w-3 text-brass-300" aria-hidden />
+            {locale === "ar"
+              ? "من القاهرة · تأسست 2025"
+              : "From Cairo · Est. 2025"}
+          </span>
+
+          {/* Promoted CTA — outlined brass button instead of the
+              previous small underline link. FounderMoment's whole job
+              is to hand the reader off to /about; a stronger affordance
+              matches that intent. Hover fills solid brass for the
+              "committed" state. */}
           <Link
             href={`/${locale}/about`}
-            className="mt-2 inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-brass-400 underline-offset-4 hover:underline hover:text-brass-300"
+            className="mt-2 inline-flex w-fit items-center gap-2 rounded-full border border-brass-500/60 px-6 py-3 text-sm font-semibold text-brass-300 transition hover:bg-brass-500 hover:text-navy-900"
           >
             {locale === "ar" ? "اقرأ القصة كاملة" : "Read the full story"}
             <Forward className="h-4 w-4" />
