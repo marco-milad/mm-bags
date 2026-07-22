@@ -4,8 +4,9 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
-  ChevronDown,
   MapPin,
+  MessageCircle,
+  Rocket,
   ShieldCheck,
   Tag,
   Truck,
@@ -13,6 +14,10 @@ import {
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
 import { KineticDestination } from "./KineticDestination";
+
+const WHATSAPP_NUMBER = (
+  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
+).replace(/\D/g, "");
 
 const RISE = "mm-rise 0.9s cubic-bezier(0.22,1,0.36,1) forwards";
 
@@ -209,9 +214,26 @@ export function Hero({
           </span>
         </div>
 
+        {/* Urgency badge — pairs with the price badge above it. The
+            "how much?" question is answered; this second pill answers
+            "how fast?". Duplicates a Marquee item deliberately (Marco
+            called this repetition = emphasis for a first-time visitor
+            who may not have watched the ticker cycle around yet). */}
+        <div
+          className="opacity-0"
+          style={{ animation: RISE, animationDelay: "460ms" }}
+        >
+          <span className="inline-flex items-center gap-2 rounded-full border border-brass-400/60 bg-brass-500/20 px-4 py-1.5 text-sm font-semibold text-brass-50 backdrop-blur-sm">
+            <Rocket className="h-3.5 w-3.5 text-brass-200" aria-hidden />
+            {locale === "ar"
+              ? "شحن خلال 24 ساعة"
+              : "Ships within 24 hours"}
+          </span>
+        </div>
+
         <div
           className="mt-2 flex flex-wrap gap-3 opacity-0"
-          style={{ animation: RISE, animationDelay: "460ms" }}
+          style={{ animation: RISE, animationDelay: "540ms" }}
         >
           <Link
             href={`/${locale}/categories`}
@@ -220,24 +242,32 @@ export function Hero({
             {locale === "ar" ? "تسوق دلوقتي" : "Shop now"}
             <Forward className="h-4 w-4" />
           </Link>
-          {/* Secondary CTA is in-page scroll to the best-sellers rail,
-              NOT the About page. A first-time Egyptian visitor is here
-              to browse products, not read the founder story — and the
-              persistent WhatsApp FAB already covers the "talk to us"
-              path so a second CTA to a story page just dilutes the
-              conversion funnel. */}
-          <Link
-            href="#best-sellers"
+          {/* Secondary CTA is a direct WhatsApp thread with a
+              pre-filled Arabic/English greeting. In the Egyptian
+              market, WhatsApp is the default "talk-to-a-real-person"
+              channel — a first-time visitor who isn't ready to buy
+              often WILL message before browsing further. The
+              persistent WhatsApp FAB still exists for later-scroll
+              intent; this hero-level CTA captures the moment of
+              first-question friction. */}
+          <a
+            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+              locale === "ar"
+                ? "أهلاً، محتاج مساعدة في اختيار شنطة من M.M Bags."
+                : "Hi, I'd like help picking a bag from M.M Bags.",
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-md border border-white/30 px-7 py-3 text-sm font-medium text-white transition hover:bg-white/10"
           >
-            {locale === "ar" ? "شوف الأكثر مبيعاً" : "See best-sellers"}
-            <ChevronDown className="h-4 w-4" />
-          </Link>
+            <MessageCircle className="h-4 w-4" />
+            {locale === "ar" ? "كلمنا على واتساب" : "Chat on WhatsApp"}
+          </a>
         </div>
 
         <div
           className="mt-1 opacity-0"
-          style={{ animation: RISE, animationDelay: "540ms" }}
+          style={{ animation: RISE, animationDelay: "620ms" }}
         >
           <KineticDestination locale={locale} />
         </div>
@@ -245,7 +275,7 @@ export function Hero({
         {/* Trust row (hidden on small screens per spec) */}
         <ul
           className="mt-6 hidden flex-wrap items-center gap-x-6 gap-y-2 text-xs text-white/70 opacity-0 md:flex"
-          style={{ animation: RISE, animationDelay: "660ms" }}
+          style={{ animation: RISE, animationDelay: "740ms" }}
         >
           <li className="inline-flex items-center gap-1.5">
             <MapPin className="h-3.5 w-3.5 text-brass-300" />
