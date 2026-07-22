@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, MapPin, ShieldCheck, Truck } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+  MapPin,
+  ShieldCheck,
+  Tag,
+  Truck,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
 import { KineticDestination } from "./KineticDestination";
@@ -182,9 +190,28 @@ export function Hero({
           {subcopy}
         </p>
 
+        {/* Starting-price badge — an Egyptian-market conversion cue.
+            "How much does it start at?" is the first question a local
+            visitor asks; showing it up front cuts the bounce loop to
+            the catalog just to check pricing. Value is intentionally
+            hardcoded (edit here when the true floor price changes)
+            rather than derived from MIN(products.price) so it doesn't
+            silently drift on inventory swings. */}
+        <div
+          className="opacity-0"
+          style={{ animation: RISE, animationDelay: "380ms" }}
+        >
+          <span className="inline-flex items-center gap-2 rounded-full border border-brass-500/40 bg-brass-500/10 px-4 py-1.5 text-sm font-medium text-brass-100 backdrop-blur-sm">
+            <Tag className="h-3.5 w-3.5 text-brass-300" aria-hidden />
+            {locale === "ar"
+              ? "بتبدأ من 150 ج.م. فقط"
+              : "Starting from EGP 150"}
+          </span>
+        </div>
+
         <div
           className="mt-2 flex flex-wrap gap-3 opacity-0"
-          style={{ animation: RISE, animationDelay: "420ms" }}
+          style={{ animation: RISE, animationDelay: "460ms" }}
         >
           <Link
             href={`/${locale}/categories`}
@@ -193,11 +220,18 @@ export function Hero({
             {locale === "ar" ? "تسوق دلوقتي" : "Shop now"}
             <Forward className="h-4 w-4" />
           </Link>
+          {/* Secondary CTA is in-page scroll to the best-sellers rail,
+              NOT the About page. A first-time Egyptian visitor is here
+              to browse products, not read the founder story — and the
+              persistent WhatsApp FAB already covers the "talk to us"
+              path so a second CTA to a story page just dilutes the
+              conversion funnel. */}
           <Link
-            href={`/${locale}/about`}
+            href="#best-sellers"
             className="inline-flex items-center gap-2 rounded-md border border-white/30 px-7 py-3 text-sm font-medium text-white transition hover:bg-white/10"
           >
-            {locale === "ar" ? "اكتشف القصة" : "Discover the story"}
+            {locale === "ar" ? "شوف الأكثر مبيعاً" : "See best-sellers"}
+            <ChevronDown className="h-4 w-4" />
           </Link>
         </div>
 

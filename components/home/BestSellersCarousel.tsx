@@ -35,7 +35,10 @@ export function BestSellersCarousel({
   const Next = locale === "ar" ? ChevronLeft : ChevronRight;
 
   return (
-    <section className="bg-surface py-8 md:py-24">
+    // `id` used as an in-page anchor target from the Hero's
+    // secondary CTA (`href="#best-sellers"`). `scroll-mt` gives the
+    // sticky navbar clearance so the section header lands below it.
+    <section id="best-sellers" className="scroll-mt-20 bg-surface py-8 md:py-24">
       <div className="mx-auto max-w-[1200px] px-6 md:px-12">
         <header className="mb-5 flex items-end justify-between gap-4 md:mb-8">
           <div>
