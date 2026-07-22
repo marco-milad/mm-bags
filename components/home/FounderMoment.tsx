@@ -165,10 +165,10 @@ export function FounderMoment({ locale }: { locale: Locale }) {
             />
           </div>
 
-          <p className="text-sm text-navy-200">
+          <p className="text-sm leading-relaxed text-navy-200">
             {locale === "ar"
-              ? "ماركو ميلاد، مطوّر ورائد أعمال من القاهرة. بدأ M.M Bags لأنه دوّر كتير على شنط سفر بجودة حقيقية وسعر معقول في مصر — وملقاش."
-              : "Marco Milad, a developer and entrepreneur in Cairo. He started M.M Bags because he searched hard for quality travel bags at fair prices in Egypt — and couldn't find any."}
+              ? "M.M Bags تأسست في 1998 من محافظة سوهاج. اليوم بيدير البراند ماركو ميلاد، مطوّر ورائد أعمال، بنفس الشغف الأصلي — جودة حقيقية، سعر عادل، وخدمة بنفتخر بيها."
+              : "M.M Bags was founded in 1998 in Sohag governorate. Today it's run by Marco Milad — a developer and entrepreneur — with the same original passion: real quality, fair pricing, and service we're proud of."}
           </p>
 
           {/* Credibility pill — the concrete facts anchor the section
