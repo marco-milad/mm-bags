@@ -12,7 +12,13 @@ type Stat = {
 const STATS: Stat[] = [
   { value: 27,     label_ar: "محافظة بنوصلها",     label_en: "Governorates"     },
   { value: 50_000, suffix: "+", label_ar: "منتج مباع",       label_en: "Products sold" },
-  { value: 4.8,    decimals: 1, label_ar: "نجوم تقييم",     label_en: "★ rating"   },
+  // Replaces the previous "4.8 ★ rating" stat. A rating-shaped
+  // metric hurts more than it helps when the underlying review count
+  // is still small — a fresh visitor reads "0.0 rating" during the
+  // count-up flash or "4.8 (n reviews)" and asks "based on what?".
+  // Support availability is a comparable-magnitude trust signal that
+  // doesn't hinge on us having thousands of reviews yet.
+  { value: 24,     suffix: "/7", label_ar: "واتساب دعم فوري", label_en: "WhatsApp support" },
   { value: 14,     label_ar: "يوم ضمان استبدال", label_en: "Day guarantee"      },
 ];
 
