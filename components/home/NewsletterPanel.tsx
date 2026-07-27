@@ -67,12 +67,15 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
   }
 
   return (
-    <section className="px-6 py-12 md:px-12 md:py-24">
-      <div className="relative mx-auto max-w-[1200px] overflow-hidden rounded-[18px] bg-navy-900 px-8 py-14 text-paper md:px-16 md:py-20">
-        {/* Faint MM watermark on the right */}
+    <section className="px-6 py-10 md:px-12 md:py-16">
+      <div className="relative mx-auto max-w-[1200px] overflow-hidden rounded-[18px] bg-navy-900 px-8 py-10 text-paper md:px-14 md:py-14">
+        {/* Faint MM watermark — smaller + fainter than the prior
+            18rem/4% pair, which felt like a big dark blob on the
+            side. 12rem + 2.5% reads as a subtle brand tell and
+            leaves the card feeling less heavy. */}
         <span
           aria-hidden
-          className="font-display pointer-events-none absolute -bottom-12 select-none text-[18rem] font-bold leading-none text-white/[0.04] ltr:right-4 rtl:left-4"
+          className="font-display pointer-events-none absolute -bottom-8 select-none text-[12rem] font-bold leading-none text-white/[0.025] ltr:right-4 rtl:left-4"
         >
           MM
         </span>
@@ -80,10 +83,10 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
         {/* Brass hairline */}
         <span
           aria-hidden
-          className="absolute inset-x-8 top-0 h-px bg-brass-500/40 md:inset-x-16"
+          className="absolute inset-x-8 top-0 h-px bg-brass-500/40 md:inset-x-14"
         />
 
-        <div className="relative grid items-center gap-10 md:grid-cols-[1.1fr_1fr] md:gap-16">
+        <div className="relative grid items-center gap-8 md:grid-cols-[1.1fr_1fr] md:gap-12">
           <div className="flex flex-col gap-3">
             {/* The offer is the whole point of this panel — pull the
                 percentage out of the small pill and give it presence
@@ -121,16 +124,11 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
                 ? "توفير يبدأ من 50 ج.م على أول طلب"
                 : "Savings from EGP 50 on your first order"}
             </p>
-
-            {/* Specific commitments beat generic "no spam" — an
-                actual cap ("one email a month") plus the two
-                data-rights promises the visitor cares about most.
-                Reads as a real policy rather than boilerplate. */}
-            <p className="text-sm text-navy-200">
-              {isRTL
-                ? "رسالة واحدة في الشهر بس · مش هنبيع بياناتك · تلغي الاشتراك في أي وقت"
-                : "One email a month · We never sell your data · Unsubscribe anytime"}
-            </p>
+            {/* The privacy commitment line moved OUT of this column
+                and into the form column just below the submit button
+                — closer to the action it modifies, so the visitor
+                reads "one email a month · we don't sell your data"
+                right before deciding to click. */}
           </div>
 
           {status.kind === "success" ? (
@@ -212,10 +210,19 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
                   {status.message}
                 </p>
               )}
-              <p className="text-[11px] text-navy-300">
+              {/* Specific commitments beat generic "no spam" — an
+                  actual cap ("one email a month") plus the two
+                  data-rights promises the visitor cares about most.
+                  Reads as a real policy rather than boilerplate, and
+                  doubles as the implicit-consent notice (which is
+                  why the old boilerplate "By subscribing..." line
+                  is no longer needed). Placed directly under the
+                  submit button so the visitor sees the promise the
+                  moment they consider clicking. */}
+              <p className="text-[11px] leading-relaxed text-navy-300">
                 {isRTL
-                  ? "بتسجيلك، إنت موافق على سياسة الخصوصية."
-                  : "By subscribing, you agree to our privacy policy."}
+                  ? "رسالة واحدة في الشهر بس · مش هنبيع بياناتك · تلغي الاشتراك في أي وقت"
+                  : "One email a month · We never sell your data · Unsubscribe anytime"}
               </p>
             </form>
           )}
