@@ -245,6 +245,14 @@ export type MaterialBucketCount = {
   en: string;
   members: string[];
   productCount: number;
+  /**
+   * Lowest effective price (sale_price ?? base_price) across the
+   * bucket's active products, used by the homepage ShopByMaterial
+   * card's "from X EGP" hint. `null` when no priced product exists
+   * in the bucket. Variant-level price_override is NOT consulted —
+   * rare and inspecting it would double the query cost.
+   */
+  minPrice: number | null;
 };
 
 // Backwards-compat alias — older imports use MaterialCount.
@@ -264,9 +272,11 @@ const MAX_MATERIAL_CARDS = 8;
 export async function getMaterialCounts(): Promise<MaterialBucketCount[]> {
   const { bucketForMaterial } = await import("@/lib/material-buckets");
   const supabase = await createSupabaseServerClient();
+  // Also pull price fields — same round-trip we already pay for
+  // material_type. We compute the per-bucket minPrice from these.
   const { data, error } = await supabase
     .from("products")
-    .select("material_type")
+    .select("material_type, base_price, sale_price")
     .eq("is_active", true)
     .not("material_type", "is", null);
 
@@ -276,11 +286,24 @@ export async function getMaterialCounts(): Promise<MaterialBucketCount[]> {
   for (const row of data ?? []) {
     const raw = row.material_type;
     if (!raw) continue;
+    // Effective price = sale_price when set, else base_price. Same
+    // rule the storefront's effectivePrice() helper applies. Only
+    // positive numeric rows feed the min; nulls and zero are ignored
+    // so a mis-priced row doesn't drag the display to "من 0 ج.م".
+    const eff =
+      typeof row.sale_price === "number" && row.sale_price > 0
+        ? row.sale_price
+        : typeof row.base_price === "number" && row.base_price > 0
+          ? row.base_price
+          : null;
     const meta = bucketForMaterial(raw);
     const existing = buckets.get(meta.id);
     if (existing) {
       existing.productCount += 1;
       if (!existing.members.includes(raw)) existing.members.push(raw);
+      if (eff !== null && (existing.minPrice === null || eff < existing.minPrice)) {
+        existing.minPrice = eff;
+      }
     } else {
       buckets.set(meta.id, {
         id: meta.id,
@@ -288,6 +311,7 @@ export async function getMaterialCounts(): Promise<MaterialBucketCount[]> {
         en: meta.en,
         members: [raw],
         productCount: 1,
+        minPrice: eff,
       });
     }
   }
