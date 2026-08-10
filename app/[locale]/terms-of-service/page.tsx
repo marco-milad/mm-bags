@@ -52,8 +52,8 @@ export default async function TermsOfServicePage({
         <Section title={isAr ? "1. مقدمة وقبول الشروط" : "1. Introduction & acceptance"}>
           <Body isAr={isAr}>
             {isAr
-              ? 'M.M Bags هو متجر إلكتروني مصري ومقره القاهرة، متخصص في شنط السفر والظهر والمدارس وشنط اليد، تحت إدارة ماركو ميلاد ("إحنا" / "M.M Bags"). الموقع موجود على mmbags.com وصفحاته الفرعية.'
-              : 'M.M Bags is an Egyptian online retailer headquartered in Cairo, specialising in travel, school, and everyday bags, operated by Marco Milad ("we" / "M.M Bags"). The store lives at mmbags.com and its sub-pages.'}
+              ? 'M.M Bags هو متجر مصري تأسس عام 1998 ومقره الرئيسي بمحافظة سوهاج (فرعين بمدينة طما — شارع الشهداء وشارع العزراء)، متخصص في شنط السفر والظهر والمدارس وشنط اليد. يديره حالياً ماركو ميلاد ("إحنا" / "M.M Bags"). المتجر الإلكتروني موجود على mmbags.com وصفحاته الفرعية.'
+              : 'M.M Bags is an Egyptian retailer founded in 1998, headquartered in Sohag governorate (two branches in Tama — Shohada Street and Al-Ozraa Street), specialising in travel, school, and everyday bags. It is currently operated by Marco Milad ("we" / "M.M Bags"). The online store lives at mmbags.com and its sub-pages.'}
           </Body>
           <Body isAr={isAr}>
             {isAr
@@ -257,9 +257,37 @@ export default async function TermsOfServicePage({
 
         <Section title={isAr ? "14. الخصوصية" : "14. Privacy"}>
           <Body isAr={isAr}>
-            {isAr
-              ? "بنحترم بياناتك الشخصية ومش بنبيعها لطرف ثالث. بنستخدم البيانات اللي بتدخلها بس عشان نجهز الطلبات، نتواصل معاك بخصوص خدمتك، ونحسّن تجربتك على الموقع. التفاصيل الكاملة لجمع البيانات واستخدامها بنشرها في سياسة خصوصية منفصلة عند صدورها."
-              : "We respect your personal data and don't sell it to third parties. The information you submit is used solely to fulfil your orders, communicate with you about service, and improve your experience on the site. A separate privacy policy will detail collection and use practices in full when published."}
+            {isAr ? (
+              <>
+                بنحترم بياناتك الشخصية ومش بنبيعها لطرف ثالث. تفاصيل جمع
+                البيانات، استخدامها، ومشاركتها مع مقدمي الخدمات
+                (Supabase، Paymob، Twilio، Resend، Vercel) موضحة بالكامل
+                في{" "}
+                <Link
+                  href={`/${locale}/privacy-policy`}
+                  className="text-[var(--color-accent-dark)] underline-offset-4 hover:underline"
+                >
+                  سياسة الخصوصية
+                </Link>
+                . السياسة دي بتعتبر جزء لا يتجزأ من شروط الاستخدام دي وبتحدد
+                حقوقك تحت قانون حماية البيانات الشخصية المصري (رقم 151 لسنة 2020).
+              </>
+            ) : (
+              <>
+                We respect your personal data and don't sell it to third
+                parties. The full details of collection, use, and sharing
+                with our service providers (Supabase, Paymob, Twilio, Resend,
+                Vercel) are set out in our{" "}
+                <Link
+                  href={`/${locale}/privacy-policy`}
+                  className="text-[var(--color-accent-dark)] underline-offset-4 hover:underline"
+                >
+                  Privacy Policy
+                </Link>
+                . That policy forms an integral part of these Terms and defines
+                your rights under Egypt's Personal Data Protection Law (151/2020).
+              </>
+            )}
           </Body>
         </Section>
 
@@ -290,7 +318,7 @@ export default async function TermsOfServicePage({
                 >
                   صفحة التواصل
                 </Link>{" "}
-                أو على البريد marco@mmbags.com. بنرد خلال 48 ساعة عمل.
+                أو على البريد miladmarco68@gmail.com. بنرد خلال 48 ساعة عمل.
               </>
             ) : (
               <>
@@ -301,7 +329,7 @@ export default async function TermsOfServicePage({
                 >
                   contact page
                 </Link>{" "}
-                or by email at marco@mmbags.com. We respond within two business days.
+                or by email at miladmarco68@gmail.com. We respond within two business days.
               </>
             )}
           </Body>
@@ -310,6 +338,11 @@ export default async function TermsOfServicePage({
         <RelatedLinks
           isAr={isAr}
           items={[
+            {
+              href: `/${locale}/privacy-policy`,
+              ar: "سياسة الخصوصية",
+              en: "Privacy policy",
+            },
             {
               href: `/${locale}/refund-policy`,
               ar: "سياسة الإرجاع والاسترداد",

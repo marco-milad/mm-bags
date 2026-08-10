@@ -271,6 +271,17 @@ export function Footer({
             </li>
             <li>
               <Link
+                href={`${base}/privacy-policy`}
+                className="transition hover:text-paper"
+              >
+                {isRTL ? "سياسة الخصوصية" : "Privacy"}
+              </Link>
+            </li>
+            <li aria-hidden className="text-navy-500">
+              ·
+            </li>
+            <li>
+              <Link
                 href={`${base}/refund-policy`}
                 className="transition hover:text-paper"
               >
