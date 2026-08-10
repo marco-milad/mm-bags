@@ -64,8 +64,8 @@ export default async function ContactPage({ params }: PageProps<"/[locale]">) {
         <MethodCard
           Icon={Mail}
           title={isRTL ? "البريد الإلكتروني" : "Email"}
-          value="marco@mmbags.com"
-          href="mailto:marco@mmbags.com"
+          value="miladmarco68@gmail.com"
+          href="mailto:miladmarco68@gmail.com"
         />
         <MethodCard
           Icon={Share2}
@@ -94,6 +94,7 @@ export default async function ContactPage({ params }: PageProps<"/[locale]">) {
         </div>
 
         <aside className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 md:sticky md:top-24 md:self-start">
+          {/* Business hours */}
           <div className="mb-3 flex items-center gap-2 text-[var(--color-text)]">
             <Clock className="h-4 w-4 text-[var(--color-accent-dark)]" />
             <p className="font-mono text-[11px] uppercase tracking-[0.3em]">
@@ -101,15 +102,37 @@ export default async function ContactPage({ params }: PageProps<"/[locale]">) {
             </p>
           </div>
           <p className="text-sm text-[var(--color-text)]">
-            {isRTL ? "السبت – الخميس" : "Saturday – Thursday"}
+            {isRTL ? "يومياً" : "Daily"}
           </p>
           <p className="font-mono text-sm text-[var(--color-text-secondary)]">
-            {isRTL ? "9 ص – 10 م" : "9 AM – 10 PM"}
+            {isRTL ? "11 ص – 10 م" : "11 AM – 10 PM"}
           </p>
+
+          {/* Physical branches — trust anchor + drives foot traffic
+              for Sohag customers who prefer buying in person. Both
+              addresses match the Footer and Terms of Service. */}
+          <div className="mt-6 border-t border-[var(--color-border)] pt-4">
+            <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.3em] text-[var(--color-text)]">
+              {isRTL ? "فروعنا" : "Our branches"}
+            </p>
+            <ul className="space-y-1.5 text-sm text-[var(--color-text-secondary)]">
+              <li>
+                {isRTL
+                  ? "سوهاج – طما – شارع الشهداء"
+                  : "Sohag – Tama – Shohada Street"}
+              </li>
+              <li>
+                {isRTL
+                  ? "سوهاج – طما – شارع العزراء"
+                  : "Sohag – Tama – Al-Ozraa Street"}
+              </li>
+            </ul>
+          </div>
+
           <p className="mt-4 text-xs text-[var(--color-text-secondary)]">
             {isRTL
-              ? "الجمعة إجازة. رسائل WhatsApp بنرد عليها على مدار الساعة."
-              : "Closed Fridays. WhatsApp messages handled around the clock."}
+              ? "رسائل واتساب بنرد عليها على مدار الساعة."
+              : "WhatsApp messages are handled around the clock."}
           </p>
         </aside>
       </section>

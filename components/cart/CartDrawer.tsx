@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag } from "lucide-react";
+import { RefreshCcw, ShieldCheck, ShoppingBag, Wallet } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import { formatPriceEGP } from "@/lib/utils";
 import {
@@ -95,6 +95,30 @@ export function CartDrawer({ locale }: { locale: Locale }) {
               >
                 {locale === "ar" ? "إكمال الشراء" : "Checkout"}
               </Link>
+
+              {/* Trust micro-line under the checkout CTA — same three
+                  objections the Hero pill-set answers ("safe to pay?",
+                  "can I return?", "COD?"), but placed at the moment
+                  the customer is about to click the money button.
+                  Icons on the accent color to match the Hero trust
+                  row's visual vocabulary. */}
+              <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[10px] text-[var(--color-text-secondary)]">
+                <li className="inline-flex items-center gap-1">
+                  <ShieldCheck className="h-3 w-3 text-[var(--color-accent-dark)]" aria-hidden />
+                  {locale === "ar" ? "دفع آمن" : "Secure checkout"}
+                </li>
+                <li aria-hidden className="text-[var(--color-text-secondary)]/50">·</li>
+                <li className="inline-flex items-center gap-1">
+                  <RefreshCcw className="h-3 w-3 text-[var(--color-accent-dark)]" aria-hidden />
+                  {locale === "ar" ? "إرجاع 14 يوم" : "14-day returns"}
+                </li>
+                <li aria-hidden className="text-[var(--color-text-secondary)]/50">·</li>
+                <li className="inline-flex items-center gap-1">
+                  <Wallet className="h-3 w-3 text-[var(--color-accent-dark)]" aria-hidden />
+                  {locale === "ar" ? "الدفع عند الاستلام" : "Cash on delivery"}
+                </li>
+              </ul>
+
               <button
                 type="button"
                 onClick={() => setOpen(false)}

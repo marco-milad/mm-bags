@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { GitCompareArrows } from "lucide-react";
+import { GitCompareArrows, MessageCircle } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { Collection } from "@/lib/supabase/types";
 import type { CatalogSort, ProductWithVariants } from "@/lib/catalog-shared";
+import { effectivePrice } from "@/lib/catalog-shared";
+import { formatPriceEGP } from "@/lib/utils";
 import { CollectionFilter } from "./CollectionFilter";
 import { CatalogToolbar } from "./CatalogToolbar";
 import { ProductCard } from "@/components/product/ProductCard";
+
+const WHATSAPP_NUMBER = (
+  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
+).replace(/\D/g, "");
 
 export type CrumbLink = { href: string; label: string };
 
@@ -99,7 +105,22 @@ export function CatalogView({
       />
 
       <div className="mt-3">
-        <CatalogToolbar locale={locale} count={products.length} currentSort={sort} />
+        {/* Compute a min/max price band from the currently-visible
+            products so the toolbar can display "24 products · from
+            EGP 350" up-front. Egyptian shoppers scan the page for
+            price before they scan products; putting the floor value
+            in the toolbar saves the "how much does this collection
+            cost?" click into a random card. */}
+        <CatalogToolbar
+          locale={locale}
+          count={products.length}
+          currentSort={sort}
+          minPrice={
+            products.length > 0
+              ? Math.min(...products.map((p) => effectivePrice(p)))
+              : null
+          }
+        />
       </div>
 
       {products.length === 0 ? (
@@ -124,6 +145,15 @@ export function CatalogView({
 }
 
 function EmptyState({ locale, hasFilter }: { locale: Locale; hasFilter: boolean }) {
+  // WhatsApp deep-link with a pre-filled request message. Turns the
+  // dead-end "nothing here" state into a lead-capture: instead of
+  // sending the visitor back to Home (which is where they came from),
+  // ask them to tell us what they're looking for.
+  const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+    locale === "ar"
+      ? "أهلاً، بدوّر على شنطة معينة مش لاقيها على الموقع. تقدروا تساعدوني؟"
+      : "Hi, I'm looking for a specific bag I can't find on the site. Can you help?",
+  )}`;
   return (
     <div className="mt-12 flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-16 text-center">
       <p className="font-display text-2xl">
@@ -135,17 +165,20 @@ function EmptyState({ locale, hasFilter }: { locale: Locale; hasFilter: boolean 
             ? "الكاتالوج لسه فاضي"
             : "Catalog is empty"}
       </p>
-      <p className="text-sm text-[var(--color-text-secondary)]">
+      <p className="max-w-md text-sm text-[var(--color-text-secondary)]">
         {locale === "ar"
-          ? "ارجع تاني قريب — بنضيف منتجات جديدة كل أسبوع."
-          : "Check back soon — we add new products every week."}
+          ? "بتدوّر على حاجة معينة؟ ابعتلنا على واتساب اللي محتاجه ولو عندنا هنقولك."
+          : "Looking for something specific? Message us on WhatsApp — if we have it, we'll get it to you."}
       </p>
-      <Link
-        href={`/${locale}`}
-        className="mt-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[var(--color-primary-light)]"
+      <a
+        href={whatsappHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[var(--color-primary-light)]"
       >
-        {locale === "ar" ? "الرئيسية" : "Home"}
-      </Link>
+        <MessageCircle className="h-4 w-4" />
+        {locale === "ar" ? "ابعتلنا على واتساب" : "Message us on WhatsApp"}
+      </a>
     </div>
   );
 }

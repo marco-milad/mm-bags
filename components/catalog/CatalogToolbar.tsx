@@ -4,6 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useTransition } from "react";
 import type { Locale } from "@/lib/i18n-config";
 import { CATALOG_SORTS, type CatalogSort } from "@/lib/catalog-shared";
+import { formatPriceEGP } from "@/lib/utils";
 
 const SORT_LABELS: Record<CatalogSort, { ar: string; en: string }> = {
   featured: { ar: "المختارة", en: "Featured" },
@@ -16,10 +17,16 @@ export function CatalogToolbar({
   locale,
   count,
   currentSort,
+  minPrice = null,
 }: {
   locale: Locale;
   count: number;
   currentSort: CatalogSort;
+  /** Cheapest effective price across the currently-listed products.
+      When provided, the toolbar shows "N products · from EGP X" so
+      Egyptian shoppers get a price floor at a glance. Pass null (or
+      omit) when the list is empty. */
+  minPrice?: number | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -40,6 +47,13 @@ export function CatalogToolbar({
     <div className="flex items-center justify-between gap-3 border-y border-[var(--color-border)] py-3">
       <p className="text-sm text-[var(--color-text-secondary)]">
         {locale === "ar" ? `${count} منتج` : `${count} products`}
+        {minPrice !== null && (
+          <span className="ms-2 text-[var(--color-accent-dark)]">
+            {locale === "ar"
+              ? `· من ${formatPriceEGP(minPrice, locale)}`
+              : `· from ${formatPriceEGP(minPrice, locale)}`}
+          </span>
+        )}
       </p>
 
       <label className="flex items-center gap-2 text-sm">

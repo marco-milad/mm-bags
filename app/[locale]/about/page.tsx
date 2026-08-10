@@ -17,8 +17,8 @@ export async function generateMetadata({
   return {
     title: isAr ? "قصتنا | M.M Bags" : "Our story | M.M Bags",
     description: isAr
-      ? "M.M Bags — قصة ماركو ميلاد: مطور ورائد أعمال من القاهرة، بنا متجر شنط سفر بجودة حقيقية وسعر عادل."
-      : "M.M Bags — Marco Milad's story. A Cairo-based founder building a bag store with real quality and a fair price.",
+      ? "M.M Bags تأسست في 1998 بمحافظة سوهاج — قصة براند عائلي بيديره ماركو ميلاد، مطور ورائد أعمال، بجودة حقيقية وسعر عادل."
+      : "M.M Bags was founded in 1998 in Sohag governorate — the story of a family brand now run by Marco Milad, a developer and entrepreneur, with real quality at a fair price.",
     alternates: localeAlternates("/about"),
   };
 }
@@ -56,7 +56,10 @@ const NUMBERS: ReadonlyArray<{
   { value: 50_000, prefix: "+", ar: "منتج مباع", en: "products sold" },
   { value: 5_000, prefix: "+", ar: "عميل سعيد", en: "happy customers" },
   { value: 27, ar: "محافظة بنوصلها", en: "governorates we ship to" },
-  { value: 7, ar: "سنين خبرة", en: "years of experience" },
+  // Since 1998 — kept dynamic-free so the number displayed stays the
+  // number the copy elsewhere on the site says. Bump this in place if
+  // the founding date shifts. The prefix "+" reads as "27 and more".
+  { value: 27, prefix: "+", ar: "سنة في السوق", en: "years in the market" },
 ];
 
 export default async function AboutPage({ params }: PageProps<"/[locale]"> & {
@@ -71,8 +74,8 @@ export default async function AboutPage({ params }: PageProps<"/[locale]"> & {
   const aboutSchema = aboutPageSchema({
     url: absoluteUrl(`/${locale}/about`),
     description: isRTL
-      ? "M.M Bags — قصة ماركو ميلاد: مطور ورائد أعمال من القاهرة، بنا متجر شنط سفر بجودة حقيقية وسعر عادل."
-      : "M.M Bags — Marco Milad's story. A Cairo-based founder building a bag store with real quality and a fair price.",
+      ? "M.M Bags تأسست في 1998 بمحافظة سوهاج — قصة براند عائلي بيديره ماركو ميلاد، مطور ورائد أعمال، بجودة حقيقية وسعر عادل."
+      : "M.M Bags was founded in 1998 in Sohag governorate — the story of a family brand now run by Marco Milad, a developer and entrepreneur.",
   });
 
   return (
@@ -101,25 +104,25 @@ export default async function AboutPage({ params }: PageProps<"/[locale]"> & {
         <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-16">
           <div className="flex flex-col gap-5">
             <p className="font-mono text-xs uppercase tracking-[0.3em] text-[var(--color-accent-dark)]">
-              {locale === "ar" ? "المؤسس" : "Founder"}
+              {locale === "ar" ? "الجيل الحالي" : "The current chapter"}
             </p>
             <h2 className="font-display text-3xl md:text-4xl">
               {locale === "ar" ? "ماركو ميلاد" : "Marco Milad"}
             </h2>
             <p className="text-sm leading-relaxed text-[var(--color-text)] md:text-base">
               {locale === "ar"
-                ? "مطور ورائد أعمال من القاهرة. بدأت M.M Bags لأني دورت كتير على شنطة سفر بجودة حقيقية بسعر معقول في مصر، وملقتش. قررت أجيبها بنفسي — أتفق مباشرة مع المصنّعين، أتجنب الوسطاء، وأشاركها مع المسافرين زيي."
-                : "A developer and entrepreneur in Cairo. I started M.M Bags because I couldn't find quality travel bags at fair prices in Egypt. So I decided to source them myself — direct from the makers, no middlemen, and share them with travelers like me."}
+                ? "M.M Bags اتأسست في 1998 من محافظة سوهاج — مشروع عائلي بدأ بفرع واحد صغير في مدينة طما بيقدّم شنط جودة حقيقية بأسعار عادلة لأهل الصعيد. بعد أكتر من 25 سنة، البراند بقاله فرعين في طما (شارع الشهداء وشارع العزراء)، ودلوقتي بيتوسّع online لكل محافظات مصر."
+                : "M.M Bags was founded in 1998 in Sohag governorate — a family project that started with a single small store in Tama, offering real-quality bags at fair prices to Upper Egypt. More than 25 years later, the brand has two branches in Tama (Shohada Street and Al-Ozraa Street) and is now expanding online to reach every governorate in Egypt."}
             </p>
             <p className="text-sm leading-relaxed text-[var(--color-text)] md:text-base">
               {locale === "ar"
-                ? "خلفيتي في التكنولوجيا بتخلي المتجر مختلف — أسرع، أذكى، وأصدق. مفيش وعود فاضية، مفيش أسعار مبالغ فيها."
-                : "My tech background means the store works differently — faster, smarter, more honest. No empty promises, no inflated prices."}
+                ? "أنا ماركو ميلاد — مطور ورائد أعمال، وبنكمّل الرحلة اللي بدأتها العيلة بنفس الشغف الأصلي. خلفيتي في التكنولوجيا بتخلي المتجر مختلف online — أسرع، أذكى، وأصدق. مفيش وعود فاضية، مفيش أسعار مبالغ فيها."
+                : "I'm Marco Milad — a developer and entrepreneur, continuing the journey the family started with the same original passion. My tech background makes the online store different — faster, smarter, more honest. No empty promises, no inflated prices."}
             </p>
             <blockquote className="mt-2 border-s-4 border-[var(--color-accent)] bg-[var(--color-surface)] p-5 text-sm italic leading-relaxed text-[var(--color-text)] md:text-base">
               {locale === "ar"
-                ? "بدأت M.M Bags لأني دورت كتير على شنطة سفر بجودة حقيقية بسعر معقول، ملقتش. قررت أجيبها بنفسي وأشارككم."
-                : "I started M.M Bags because I searched a lot for quality travel luggage at a fair price and couldn't find any. I decided to bring it myself and share it with you."}
+                ? "بختار كل شنطة بإيدي عشان تسافر معاك راحل البال — بنفس الاهتمام اللي بدأنا بيه من أول يوم."
+                : "I hand-pick every bag so it travels with you in peace of mind — with the same care we've had since day one."}
               <footer className="mt-3 font-mono text-xs not-italic uppercase tracking-wider text-[var(--color-text-secondary)]">
                 — {locale === "ar" ? "ماركو ميلاد" : "Marco Milad"}
               </footer>
