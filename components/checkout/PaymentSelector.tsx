@@ -1,11 +1,32 @@
 "use client";
 
 import type { UseFormReturn } from "react-hook-form";
-import { Banknote, CreditCard, ShieldCheck } from "lucide-react";
+import { Banknote, Smartphone } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
-import { COD_FEE, type CheckoutValues } from "@/lib/checkout/schema";
+import {
+  COD_FEE,
+  type CheckoutPaymentMethod,
+  type CheckoutValues,
+} from "@/lib/checkout/schema";
 import { cn, formatPriceEGP } from "@/lib/utils";
 
+/**
+ * Payment selector — Cash on Delivery and InstaPay.
+ *
+ * Card via Paymob is intentionally NOT offered here. Paymob merchant
+ * onboarding + integration is deferred; leaving a selectable Card
+ * option would let a customer "place order" without ever being
+ * charged (fraud vector flagged by the launch audit). When Paymob
+ * lands, add the card option back and gate the placeOrder action
+ * on a real payment-intent id.
+ *
+ * InstaPay is a manual bank-transfer flow: the customer sees
+ * transfer instructions on the order-confirmation page, sends the
+ * money to Marco's InstaPay handle, then WhatsApps the receipt.
+ * The admin manually marks payment_status='paid' once the transfer
+ * arrives. `payment_status` stays at 'pending' until that manual
+ * confirmation — nothing here can auto-mark an order paid.
+ */
 export function PaymentSelector({
   form,
   locale,
@@ -24,20 +45,6 @@ export function PaymentSelector({
         </legend>
 
         <PaymentOption
-          id="pm-card"
-          value="card"
-          checked={selected === "card"}
-          register={register("paymentMethod")}
-          icon={<CreditCard className="h-5 w-5" />}
-          title={locale === "ar" ? "بطاقة ائتمان عبر Paymob" : "Card via Paymob"}
-          subtitle={
-            locale === "ar"
-              ? "Visa · Mastercard · Meeza — معاملة آمنة 3-D Secure"
-              : "Visa · Mastercard · Meeza — 3-D Secure transaction"
-          }
-        />
-
-        <PaymentOption
           id="pm-cod"
           value="cod"
           checked={selected === "cod"}
@@ -50,21 +57,21 @@ export function PaymentSelector({
               : `${formatPriceEGP(COD_FEE, locale)} collection fee added`
           }
         />
-      </fieldset>
 
-      {selected === "card" && (
-        <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center">
-          <ShieldCheck className="mx-auto mb-3 h-8 w-8 text-[var(--color-primary)]" />
-          <p className="font-semibold text-[var(--color-text)]">
-            {locale === "ar" ? "Paymob iframe (مكان مؤقت)" : "Paymob iframe (placeholder)"}
-          </p>
-          <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-            {locale === "ar"
-              ? "هيظهر هنا iframe الدفع الحقيقي بعد ما نربط مفاتيح Paymob."
-              : "The real Paymob payment iframe will render here once API keys are configured."}
-          </p>
-        </div>
-      )}
+        <PaymentOption
+          id="pm-instapay"
+          value="instapay"
+          checked={selected === "instapay"}
+          register={register("paymentMethod")}
+          icon={<Smartphone className="h-5 w-5" />}
+          title={locale === "ar" ? "InstaPay / تحويل بنكي" : "InstaPay / Bank transfer"}
+          subtitle={
+            locale === "ar"
+              ? "تحويل مباشر بدون رسوم. هنبعتلك التفاصيل بعد التأكيد."
+              : "Direct transfer with zero fees. We'll send you the details after checkout."
+          }
+        />
+      </fieldset>
 
       {selected === "cod" && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-text)]">
@@ -85,6 +92,30 @@ export function PaymentSelector({
           )}
         </div>
       )}
+
+      {selected === "instapay" && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-text)]">
+          {locale === "ar" ? (
+            <>
+              <p className="font-medium">
+                بعد ما تأكد الطلب، هنعرضلك رقم الـ InstaPay و تحوّل.
+              </p>
+              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                ابعت صورة الإيصال على WhatsApp، ولما نستلم التحويل هنأكّد الطلب فوراً.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-medium">
+                After you confirm, we&apos;ll show you the InstaPay account to transfer to.
+              </p>
+              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                Send us the receipt on WhatsApp — we confirm your order as soon as the transfer lands.
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -99,7 +130,7 @@ function PaymentOption({
   subtitle,
 }: {
   id: string;
-  value: "card" | "cod";
+  value: CheckoutPaymentMethod;
   checked: boolean;
   register: ReturnType<UseFormReturn<CheckoutValues>["register"]>;
   icon: React.ReactNode;

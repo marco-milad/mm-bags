@@ -53,7 +53,12 @@ export function CheckoutFlow({ locale }: { locale: Locale }) {
       street: "",
       building: "",
       notes: "",
-      paymentMethod: "card",
+      // Default to COD — the most common Egyptian-market choice, and
+      // safe to pre-select because it has zero fraud surface. Card is
+      // no longer a valid option (Paymob deferred); InstaPay is opt-
+      // in via the radio so we don't force customers into the manual-
+      // transfer flow.
+      paymentMethod: "cod",
     },
   });
 

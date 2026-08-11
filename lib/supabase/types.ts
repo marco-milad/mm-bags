@@ -20,7 +20,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
-export type PaymentMethod = "card" | "cod";
+export type PaymentMethod = "card" | "cod" | "instapay";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export type NotificationChannel = "email" | "whatsapp";
 

@@ -29,8 +29,17 @@ export const shippingSchema = z.object({
   notes: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
+// Payment methods creatable from the customer checkout. The DB CHECK
+// constraint still allows 'card' for backwards-compat with any
+// historical row, but new orders can only be COD or InstaPay until
+// the Paymob integration lands.
+export const CHECKOUT_PAYMENT_METHODS = ["cod", "instapay"] as const;
+export type CheckoutPaymentMethod = (typeof CHECKOUT_PAYMENT_METHODS)[number];
+
 export const paymentSchema = z.object({
-  paymentMethod: z.enum(["card", "cod"], { message: "اختار طريقة الدفع" }),
+  paymentMethod: z.enum(CHECKOUT_PAYMENT_METHODS, {
+    message: "اختار طريقة الدفع",
+  }),
 });
 
 export const checkoutSchema = shippingSchema.extend(paymentSchema.shape);
@@ -61,10 +70,12 @@ export type PlaceOrderInput = z.infer<typeof placeOrderInputSchema>;
 
 export function calcTotals(
   items: { qty: number; unitPrice: number }[],
-  paymentMethod: "card" | "cod",
+  paymentMethod: CheckoutPaymentMethod,
 ) {
   const subtotal = items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0);
   const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
+  // Only COD carries the collection surcharge; InstaPay is a direct
+  // bank transfer with no per-order fee we need to pass through.
   const codFee = paymentMethod === "cod" ? COD_FEE : 0;
   const total = subtotal + shippingFee + codFee;
   return { subtotal, shippingFee, codFee, total };

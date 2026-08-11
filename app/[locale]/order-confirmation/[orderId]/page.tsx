@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, MessageCircle, Package } from "lucide-react";
+import { CheckCircle2, Clock, MessageCircle, Package } from "lucide-react";
 import { hasLocale } from "@/lib/i18n-config";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatPriceEGP } from "@/lib/utils";
+import { InstapayInstructions } from "@/components/order/InstapayInstructions";
+
+// InstaPay handle read from env so Marco can edit it without a code
+// change. Falls back to a placeholder in local dev — production MUST
+// set `NEXT_PUBLIC_INSTAPAY_HANDLE` to Marco's real handle before
+// the first customer picks InstaPay at checkout.
+const INSTAPAY_HANDLE =
+  process.env.NEXT_PUBLIC_INSTAPAY_HANDLE ?? "mmbags@instapay";
 
 export const dynamic = "force-dynamic";
 
@@ -49,19 +57,43 @@ export default async function OrderConfirmationPage({
       : `Hi, I have a question about order ${order.order_number}.`,
   )}`;
 
+  const isInstapay = order.payment_method === "instapay";
+  const awaitingPayment = isInstapay && order.payment_status === "pending";
+
   return (
     <section className="mx-auto max-w-2xl px-4 py-12 md:px-6 md:py-16">
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-success)]/15 text-[var(--color-success)]">
-          <CheckCircle2 className="h-9 w-9" />
-        </div>
+        {/* Two success shapes: a warm "confirmed" tick for COD / paid
+            orders, and an amber "waiting for your transfer" clock for
+            InstaPay orders that still owe payment. The heading copy
+            adjusts to match — we don't want to say "confirmed ✅" to
+            a customer we haven't been paid by yet. */}
+        {awaitingPayment ? (
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-accent)]/20 text-[var(--color-accent-dark)]">
+            <Clock className="h-9 w-9" />
+          </div>
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-success)]/15 text-[var(--color-success)]">
+            <CheckCircle2 className="h-9 w-9" />
+          </div>
+        )}
         <h1 className="font-display text-3xl md:text-4xl">
-          {locale === "ar" ? "طلبك اتأكد ✅" : "Order confirmed ✅"}
+          {awaitingPayment
+            ? locale === "ar"
+              ? "طلبك اتحجز — باقي الدفع"
+              : "Order reserved — payment pending"
+            : locale === "ar"
+              ? "طلبك اتأكد ✅"
+              : "Order confirmed ✅"}
         </h1>
         <p className="text-sm text-[var(--color-text-secondary)]">
-          {locale === "ar"
-            ? "شكراً يا فندم — هنتواصل معاك خلال ساعات للتأكيد."
-            : "Thanks! We'll reach out shortly to confirm details."}
+          {awaitingPayment
+            ? locale === "ar"
+              ? "حوّل المبلغ عبر InstaPay وابعت الإيصال — هنبدأ التجهيز فوراً."
+              : "Transfer via InstaPay and send us the receipt — we start prep the moment it's verified."
+            : locale === "ar"
+              ? "شكراً يا فندم — هنتواصل معاك خلال ساعات للتأكيد."
+              : "Thanks! We'll reach out shortly to confirm details."}
         </p>
         <div className="mt-2 rounded-lg bg-[var(--color-surface)] px-4 py-3">
           <p className="text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
@@ -74,6 +106,20 @@ export default async function OrderConfirmationPage({
       </div>
 
       <div className="mt-10 space-y-6">
+        {/* InstaPay payment instructions — first thing the customer
+            sees under the header when payment is pending. Copy-to-
+            clipboard handle + WhatsApp receipt CTA are inside the
+            client subtree; this file stays a server component. */}
+        {awaitingPayment && (
+          <InstapayInstructions
+            locale={locale}
+            orderNumber={order.order_number}
+            totalDue={order.total}
+            whatsappNumber={whatsappNumber}
+            instapayHandle={INSTAPAY_HANDLE}
+          />
+        )}
+
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
             {locale === "ar" ? "ملخص" : "Summary"}
@@ -108,13 +154,17 @@ export default async function OrderConfirmationPage({
             <Row
               label={locale === "ar" ? "طريقة الدفع" : "Payment"}
               value={
-                order.payment_method === "card"
+                order.payment_method === "instapay"
                   ? locale === "ar"
-                    ? "بطاقة ائتمان"
-                    : "Card"
-                  : locale === "ar"
-                    ? "الدفع عند الاستلام"
-                    : "Cash on delivery"
+                    ? "InstaPay"
+                    : "InstaPay"
+                  : order.payment_method === "card"
+                    ? locale === "ar"
+                      ? "بطاقة ائتمان"
+                      : "Card"
+                    : locale === "ar"
+                      ? "الدفع عند الاستلام"
+                      : "Cash on delivery"
               }
             />
             <div className="flex justify-between border-t border-[var(--color-border)] pt-2 text-base">
@@ -140,15 +190,17 @@ export default async function OrderConfirmationPage({
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-          {order.payment_method === "cod" && (
-            <Link
-              href={`/${locale}/track/${order.order_number}${phoneDigits ? `?p=${phoneDigits.slice(-4)}` : ""}`}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
-            >
-              <Package className="h-4 w-4" />
-              {locale === "ar" ? "تتبع الطلب" : "Track order"}
-            </Link>
-          )}
+          {/* Track-order CTA — visible for both COD and InstaPay orders
+              once they exist. For an InstaPay order still awaiting
+              payment, tracking shows the "waiting for transfer" state,
+              which is honest and still useful. */}
+          <Link
+            href={`/${locale}/track/${order.order_number}${phoneDigits ? `?p=${phoneDigits.slice(-4)}` : ""}`}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
+          >
+            <Package className="h-4 w-4" />
+            {locale === "ar" ? "تتبع الطلب" : "Track order"}
+          </Link>
           <a
             href={whatsappHref}
             target="_blank"

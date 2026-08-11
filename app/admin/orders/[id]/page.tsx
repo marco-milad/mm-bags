@@ -7,7 +7,7 @@ import {
   getReturnableQuantitiesForOrder,
   listReturnsForOrder,
 } from "@/lib/queries/admin-returns";
-import { saveCodTracking } from "@/lib/admin/order-actions";
+import { markInstapayPaid, saveCodTracking } from "@/lib/admin/order-actions";
 import { StatusDropdown } from "@/components/admin/orders/StatusDropdown";
 import { PrintInvoiceButton } from "@/components/admin/orders/PrintButton";
 import { ReturnOrderDialog } from "@/components/admin/orders/ReturnOrderDialog";
@@ -378,6 +378,62 @@ export default async function OrderDetailPage({
                   </li>
                 ))}
               </ul>
+            )}
+          </section>
+        )}
+
+        {/* InstaPay payment confirmation — only surfaces on orders
+            that picked InstaPay at checkout. Shows a "Confirm
+            payment" action while payment_status is 'pending', or a
+            green "already paid" pill once the transfer's been
+            verified. The action is idempotent; the underlying server
+            action refuses to double-flip. */}
+        {order.payment_method === "instapay" && (
+          <section className="rounded-xl border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/5 p-5 print:hidden">
+            <p className="mb-3 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
+              {isAr ? "دفع InstaPay" : "InstaPay payment"}
+            </p>
+            {order.payment_status === "pending" ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--color-text)]">
+                    {isAr
+                      ? "بانتظار وصول التحويل"
+                      : "Awaiting transfer"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
+                    {isAr
+                      ? `العميل شاف تعليمات التحويل. تأكد من الإيصال على واتساب قبل ما تضغط "تأكيد الدفع".`
+                      : `The customer has seen the transfer instructions. Verify the receipt on WhatsApp before confirming.`}
+                  </p>
+                </div>
+                <form action={markInstapayPaid}>
+                  <input type="hidden" name="id" value={order.id} />
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
+                  >
+                    {isAr ? "تأكيد الدفع" : "Confirm payment"}
+                  </button>
+                </form>
+              </div>
+            ) : order.payment_status === "paid" ? (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="inline-flex items-center rounded-full bg-[var(--color-success)]/15 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-[var(--color-success)]">
+                  {isAr ? "تم الدفع" : "Paid"}
+                </span>
+                <span className="text-xs text-[var(--color-text-secondary)]">
+                  {isAr
+                    ? "التحويل اتأكد يدوياً — الطلب دخل مسار التجهيز."
+                    : "Transfer manually confirmed — order moved into the fulfilment queue."}
+                </span>
+              </div>
+            ) : (
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                {isAr
+                  ? `حالة الدفع الحالية: ${paymentStatusLabel(order.payment_status, locale)}`
+                  : `Current payment status: ${paymentStatusLabel(order.payment_status, locale)}`}
+              </p>
             )}
           </section>
         )}

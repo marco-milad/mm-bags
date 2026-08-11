@@ -113,10 +113,10 @@ export function OrderReview({
 
       <Section title={locale === "ar" ? "طريقة الدفع" : "Payment method"}>
         <p className="text-sm text-[var(--color-text)]">
-          {values.paymentMethod === "card"
+          {values.paymentMethod === "instapay"
             ? locale === "ar"
-              ? "بطاقة ائتمان عبر Paymob"
-              : "Card via Paymob"
+              ? "InstaPay / تحويل بنكي — التفاصيل بعد التأكيد"
+              : "InstaPay / Bank transfer — details after confirmation"
             : locale === "ar"
               ? `الدفع عند الاستلام (+${formatPriceEGP(totals.codFee, locale)})`
               : `Cash on delivery (+${formatPriceEGP(totals.codFee, locale)})`}

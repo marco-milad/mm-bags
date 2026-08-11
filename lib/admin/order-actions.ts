@@ -151,6 +151,62 @@ const codSchema = z.object({
   currentLocation: z.string().trim().max(100).optional(),
 });
 
+/**
+ * Manually confirm that an InstaPay transfer has landed in Marco's
+ * account for the given order. Flips payment_status to 'paid' and,
+ * if the order is still 'pending' (never confirmed), advances it to
+ * 'confirmed' so the normal fulfilment flow can pick it up.
+ *
+ * Constraints (defence-in-depth so this can't be misused):
+ *   - Admin/manager only.
+ *   - Only applies to orders whose payment_method is 'instapay' — a
+ *     COD order's "paid" moment is the courier handover, not a
+ *     manual admin click, and a card order (once Paymob lands) will
+ *     have its payment_status flipped by the webhook, not by hand.
+ *   - Requires payment_status to currently be 'pending'; refuses to
+ *     re-flip a 'paid' order (idempotent) or reverse a 'refunded'.
+ *   - No automatic side effects (no Twilio, no stock movement) —
+ *     stock was already reserved at order creation, and the
+ *     customer-facing WhatsApp send lives with the delivery flow.
+ */
+export async function markInstapayPaid(formData: FormData): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
+  const parsed = z
+    .object({ id: z.uuid() })
+    .safeParse({ id: formData.get("id") });
+  if (!parsed.success) return;
+  const { id } = parsed.data;
+
+  const admin = getSupabaseAdminClient();
+  const { data: current } = await admin
+    .from("orders")
+    .select("payment_method, payment_status, status")
+    .eq("id", id)
+    .maybeSingle();
+  if (!current) return;
+  if (current.payment_method !== "instapay") return;
+  if (current.payment_status !== "pending") return;
+
+  // Bump the order status too when it's still 'pending' — the admin
+  // has now taken the same action a courier's cash-on-delivery would
+  // trigger, so the order can move into the fulfilment queue.
+  const nextStatus =
+    current.status === "pending" ? "confirmed" : current.status;
+
+  await admin
+    .from("orders")
+    .update({
+      payment_status: "paid",
+      status: nextStatus,
+    })
+    .eq("id", id)
+    .eq("payment_status", "pending"); // race guard
+
+  revalidatePath(`/admin/orders/${id}`);
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin");
+}
+
 export async function saveCodTracking(formData: FormData): Promise<void> {
   await requireAdmin(["admin", "manager"]);
   const parsed = codSchema.safeParse({
