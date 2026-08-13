@@ -74,10 +74,37 @@ export async function updateOrderStatus(formData: FormData): Promise<void> {
     }> | null;
   };
 
+  // Manual cancel of an UNPAID InstaPay order is blocked: the expiry
+  // sweep (migration 0014) is the only path that cancels those,
+  // because it restocks atomically in the same transaction. A plain
+  // status write here would strand the deducted stock forever (there
+  // is no app-side restock on cancel yet — Phase B).
+  if (status === "cancelled") {
+    const { data: target } = await admin
+      .from("orders")
+      .select("payment_method, payment_status")
+      .eq("id", id)
+      .maybeSingle();
+    if (
+      target?.payment_method === "instapay" &&
+      target.payment_status === "pending"
+    ) {
+      console.warn(
+        `[orders/${id}] manual cancel of unpaid InstaPay order refused — the expiry sweep cancels + restocks it atomically instead.`,
+      );
+      return;
+    }
+  }
+
   // Atomic transition: only one writer can flip `pending → delivered`
   // because the WHERE clause requires the old status to be different.
   // This collapses the previous read-then-write race that allowed
   // double-clicks to fire two WhatsApp messages.
+  //
+  // `.neq("status", "cancelled")` on every branch: a cancelled order
+  // (admin cancel or InstaPay expiry — the latter already restocked)
+  // must never be resurrected by the dropdown, because nothing would
+  // re-deduct its stock.
   let transitionedToDelivered = false;
   if (status === "delivered") {
     const { data: updated } = await admin
@@ -85,11 +112,16 @@ export async function updateOrderStatus(formData: FormData): Promise<void> {
       .update({ status })
       .eq("id", id)
       .neq("status", "delivered")
+      .neq("status", "cancelled")
       .select("id")
       .maybeSingle();
     transitionedToDelivered = !!updated;
   } else {
-    await admin.from("orders").update({ status }).eq("id", id);
+    await admin
+      .from("orders")
+      .update({ status })
+      .eq("id", id)
+      .neq("status", "cancelled");
   }
 
   if (transitionedToDelivered) {
@@ -186,6 +218,10 @@ export async function markInstapayPaid(formData: FormData): Promise<void> {
   if (!current) return;
   if (current.payment_method !== "instapay") return;
   if (current.payment_status !== "pending") return;
+  // A cancelled order can't be confirmed as paid — its stock is gone
+  // (expiry sweep restocked it). If a transfer arrives for one, that's
+  // a manual support case, not a one-click confirm.
+  if (current.status === "cancelled") return;
 
   // Bump the order status too when it's still 'pending' — the admin
   // has now taken the same action a courier's cash-on-delivery would
@@ -200,7 +236,8 @@ export async function markInstapayPaid(formData: FormData): Promise<void> {
       status: nextStatus,
     })
     .eq("id", id)
-    .eq("payment_status", "pending"); // race guard
+    .eq("payment_status", "pending") // race guard
+    .neq("status", "cancelled"); // expiry sweep may have won the race
 
   revalidatePath(`/admin/orders/${id}`);
   revalidatePath("/admin/orders");

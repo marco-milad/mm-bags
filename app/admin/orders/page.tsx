@@ -4,6 +4,8 @@ import {
   listAdminOrders,
   type ListOrderFilters,
 } from "@/lib/queries/admin-orders";
+import { runInstapayExpirySweep } from "@/lib/orders/instapay-expiry";
+import { requireAdmin } from "@/lib/admin/auth";
 import { StatusDropdown } from "@/components/admin/orders/StatusDropdown";
 import { getAdminLocale } from "@/lib/admin/locale";
 import {
@@ -38,6 +40,32 @@ export default async function OrdersPage({
 }: PageProps<"/admin/orders">) {
   const locale = await getAdminLocale();
   const isAr = locale === "ar";
+
+  // Opportunistic InstaPay expiry sweep. Vercel Hobby crons fire at
+  // most once a day, so we also sweep whenever the orders list is
+  // opened — the sweep is idempotent (single transaction in the DB
+  // function) and no-ops in one indexed query when nothing is due.
+  //
+  // Auth-gated HERE, not just by the layout: App Router renders layout
+  // and page concurrently, so an anonymous request to /admin/orders
+  // could otherwise fire the sweep before the layout's redirect lands.
+  // Never let a sweep failure break the orders page.
+  try {
+    await requireAdmin(["admin", "manager"]);
+    // The sweep reports RPC failures as {ok:false} rather than
+    // throwing — surface them, otherwise a missing/broken DB function
+    // fails silently forever.
+    const sweep = await runInstapayExpirySweep();
+    if (!sweep.ok) {
+      console.warn("[admin/orders] instapay expiry sweep failed:", sweep.error);
+    }
+  } catch (err) {
+    // Non-admin visitor (layout redirects them anyway) or sweep error.
+    if (err instanceof Error && err.message !== "UNAUTHORIZED" && err.message !== "FORBIDDEN") {
+      console.warn("[admin/orders] instapay expiry sweep failed:", err.message);
+    }
+  }
+
   const sp = await searchParams;
   const filters: ListOrderFilters = {
     status:

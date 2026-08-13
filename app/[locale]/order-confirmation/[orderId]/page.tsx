@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, Clock, MessageCircle, Package } from "lucide-react";
+import { CheckCircle2, Clock, MessageCircle, Package, XCircle } from "lucide-react";
 import { hasLocale } from "@/lib/i18n-config";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatPriceEGP } from "@/lib/utils";
@@ -14,6 +14,39 @@ import { InstapayInstructions } from "@/components/order/InstapayInstructions";
 // this only matters for orders placed before a misconfigured deploy).
 const INSTAPAY_HANDLE =
   process.env.NEXT_PUBLIC_INSTAPAY_HANDLE?.trim() || null;
+
+// App-generated share link (ipn.eg is InstaPay's verified Universal /
+// App Link domain — a real anchor tap opens the app with the recipient
+// prefilled). We only accept links on that domain: the trailing code is
+// opaque and app-generated, so anything else in this var is a config
+// mistake we refuse to ship to customers.
+function instapayShareLink(): string | null {
+  const raw = process.env.NEXT_PUBLIC_INSTAPAY_SHARE_LINK?.trim();
+  if (!raw) return null;
+  if (!/^https:\/\/ipn\.eg\//i.test(raw)) {
+    console.warn(
+      "[order-confirmation] NEXT_PUBLIC_INSTAPAY_SHARE_LINK is set but is not an https://ipn.eg/ link — ignoring it.",
+    );
+    return null;
+  }
+  return raw;
+}
+
+// QR of the share link, rendered server-side into a data URL so the
+// client bundle never ships the qrcode library. Encodes EXACTLY the
+// configured link — no amount, no order id, no invented parameters.
+async function shareLinkQrDataUrl(link: string): Promise<string | null> {
+  try {
+    const QRCode = (await import("qrcode")).default;
+    return await QRCode.toDataURL(link, { margin: 1, width: 220 });
+  } catch (err) {
+    console.warn(
+      "[order-confirmation] QR generation failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -60,22 +93,38 @@ export default async function OrderConfirmationPage({
   )}`;
 
   const isInstapay = order.payment_method === "instapay";
-  const awaitingPayment = isInstapay && order.payment_status === "pending";
+  // Any cancelled InstaPay order gets the "window closed" treatment —
+  // whether the expiry sweep cancelled it (payment_status='failed') or
+  // an admin cancelled it manually (payment_status may still be
+  // 'pending'). Either way, showing transfer instructions on a
+  // cancelled order would invite the customer to pay for nothing.
+  const paymentExpired = isInstapay && order.status === "cancelled";
+  const awaitingPayment =
+    isInstapay && order.payment_status === "pending" && !paymentExpired;
   if (awaitingPayment && !INSTAPAY_HANDLE) {
     console.warn(
       `[order-confirmation/${order.order_number}] NEXT_PUBLIC_INSTAPAY_HANDLE is not configured — rendering InstaPay instructions without a transfer handle.`,
     );
   }
 
+  const shareLink = awaitingPayment ? instapayShareLink() : null;
+  const qrDataUrl = shareLink ? await shareLinkQrDataUrl(shareLink) : null;
+
   return (
     <section className="mx-auto max-w-2xl px-4 py-12 md:px-6 md:py-16">
       <div className="flex flex-col items-center gap-4 text-center">
-        {/* Two success shapes: a warm "confirmed" tick for COD / paid
-            orders, and an amber "waiting for your transfer" clock for
-            InstaPay orders that still owe payment. The heading copy
-            adjusts to match — we don't want to say "confirmed ✅" to
-            a customer we haven't been paid by yet. */}
-        {awaitingPayment ? (
+        {/* Three states: a warm "confirmed" tick for COD / paid
+            orders, an amber "waiting for your transfer" clock for
+            InstaPay orders that still owe payment, and a muted "window
+            expired" mark for InstaPay orders the expiry sweep
+            cancelled. The heading copy adjusts to match — we don't
+            want to say "confirmed ✅" to a customer we haven't been
+            paid by yet. */}
+        {paymentExpired ? (
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-error)]/10 text-[var(--color-error)]">
+            <XCircle className="h-9 w-9" />
+          </div>
+        ) : awaitingPayment ? (
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-accent)]/20 text-[var(--color-accent-dark)]">
             <Clock className="h-9 w-9" />
           </div>
@@ -85,22 +134,30 @@ export default async function OrderConfirmationPage({
           </div>
         )}
         <h1 className="font-display text-3xl md:text-4xl">
-          {awaitingPayment
+          {paymentExpired
             ? locale === "ar"
-              ? "طلبك اتحجز — باقي الدفع"
-              : "Order reserved — payment pending"
-            : locale === "ar"
-              ? "طلبك اتأكد ✅"
-              : "Order confirmed ✅"}
+              ? "انتهت مهلة الدفع"
+              : "Payment window expired"
+            : awaitingPayment
+              ? locale === "ar"
+                ? "طلبك اتحجز — باقي الدفع"
+                : "Order reserved — payment pending"
+              : locale === "ar"
+                ? "طلبك اتأكد ✅"
+                : "Order confirmed ✅"}
         </h1>
         <p className="text-sm text-[var(--color-text-secondary)]">
-          {awaitingPayment
+          {paymentExpired
             ? locale === "ar"
-              ? "حوّل المبلغ عبر InstaPay وابعت الإيصال — هنبدأ التجهيز فوراً."
-              : "Transfer via InstaPay and send us the receipt — we start prep the moment it's verified."
-            : locale === "ar"
-              ? "شكراً يا فندم — هنتواصل معاك خلال ساعات للتأكيد."
-              : "Thanks! We'll reach out shortly to confirm details."}
+              ? "الطلب اتلغى لأننا لم نستلم التحويل في الوقت المحدد. تقدر تعمل طلب جديد في أي وقت — ولو كنت حوّلت بالفعل، كلمنا على واتساب فوراً ومعاك الإيصال."
+              : "The order was cancelled because the transfer didn't arrive in time. You can place a new order anytime — and if you already transferred, message us on WhatsApp right away with the receipt."
+            : awaitingPayment
+              ? locale === "ar"
+                ? "حوّل المبلغ عبر InstaPay وابعت الإيصال — هنبدأ التجهيز فوراً."
+                : "Transfer via InstaPay and send us the receipt — we start prep the moment it's verified."
+              : locale === "ar"
+                ? "شكراً يا فندم — هنتواصل معاك خلال ساعات للتأكيد."
+                : "Thanks! We'll reach out shortly to confirm details."}
         </p>
         <div className="mt-2 rounded-lg bg-[var(--color-surface)] px-4 py-3">
           <p className="text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
@@ -124,6 +181,8 @@ export default async function OrderConfirmationPage({
             totalDue={order.total}
             whatsappNumber={whatsappNumber}
             instapayHandle={INSTAPAY_HANDLE}
+            shareLink={shareLink}
+            qrDataUrl={qrDataUrl}
           />
         )}
 

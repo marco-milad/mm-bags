@@ -428,6 +428,18 @@ export default async function OrderDetailPage({
                     : "Transfer manually confirmed — order moved into the fulfilment queue."}
                 </span>
               </div>
+            ) : order.payment_status === "failed" &&
+              order.status === "cancelled" ? (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="inline-flex items-center rounded-full bg-[var(--color-error)]/10 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-[var(--color-error)]">
+                  {isAr ? "انتهت المهلة" : "Expired"}
+                </span>
+                <span className="text-xs text-[var(--color-text-secondary)]">
+                  {isAr
+                    ? "التحويل لم يصل خلال المهلة — الطلب اتلغى تلقائياً والمخزون رجع. لو العميل بعت إيصال بعدها، دي حالة دعم يدوية."
+                    : "Transfer never arrived — auto-cancelled and restocked. If the customer sends a receipt after this, handle it as a manual support case."}
+                </span>
+              </div>
             ) : (
               <p className="text-sm text-[var(--color-text-secondary)]">
                 {isAr

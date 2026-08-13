@@ -1288,6 +1288,17 @@ export type Database = {
         };
         Returns: void;
       };
+      expire_unpaid_instapay_orders: {
+        Args: {
+          p_cutoff: string;
+          p_limit?: number;
+        };
+        Returns: Array<{
+          expired_order_id: string;
+          order_number: string;
+          items_restocked: number;
+        }>;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

@@ -37,12 +37,20 @@ export function InstapayInstructions({
   totalDue,
   whatsappNumber,
   instapayHandle,
+  shareLink,
+  qrDataUrl,
 }: {
   locale: Locale;
   orderNumber: string;
   totalDue: number;
   whatsappNumber: string;
   instapayHandle: string | null;
+  /** App-generated ipn.eg share link (recipient prefilled). Null when
+      not configured — the deep-link button + QR are simply omitted and
+      the manual copy-the-handle flow below stays fully usable. */
+  shareLink: string | null;
+  /** Server-generated QR data URL encoding exactly `shareLink`. */
+  qrDataUrl: string | null;
 }) {
   const isRTL = locale === "ar";
   const [copied, setCopied] = useState<CopyTarget | null>(null);
@@ -105,6 +113,50 @@ export function InstapayInstructions({
           </p>
         </div>
       </div>
+
+      {/* Native handoff — only when the app-generated share link is
+          configured. Mobile gets a REAL anchor (Universal/App Links on
+          ipn.eg need a genuine user tap — JS redirects don't open the
+          app on iOS); desktop gets a QR of the same link to scan with
+          a phone. Opening the app is NOT payment — the amount is still
+          typed manually and verification stays manual, so the full
+          copy-the-handle fallback below always remains. */}
+      {shareLink && (
+        // When QR generation failed there is nothing to show on
+        // desktop — hide the whole block there instead of rendering
+        // an empty padded box (the anchor inside is mobile-only).
+        <div
+          className={`mb-4 rounded-xl bg-[var(--color-bg)] p-4 ${qrDataUrl ? "" : "md:hidden"}`}
+        >
+          <a
+            href={shareLink}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--color-accent)] px-6 py-3 text-sm font-bold text-[var(--color-primary)] transition hover:brightness-95 md:hidden"
+          >
+            <Smartphone className="h-4 w-4" />
+            {isRTL ? "افتح تطبيق InstaPay" : "Open the InstaPay app"}
+          </a>
+          <p className="mt-2 text-center text-[11px] text-[var(--color-text-secondary)] md:hidden">
+            {isRTL
+              ? "بيفتح التطبيق والمستلم جاهز — هتكتب المبلغ بنفسك وتكمّل التحويل."
+              : "Opens the app with the recipient prefilled — you type the amount and complete the transfer yourself."}
+          </p>
+          {qrDataUrl && (
+            <div className="hidden flex-col items-center gap-2 md:flex">
+              {/* eslint-disable-next-line @next/next/no-img-element -- data URL, no optimization needed */}
+              <img
+                src={qrDataUrl}
+                alt={isRTL ? "QR لفتح InstaPay" : "QR to open InstaPay"}
+                className="h-40 w-40 rounded-lg border border-[var(--color-border)] bg-white p-2"
+              />
+              <p className="text-center text-xs text-[var(--color-text-secondary)]">
+                {isRTL
+                  ? "امسح الكود ده بكاميرا موبايلك لفتح InstaPay — المستلم هيكون جاهز، وهتكتب المبلغ بنفسك."
+                  : "Scan this QR with your phone to open InstaPay — recipient prefilled, you enter the amount yourself."}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Order number + amount + InstaPay handle — each row copyable */}
       <dl className="mb-4 space-y-3 rounded-xl bg-[var(--color-bg)] p-4">
