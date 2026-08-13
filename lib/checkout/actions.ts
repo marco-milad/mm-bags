@@ -30,6 +30,26 @@ export async function placeOrder(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صحيحة" };
   }
   const { checkout, items } = parsed.data;
+
+  // InstaPay is only offered when a real transfer handle is configured.
+  // The checkout UI already hides the option, but a hand-crafted request
+  // could still submit it — refuse rather than create an order the
+  // customer has no way to pay.
+  if (
+    checkout.paymentMethod === "instapay" &&
+    !process.env.NEXT_PUBLIC_INSTAPAY_HANDLE?.trim()
+  ) {
+    console.warn(
+      "[placeOrder] Rejected instapay order — NEXT_PUBLIC_INSTAPAY_HANDLE is not configured.",
+    );
+    // placeOrder doesn't receive the locale, so this rare misconfig
+    // error carries both languages rather than guessing.
+    return {
+      ok: false,
+      error:
+        "الدفع عبر InstaPay غير متاح حالياً — اختار الدفع عند الاستلام. / InstaPay is currently unavailable — please choose Cash on Delivery.",
+    };
+  }
   const totals = calcTotals(items, checkout.paymentMethod);
 
   // Capture the current user (may be null for guest checkout).

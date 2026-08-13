@@ -5,7 +5,16 @@ import {
   type ListOrderFilters,
 } from "@/lib/queries/admin-orders";
 import { toCsv } from "@/lib/queries/admin-reports";
-import type { OrderStatus, PaymentMethod } from "@/lib/supabase/types";
+import {
+  ORDER_STATUSES,
+  FILTER_PAYMENT_METHODS,
+  FILTER_PAYMENT_STATUSES,
+} from "@/lib/admin/labels";
+import type {
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+} from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
@@ -28,11 +37,24 @@ export async function GET(request: Request) {
   }
 
   const sp = new URL(request.url).searchParams;
+  // Validate enum-ish params against the same allowlists the orders
+  // page uses — a mistyped/hand-edited value silently matching nothing
+  // would produce a headers-only CSV that reads as "no orders".
+  const rawStatus = sp.get("status");
+  const rawMethod = sp.get("paymentMethod") || sp.get("method");
+  const rawPaymentStatus = sp.get("paymentStatus") || sp.get("pstatus");
   const filters: ListOrderFilters = {
-    status: (sp.get("status") || undefined) as OrderStatus | undefined,
-    paymentMethod: (sp.get("paymentMethod") || sp.get("method") || undefined) as
-      | PaymentMethod
-      | undefined,
+    status: ORDER_STATUSES.includes(rawStatus as OrderStatus)
+      ? (rawStatus as OrderStatus)
+      : undefined,
+    paymentMethod: FILTER_PAYMENT_METHODS.includes(rawMethod as PaymentMethod)
+      ? (rawMethod as PaymentMethod)
+      : undefined,
+    paymentStatus: FILTER_PAYMENT_STATUSES.includes(
+      rawPaymentStatus as PaymentStatus,
+    )
+      ? (rawPaymentStatus as PaymentStatus)
+      : undefined,
     from: sp.get("from") || undefined,
     to: sp.get("to") || undefined,
     q: sp.get("q") || undefined,

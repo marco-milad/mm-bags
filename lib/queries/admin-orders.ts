@@ -52,6 +52,7 @@ export type AdminOrderRow = Pick<
 export type ListOrderFilters = {
   status?: OrderStatus;
   paymentMethod?: PaymentMethod;
+  paymentStatus?: PaymentStatus;
   from?: string; // ISO date
   to?: string; // ISO date exclusive
   q?: string; // matches order_number or shipping_address.phone (we filter client-side after fetch for phone since it's in jsonb)
@@ -72,6 +73,7 @@ export async function listAdminOrders(
 
   if (filters.status) q = q.eq("status", filters.status);
   if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
+  if (filters.paymentStatus) q = q.eq("payment_status", filters.paymentStatus);
   // Cairo-aligned bounds — an operator filtering "from 2026-06-18"
   // expects every sale rung up after Cairo midnight that day, including
   // the 22:00–24:00 Cairo June 17 tail that the old UTC literal missed.

@@ -1,4 +1,5 @@
 import type { AdminLocale } from "./locale";
+import type { PaymentMethod, PaymentStatus } from "@/lib/supabase/types";
 
 /**
  * Translation tables for admin-side enum values (order status, payment
@@ -98,6 +99,26 @@ export const ORDER_STATUSES = [
   "delivered",
   "cancelled",
 ] as const;
+
+/**
+ * Filterable payment methods / statuses — the single allowlist shared
+ * by the admin orders page and the CSV export route so both validate
+ * URL params identically. Values match the DB CHECK constraints;
+ * 'card' stays listed for historical rows even though the storefront
+ * no longer creates card orders.
+ */
+export const FILTER_PAYMENT_METHODS: ReadonlyArray<PaymentMethod> = [
+  "cod",
+  "instapay",
+  "card",
+];
+
+export const FILTER_PAYMENT_STATUSES: ReadonlyArray<PaymentStatus> = [
+  "pending",
+  "paid",
+  "failed",
+  "refunded",
+];
 
 // ─── Returns ────────────────────────────────────────────────────────
 // Egyptian phrasing mirrors the /[locale]/refund-policy page so the

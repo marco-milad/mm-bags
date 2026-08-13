@@ -7,11 +7,13 @@ import { formatPriceEGP } from "@/lib/utils";
 import { InstapayInstructions } from "@/components/order/InstapayInstructions";
 
 // InstaPay handle read from env so Marco can edit it without a code
-// change. Falls back to a placeholder in local dev — production MUST
-// set `NEXT_PUBLIC_INSTAPAY_HANDLE` to Marco's real handle before
-// the first customer picks InstaPay at checkout.
+// change. NO fallback: a fake placeholder handle would send customers'
+// bank apps to a dead recipient. When unset, InstapayInstructions
+// renders without the handle row and points the customer to WhatsApp
+// for transfer details (checkout also hides the InstaPay option, so
+// this only matters for orders placed before a misconfigured deploy).
 const INSTAPAY_HANDLE =
-  process.env.NEXT_PUBLIC_INSTAPAY_HANDLE ?? "mmbags@instapay";
+  process.env.NEXT_PUBLIC_INSTAPAY_HANDLE?.trim() || null;
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +61,11 @@ export default async function OrderConfirmationPage({
 
   const isInstapay = order.payment_method === "instapay";
   const awaitingPayment = isInstapay && order.payment_status === "pending";
+  if (awaitingPayment && !INSTAPAY_HANDLE) {
+    console.warn(
+      `[order-confirmation/${order.order_number}] NEXT_PUBLIC_INSTAPAY_HANDLE is not configured — rendering InstaPay instructions without a transfer handle.`,
+    );
+  }
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-12 md:px-6 md:py-16">

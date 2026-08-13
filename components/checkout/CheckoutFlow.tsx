@@ -31,7 +31,13 @@ const SHIPPING_FIELDS = [
   "notes",
 ] as const;
 
-export function CheckoutFlow({ locale }: { locale: Locale }) {
+export function CheckoutFlow({
+  locale,
+  instapayEnabled,
+}: {
+  locale: Locale;
+  instapayEnabled: boolean;
+}) {
   const router = useRouter();
   const hydrated = useCartHydrated();
   const items = useCartItems();
@@ -181,7 +187,11 @@ export function CheckoutFlow({ locale }: { locale: Locale }) {
                     : "Pick what works for you."}
                 </p>
               </header>
-              <PaymentSelector form={form} locale={locale} />
+              <PaymentSelector
+                form={form}
+                locale={locale}
+                instapayEnabled={instapayEnabled}
+              />
             </>
           )}
 

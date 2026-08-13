@@ -9,11 +9,15 @@ import { getAdminLocale } from "@/lib/admin/locale";
 import {
   orderStatusLabel,
   paymentMethodLabel,
+  paymentStatusLabel,
   ORDER_STATUSES,
+  FILTER_PAYMENT_METHODS,
+  FILTER_PAYMENT_STATUSES,
 } from "@/lib/admin/labels";
 import type {
   OrderStatus,
   PaymentMethod,
+  PaymentStatus,
 } from "@/lib/supabase/types";
 import { cn, formatPriceEGP } from "@/lib/utils";
 
@@ -40,10 +44,14 @@ export default async function OrdersPage({
       typeof sp?.status === "string" && sp.status in STATUS_CLS
         ? (sp.status as OrderStatus)
         : undefined,
-    paymentMethod:
-      sp?.method === "card" || sp?.method === "cod"
-        ? (sp.method as PaymentMethod)
-        : undefined,
+    paymentMethod: FILTER_PAYMENT_METHODS.includes(sp?.method as PaymentMethod)
+      ? (sp?.method as PaymentMethod)
+      : undefined,
+    paymentStatus: FILTER_PAYMENT_STATUSES.includes(
+      sp?.pstatus as PaymentStatus,
+    )
+      ? (sp?.pstatus as PaymentStatus)
+      : undefined,
     from: typeof sp?.from === "string" ? sp.from : undefined,
     to: typeof sp?.to === "string" ? sp.to : undefined,
     q: typeof sp?.q === "string" ? sp.q : undefined,
@@ -120,8 +128,28 @@ export default async function OrdersPage({
             className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
           >
             <option value="">{isAr ? "الكل" : "All"}</option>
-            <option value="cod">{paymentMethodLabel("cod", locale)}</option>
-            <option value="card">{paymentMethodLabel("card", locale)}</option>
+            {FILTER_PAYMENT_METHODS.map((m) => (
+              <option key={m} value={m}>
+                {paymentMethodLabel(m, locale)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs">
+          <span className="mb-1 block uppercase tracking-wider text-[var(--color-text-secondary)]">
+            {isAr ? "حالة الدفع" : "Payment status"}
+          </span>
+          <select
+            name="pstatus"
+            defaultValue={filters.paymentStatus ?? ""}
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          >
+            <option value="">{isAr ? "الكل" : "All"}</option>
+            {FILTER_PAYMENT_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {paymentStatusLabel(s, locale)}
+              </option>
+            ))}
           </select>
         </label>
         <label className="text-xs">
@@ -211,6 +239,22 @@ export default async function OrdersPage({
                   </td>
                   <td className="px-3 py-2">
                     <PaymentBadge method={o.payment_method} isAr={isAr} />
+                    {/* InstaPay orders live or die on manual payment
+                        verification — surface the payment_status inline
+                        so "awaiting transfer" rows stand out without
+                        opening each order. */}
+                    {o.payment_method === "instapay" && (
+                      <span
+                        className={cn(
+                          "ms-1 inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+                          o.payment_status === "paid"
+                            ? "bg-[var(--color-success)]/15 text-[var(--color-success)]"
+                            : "bg-[var(--color-warning)]/15 text-[var(--color-warning)]",
+                        )}
+                      >
+                        {paymentStatusLabel(o.payment_status ?? "pending", locale)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <span
@@ -272,11 +316,21 @@ function PaymentBadge({
   method: PaymentMethod;
   isAr: boolean;
 }) {
-  return method === "card" ? (
-    <span className="rounded-full bg-[var(--color-accent)]/15 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent-dark)]">
-      {isAr ? "بطاقة" : "Card"}
-    </span>
-  ) : (
+  if (method === "card") {
+    return (
+      <span className="rounded-full bg-[var(--color-accent)]/15 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent-dark)]">
+        {isAr ? "بطاقة" : "Card"}
+      </span>
+    );
+  }
+  if (method === "instapay") {
+    return (
+      <span className="rounded-full bg-[var(--color-primary)]/15 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--color-primary)]">
+        InstaPay
+      </span>
+    );
+  }
+  return (
     <span className="rounded-full bg-brass-500/15 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-brass-700">
       {isAr ? "عند الاستلام" : "COD"}
     </span>

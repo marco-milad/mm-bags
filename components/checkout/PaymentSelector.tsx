@@ -26,13 +26,23 @@ import { cn, formatPriceEGP } from "@/lib/utils";
  * The admin manually marks payment_status='paid' once the transfer
  * arrives. `payment_status` stays at 'pending' until that manual
  * confirmation — nothing here can auto-mark an order paid.
+ *
+ * The InstaPay option only renders when `instapayEnabled` is true —
+ * computed server-side at request time in the checkout page from
+ * NEXT_PUBLIC_INSTAPAY_HANDLE and threaded down as a prop, so the
+ * client bundle can never disagree with the placeOrder server guard
+ * (a module-level env read here would freeze at build time and drift
+ * from runtime env changes). Offering a transfer flow with no real
+ * destination handle would strand customers after checkout.
  */
 export function PaymentSelector({
   form,
   locale,
+  instapayEnabled,
 }: {
   form: UseFormReturn<CheckoutValues>;
   locale: Locale;
+  instapayEnabled: boolean;
 }) {
   const { register, watch } = form;
   const selected = watch("paymentMethod");
@@ -58,19 +68,21 @@ export function PaymentSelector({
           }
         />
 
-        <PaymentOption
-          id="pm-instapay"
-          value="instapay"
-          checked={selected === "instapay"}
-          register={register("paymentMethod")}
-          icon={<Smartphone className="h-5 w-5" />}
-          title={locale === "ar" ? "InstaPay / تحويل بنكي" : "InstaPay / Bank transfer"}
-          subtitle={
-            locale === "ar"
-              ? "تحويل مباشر بدون رسوم. هنبعتلك التفاصيل بعد التأكيد."
-              : "Direct transfer with zero fees. We'll send you the details after checkout."
-          }
-        />
+        {instapayEnabled && (
+          <PaymentOption
+            id="pm-instapay"
+            value="instapay"
+            checked={selected === "instapay"}
+            register={register("paymentMethod")}
+            icon={<Smartphone className="h-5 w-5" />}
+            title={locale === "ar" ? "InstaPay / تحويل بنكي" : "InstaPay / Bank transfer"}
+            subtitle={
+              locale === "ar"
+                ? "تحويل مباشر بدون رسوم. هنبعتلك التفاصيل بعد التأكيد."
+                : "Direct transfer with zero fees. We'll send you the details after checkout."
+            }
+          />
+        )}
       </fieldset>
 
       {selected === "cod" && (
