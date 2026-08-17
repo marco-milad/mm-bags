@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -12,6 +13,7 @@ import {
   Truck,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { preconnect } from "react-dom";
 import type { Locale } from "@/lib/i18n-config";
 import { KineticDestination } from "./KineticDestination";
 
@@ -22,13 +24,23 @@ const WHATSAPP_NUMBER = (
 const RISE = "mm-rise 0.9s cubic-bezier(0.22,1,0.36,1) forwards";
 
 // Hero background video (Supabase Storage, public bucket "videos").
-// The accompanying Unsplash photo doubles as the <video poster> AND is what
-// the page renders if the user prefers reduced motion (video element stays
-// paused on the poster frame — zero video bandwidth burned).
+// Desktop-only: it is mounted after hydration on wide, motion-OK
+// clients and fades in over the poster once it is actually playing.
+// Phones never request a single video byte — they get the poster only.
 const HERO_VIDEO_URL =
   "https://nrlcypdrfmjdwuvuaryp.supabase.co/storage/v1/object/public/videos/4684102-hd_1920_1080_25fps.mp4";
+// Hero poster (the LCP element). Same photo as before, but hosted in
+// our own Supabase Storage so the project's image loader serves it as
+// responsive WebP through the render endpoint (≈15–40 KB on phones
+// instead of a 424 KB 1920px JPEG from a third-party origin) and
+// next/image `priority` preloads it from the <head>.
 const HERO_POSTER_URL =
-  "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=1920&q=90";
+  "https://nrlcypdrfmjdwuvuaryp.supabase.co/storage/v1/object/public/products/site/hero/hero-poster.jpg";
+// Video only makes sense on large screens; matches Tailwind's `md`.
+const VIDEO_MEDIA_QUERY = "(min-width: 768px)";
+// The poster lives on a different origin than the HTML, so the LCP
+// request would otherwise pay DNS + TCP + TLS before its first byte.
+const HERO_ASSET_ORIGIN = new URL(HERO_POSTER_URL).origin;
 
 export function Hero({
   locale,
@@ -39,6 +51,10 @@ export function Hero({
   taglineAr: string;
   taglineEn: string;
 }) {
+  // Emits <link rel="preconnect"> in <head> during SSR so the poster's
+  // connection is being set up while the HTML is still parsing.
+  preconnect(HERO_ASSET_ORIGIN);
+
   const wrapRef = useRef<HTMLDivElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -46,6 +62,13 @@ export function Hero({
   // reads `prefers-reduced-motion` directly so it can stay paused even on
   // touch devices that aren't reduced-motion-flagged.
   const [reduced, setReduced] = useState(false);
+  // Whether to mount the <video> at all: desktop-width AND motion-OK.
+  // Decided post-mount so SSR never emits the element — phones never
+  // even see the URL, let alone download 3 MB of MP4.
+  const [wantsVideo, setWantsVideo] = useState(false);
+  // Flipped by the video's `playing` event so the poster stays the
+  // visible layer until real frames exist (no black/blank flash).
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
   // Honor reduced-motion AND coarse pointers (skip parallax/glow on touch).
   useEffect(() => {
@@ -53,25 +76,21 @@ export function Hero({
     const m = window.matchMedia("(prefers-reduced-motion: reduce)");
     const t = window.matchMedia("(pointer: coarse)");
     setReduced(m.matches || t.matches);
+    setWantsVideo(!m.matches && window.matchMedia(VIDEO_MEDIA_QUERY).matches);
   }, []);
 
-  // Kick off video playback once the component is mounted, unless the user
-  // has reduced-motion turned on. The video element is rendered without the
-  // `autoPlay` attribute so SSR / first paint stays on the poster — we only
-  // ever fetch the video bytes on motion-OK clients.
+  // Kick off playback once the (desktop-only) video element exists. The
+  // element has no `autoPlay` and `preload="none"`, so nothing is fetched
+  // until this explicit play() — the poster is what paints first, always.
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!wantsVideo) return;
     const v = videoRef.current;
     if (!v) return;
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    if (reducedMotion) return;
     // play() returns a promise that can reject (autoplay-blocked browsers).
     // Swallow — the poster stays visible in that case, which is the same
     // visual result as if the user had reduced motion on.
     v.play().catch(() => undefined);
-  }, []);
+  }, [wantsVideo]);
 
   // Parallax: translate the bg image by scrollY * 0.26.
   useEffect(() => {
@@ -125,27 +144,44 @@ export function Hero({
         ["--my" as never]: "-9999px",
       }}
     >
-      {/* Background — parallax target. The <video> shows the Unsplash poster
-          frame until the post-mount play() effect (above) kicks it off.
-          Reduced-motion / autoplay-blocked clients never see anything but
-          the poster, which is exactly the previous static-hero behavior. */}
+      {/* Background — parallax target. The poster <Image> is always
+          rendered (SSR, `priority` → preloaded from <head>) and is the
+          LCP element on every device. On desktop, motion-OK clients the
+          <video> mounts after hydration on top of it and fades in once
+          it is really playing; phones / reduced-motion / autoplay-blocked
+          clients only ever see the poster — the previous static-hero
+          behavior, minus the 3 MB download. */}
       <div
         ref={bgRef}
         aria-hidden
         className="absolute inset-0 -z-20 will-change-transform"
         style={{ transform: "scale(1.18)" }}
       >
-        <video
-          ref={videoRef}
-          src={HERO_VIDEO_URL}
-          poster={HERO_POSTER_URL}
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          tabIndex={-1}
-          className="h-full w-full object-cover"
+        <Image
+          src={HERO_POSTER_URL}
+          alt=""
+          fill
+          priority
+          fetchPriority="high"
+          sizes="100vw"
+          quality={70}
+          className="object-cover"
         />
+        {wantsVideo && (
+          <video
+            ref={videoRef}
+            src={HERO_VIDEO_URL}
+            muted
+            loop
+            playsInline
+            preload="none"
+            tabIndex={-1}
+            onPlaying={() => setVideoPlaying(true)}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+              videoPlaying ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        )}
       </div>
 
       {/* Navy gradient overlay (darker at the text-anchor edge, lighter at the opposite) */}
