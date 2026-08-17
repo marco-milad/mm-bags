@@ -35,7 +35,7 @@ import {
  * informational to the customer.
  */
 
-type CopyTarget = "order" | "amount" | "handle";
+type CopyTarget = "order" | "amount" | "handle" | "ipa";
 
 export function InstapayInstructions({
   locale,
@@ -43,6 +43,7 @@ export function InstapayInstructions({
   totalDue,
   whatsappNumber,
   instapayHandle,
+  instapayIpa,
   shareLink,
   qrDataUrl,
   expirationBusinessHours,
@@ -52,6 +53,12 @@ export function InstapayInstructions({
   totalDue: number;
   whatsappNumber: string;
   instapayHandle: string | null;
+  /** InstaPay address (IPA) derived from the share link's own path —
+      e.g. name@instapay. When present it is the PRIMARY displayed
+      recipient (it is literally the account the native handoff link
+      opens); the phone handle drops to a secondary "linked number"
+      row. Null when the share link isn't configured. */
+  instapayIpa: string | null;
   /** App-generated ipn.eg share link (recipient prefilled). Null when
       not configured — the deep-link button + QR are simply omitted and
       the manual copy-the-handle flow below stays fully usable. */
@@ -209,32 +216,80 @@ export function InstapayInstructions({
             />
           </dd>
         </div>
-        <div className="border-t border-[var(--color-border)] pt-3">
-          <dt className="mb-1 text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
-            {isRTL ? "حوّل على رقم InstaPay ده" : "Transfer to this InstaPay handle"}
-          </dt>
-          {instapayHandle ? (
-            <dd className="flex flex-wrap items-center justify-between gap-2">
-              <span
-                className="font-mono text-base font-semibold text-[var(--color-text)] break-all"
-                dir="ltr"
-              >
-                {instapayHandle}
-              </span>
-              <CopyChip
-                isRTL={isRTL}
-                copied={copied === "handle"}
-                onCopy={() => handleCopy("handle", instapayHandle)}
-              />
-            </dd>
-          ) : (
-            <dd className="text-sm text-[var(--color-text)]">
-              {isRTL
-                ? "كلمنا على واتساب وهنبعتلك رقم التحويل فوراً."
-                : "Message us on WhatsApp and we'll send you the transfer details right away."}
-            </dd>
-          )}
-        </div>
+        {/* Recipient. When the IPA is derivable from the share link it
+            is the PRIMARY value (identical account to the native
+            handoff — no customer confusion); the phone becomes a
+            secondary "linked number" row. Without a share link the
+            phone stays primary, exactly as before. */}
+        {instapayIpa ? (
+          <>
+            <div className="border-t border-[var(--color-border)] pt-3">
+              <dt className="mb-1 text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
+                {isRTL ? "حوّل على حساب InstaPay ده" : "Transfer to this InstaPay account"}
+              </dt>
+              <dd className="flex flex-wrap items-center justify-between gap-2">
+                <span
+                  className="font-mono text-base font-semibold text-[var(--color-text)] break-all"
+                  dir="ltr"
+                >
+                  {instapayIpa}
+                </span>
+                <CopyChip
+                  isRTL={isRTL}
+                  copied={copied === "ipa"}
+                  onCopy={() => handleCopy("ipa", instapayIpa)}
+                />
+              </dd>
+            </div>
+            {instapayHandle && (
+              <div className="border-t border-[var(--color-border)] pt-3">
+                <dt className="mb-1 text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
+                  {isRTL ? "رقم الهاتف المرتبط بالحساب" : "Phone number linked to the account"}
+                </dt>
+                <dd className="flex flex-wrap items-center justify-between gap-2">
+                  <span
+                    className="font-mono text-sm font-semibold text-[var(--color-text)]"
+                    dir="ltr"
+                  >
+                    {instapayHandle}
+                  </span>
+                  <CopyChip
+                    isRTL={isRTL}
+                    copied={copied === "handle"}
+                    onCopy={() => handleCopy("handle", instapayHandle)}
+                  />
+                </dd>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="border-t border-[var(--color-border)] pt-3">
+            <dt className="mb-1 text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
+              {isRTL ? "حوّل على رقم InstaPay ده" : "Transfer to this InstaPay handle"}
+            </dt>
+            {instapayHandle ? (
+              <dd className="flex flex-wrap items-center justify-between gap-2">
+                <span
+                  className="font-mono text-base font-semibold text-[var(--color-text)] break-all"
+                  dir="ltr"
+                >
+                  {instapayHandle}
+                </span>
+                <CopyChip
+                  isRTL={isRTL}
+                  copied={copied === "handle"}
+                  onCopy={() => handleCopy("handle", instapayHandle)}
+                />
+              </dd>
+            ) : (
+              <dd className="text-sm text-[var(--color-text)]">
+                {isRTL
+                  ? "كلمنا على واتساب وهنبعتلك رقم التحويل فوراً."
+                  : "Message us on WhatsApp and we'll send you the transfer details right away."}
+              </dd>
+            )}
+          </div>
+        )}
       </dl>
 
       {/* Steps */}

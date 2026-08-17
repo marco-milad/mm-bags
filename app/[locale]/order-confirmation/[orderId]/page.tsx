@@ -33,6 +33,22 @@ function instapayShareLink(): string | null {
   return raw;
 }
 
+// The customer-facing InstaPay address (IPA), derived from the share
+// link's own path — https://ipn.eg/S/{handle}/instapay/{code} → the
+// recipient is {handle}@instapay. Deriving (instead of a second env
+// var) means the manual fallback can never display a different
+// account than the one the native handoff opens.
+function instapayIpaFromShareLink(link: string | null): string | null {
+  if (!link) return null;
+  const m = /^https:\/\/ipn\.eg\/S\/([^/]+)\/instapay(\/|$)/i.exec(link);
+  if (!m) return null;
+  try {
+    return `${decodeURIComponent(m[1])}@instapay`;
+  } catch {
+    return null;
+  }
+}
+
 // QR of the share link, rendered server-side into a data URL so the
 // client bundle never ships the qrcode library. Encodes EXACTLY the
 // configured link — no amount, no order id, no invented parameters.
@@ -110,6 +126,7 @@ export default async function OrderConfirmationPage({
 
   const shareLink = awaitingPayment ? instapayShareLink() : null;
   const qrDataUrl = shareLink ? await shareLinkQrDataUrl(shareLink) : null;
+  const instapayIpa = instapayIpaFromShareLink(shareLink);
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-12 md:px-6 md:py-16">
@@ -182,6 +199,7 @@ export default async function OrderConfirmationPage({
             totalDue={order.total}
             whatsappNumber={whatsappNumber}
             instapayHandle={INSTAPAY_HANDLE}
+            instapayIpa={instapayIpa}
             shareLink={shareLink}
             qrDataUrl={qrDataUrl}
             expirationBusinessHours={instapayExpirationBusinessHours()}
