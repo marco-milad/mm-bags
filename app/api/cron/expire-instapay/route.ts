@@ -8,9 +8,10 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/cron/expire-instapay
  *
- * Vercel Cron target: cancels unpaid InstaPay orders older than the
- * configured window and restores their stock (see lib/orders/
- * instapay-expiry.ts + migration 0014 for the atomicity story).
+ * Vercel Cron target: cancels unpaid InstaPay orders whose business-
+ * hours payment window elapsed and restores their stock (see
+ * lib/orders/instapay-expiry.ts + migration 0015 for the atomicity
+ * story; the sweep no-ops outside 11:00–22:00 Africa/Cairo).
  *
  * Auth: Vercel sends `Authorization: Bearer ${CRON_SECRET}` on every
  * cron invocation when the CRON_SECRET env var is set. Fail CLOSED:

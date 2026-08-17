@@ -44,7 +44,9 @@ export default async function OrdersPage({
   // Opportunistic InstaPay expiry sweep. Vercel Hobby crons fire at
   // most once a day, so we also sweep whenever the orders list is
   // opened — the sweep is idempotent (single transaction in the DB
-  // function) and no-ops in one indexed query when nothing is due.
+  // function, migration 0015), no-ops in one indexed query when
+  // nothing is due, and refuses to expire anything outside Cairo
+  // business hours.
   //
   // Auth-gated HERE, not just by the layout: App Router renders layout
   // and page concurrently, so an anonymous request to /admin/orders

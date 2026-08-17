@@ -5,6 +5,7 @@ import { hasLocale } from "@/lib/i18n-config";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatPriceEGP } from "@/lib/utils";
 import { InstapayInstructions } from "@/components/order/InstapayInstructions";
+import { instapayExpirationBusinessHours } from "@/lib/orders/instapay-expiry";
 
 // InstaPay handle read from env so Marco can edit it without a code
 // change. NO fallback: a fake placeholder handle would send customers'
@@ -183,6 +184,7 @@ export default async function OrderConfirmationPage({
             instapayHandle={INSTAPAY_HANDLE}
             shareLink={shareLink}
             qrDataUrl={qrDataUrl}
+            expirationBusinessHours={instapayExpirationBusinessHours()}
           />
         )}
 

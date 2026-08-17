@@ -4,6 +4,12 @@ import { useRef, useState } from "react";
 import { Check, Copy, MessageCircle, Smartphone } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import { formatPriceEGP } from "@/lib/utils";
+import {
+  businessHoursDurationAr,
+  businessHoursDurationEn,
+  BUSINESS_HOURS_LABEL_AR,
+  BUSINESS_HOURS_LABEL_EN,
+} from "@/lib/orders/instapay-copy";
 
 /**
  * Payment-instructions panel shown on the order-confirmation page
@@ -39,6 +45,7 @@ export function InstapayInstructions({
   instapayHandle,
   shareLink,
   qrDataUrl,
+  expirationBusinessHours,
 }: {
   locale: Locale;
   orderNumber: string;
@@ -51,6 +58,10 @@ export function InstapayInstructions({
   shareLink: string | null;
   /** Server-generated QR data URL encoding exactly `shareLink`. */
   qrDataUrl: string | null;
+  /** Configured payment window in BUSINESS hours — passed from the
+      server (the env var is server-only) so the promised window can
+      never desync from what the expiry sweep actually enforces. */
+  expirationBusinessHours: number;
 }) {
   const isRTL = locale === "ar";
   const [copied, setCopied] = useState<CopyTarget | null>(null);
@@ -84,13 +95,13 @@ export function InstapayInstructions({
         `افتح تطبيق البنك أو محفظتك، اختار InstaPay وحوّل ${formatPriceEGP(totalDue, locale)}.`,
         `اكتب رقم الطلب ${orderNumber} في خانة الملاحظات أثناء التحويل — ده اللي بيربط تحويلك بطلبك.`,
         "احفظ صورة إيصال التحويل.",
-        "ابعتها على WhatsApp — أول ما نتأكد نبدأ تجهيز الطلب فوراً.",
+        "ابعتها على WhatsApp — بنراجع التحويلات خلال ساعات العمل، وأول ما نتأكد نبدأ التجهيز.",
       ]
     : [
         `Open your bank app or wallet, choose InstaPay, and transfer ${formatPriceEGP(totalDue, locale)}.`,
         `Write your order number ${orderNumber} in the transfer notes/reference — it links your payment to your order.`,
         "Save a screenshot of the transfer receipt.",
-        "Send it to us on WhatsApp — we start prep the moment we verify it.",
+        "Send it to us on WhatsApp — transfers are reviewed during business hours, and prep starts as soon as we verify.",
       ];
 
   return (
@@ -253,8 +264,16 @@ export function InstapayInstructions({
 
       <p className="mt-3 text-center text-[11px] text-[var(--color-text-secondary)]">
         {isRTL
-          ? "الطلب هيفضل بانتظار الدفع لحد ما نستلم الإيصال ونأكّد يدوياً."
-          : "Order stays pending until we receive the receipt and confirm the transfer manually."}
+          ? "الطلب هيفضل بانتظار الدفع لحد ما نستلم الإيصال ونأكّد يدوياً — سيتم مراجعة الدفع خلال ساعات العمل."
+          : "Order stays pending until we receive the receipt and confirm the transfer manually — payments are reviewed during business hours."}
+      </p>
+      {/* Business-hours TTL — deliberately NOT phrased as wall-clock
+          hours: only time inside 11:00–22:00 Africa/Cairo counts, and
+          the order can never expire overnight. */}
+      <p className="mt-1 text-center text-[11px] text-[var(--color-text-secondary)]">
+        {isRTL
+          ? `لإتمام الطلب، يرجى إتمام التحويل خلال ${businessHoursDurationAr(expirationBusinessHours)} · ساعات العمل: ${BUSINESS_HOURS_LABEL_AR}.`
+          : `Please complete the transfer within ${businessHoursDurationEn(expirationBusinessHours)} · Business hours: ${BUSINESS_HOURS_LABEL_EN}.`}
       </p>
     </div>
   );

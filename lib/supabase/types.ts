@@ -1290,7 +1290,7 @@ export type Database = {
       };
       expire_unpaid_instapay_orders: {
         Args: {
-          p_cutoff: string;
+          p_business_seconds?: number;
           p_limit?: number;
         };
         Returns: Array<{
@@ -1298,6 +1298,14 @@ export type Database = {
           order_number: string;
           items_restocked: number;
         }>;
+      };
+      is_cairo_business_hours: {
+        Args: { p_at: string };
+        Returns: boolean;
+      };
+      cairo_business_deadline: {
+        Args: { p_start: string; p_business_seconds: number };
+        Returns: string;
       };
     };
     Enums: Record<string, never>;

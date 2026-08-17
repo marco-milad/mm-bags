@@ -2,15 +2,21 @@ import "server-only";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { emailFrom, getResend } from "@/lib/email";
+import {
+  businessHoursDurationAr,
+  BUSINESS_HOURS_LABEL_AR,
+} from "@/lib/orders/instapay-copy";
 
 /**
  * InstaPay order-expiration sweep.
  *
  * An InstaPay order that never got paid (payment_status stays
- * 'pending') is cancelled after EXPIRATION_HOURS and its stock is
- * restored. ALL of the state work — eligibility check, status flip,
- * restock, ledger rows — happens inside the
- * `expire_unpaid_instapay_orders` Postgres function (migration 0014)
+ * 'pending') is cancelled after N BUSINESS hours (11:00–22:00
+ * Africa/Cairo — off-hours time doesn't count, and expiry only ever
+ * happens during business hours) and its stock is restored. ALL of
+ * the state work — business-time accounting, eligibility, status
+ * flip, restock, ledger rows — happens inside the
+ * `expire_unpaid_instapay_orders` Postgres function (migration 0015)
  * in a single transaction, so this module never has to reason about
  * partial failure: either an order fully expired + restocked, or
  * nothing happened.
@@ -28,13 +34,23 @@ import { emailFrom, getResend } from "@/lib/email";
  * send loses the notification, not data — acceptable.
  */
 
-const DEFAULT_EXPIRATION_HOURS = 4;
+const DEFAULT_EXPIRATION_BUSINESS_HOURS = 2;
 
-/** Server-only knob: INSTAPAY_ORDER_EXPIRATION_HOURS (default 4, clamped 1..168). */
-export function instapayExpirationHours(): number {
-  const raw = Number(process.env.INSTAPAY_ORDER_EXPIRATION_HOURS);
-  if (!Number.isFinite(raw)) return DEFAULT_EXPIRATION_HOURS;
-  return Math.min(168, Math.max(1, Math.floor(raw)));
+/**
+ * Server-only knob: INSTAPAY_ORDER_EXPIRATION_BUSINESS_HOURS
+ * (default 2, clamped 1..48). BUSINESS hours — only time inside
+ * 11:00–22:00 Africa/Cairo counts; the actual accounting happens
+ * entirely inside the DB function (migration 0015), this number is
+ * just the window size.
+ */
+export function instapayExpirationBusinessHours(): number {
+  // NB: Number("") === 0, so an empty-but-present env var must fall
+  // back to the default rather than clamping 0 up to 1 hour.
+  const raw = process.env.INSTAPAY_ORDER_EXPIRATION_BUSINESS_HOURS?.trim();
+  if (!raw) return DEFAULT_EXPIRATION_BUSINESS_HOURS;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_EXPIRATION_BUSINESS_HOURS;
+  return Math.min(48, Math.max(1, Math.floor(n)));
 }
 
 export type ExpirySweepResult = {
@@ -46,17 +62,14 @@ export type ExpirySweepResult = {
 
 const BATCH_SIZE = 50;
 const MAX_BATCHES = 10;
-// Subtracted from the cutoff so a 1-hour expiry config can never trip
-// the DB function's "cutoff must be ≥1h old" guard when the app clock
-// runs a few seconds ahead of the database clock.
-const CLOCK_SKEW_MARGIN_MS = 5 * 60_000;
 
 export async function runInstapayExpirySweep(): Promise<ExpirySweepResult> {
   const admin = getSupabaseAdminClient();
-  const hours = instapayExpirationHours();
-  const cutoff = new Date(
-    Date.now() - hours * 3600_000 - CLOCK_SKEW_MARGIN_MS,
-  ).toISOString();
+  // No cutoff or clock math here: eligibility ("N business hours
+  // elapsed, and it's business hours right now") is computed entirely
+  // inside the DB function on the DB clock — app/DB clock skew can't
+  // exist by construction.
+  const businessSeconds = instapayExpirationBusinessHours() * 3600;
 
   // Drain in batches: one RPC call handles at most BATCH_SIZE orders,
   // and with a daily Hobby cron a backlog bigger than that would
@@ -68,7 +81,7 @@ export async function runInstapayExpirySweep(): Promise<ExpirySweepResult> {
   }> = [];
   for (let i = 0; i < MAX_BATCHES; i++) {
     const { data, error } = await admin.rpc("expire_unpaid_instapay_orders", {
-      p_cutoff: cutoff,
+      p_business_seconds: businessSeconds,
       p_limit: BATCH_SIZE,
     });
     if (error) {
@@ -124,6 +137,7 @@ async function sendExpiryEmailsBestEffort(orderIds: string[]): Promise<number> {
           name: address.name?.trim() || null,
           orderNumber: order.order_number,
           whatsapp,
+          hours: instapayExpirationBusinessHours(),
         }),
       });
       sent++;
@@ -152,8 +166,10 @@ function buildExpiryEmailHtml(opts: {
   name: string | null;
   orderNumber: string;
   whatsapp: string;
+  hours: number;
 }): string {
   const greeting = opts.name ? `أهلاً ${escapeHtml(opts.name)}،` : "أهلاً،";
+  const windowText = `${businessHoursDurationAr(opts.hours)} (${BUSINESS_HOURS_LABEL_AR})`;
   // Deliberately does NOT claim any refund happened — InstaPay
   // transfers can't be auto-refunded. If the customer transferred
   // after expiry it's a manual support case via WhatsApp.
@@ -161,7 +177,7 @@ function buildExpiryEmailHtml(opts: {
 <html dir="rtl" lang="ar">
 <body style="font-family: Tahoma, Arial, sans-serif; color: #1a1a1a; line-height: 1.7;">
   <p>${greeting}</p>
-  <p>انتهت مهلة الدفع لطلبك رقم <strong dir="ltr">${opts.orderNumber}</strong> لأننا لم نستلم تحويل InstaPay خلال المدة المحددة، فتم إلغاء الطلب وإرجاع المنتجات للمخزون.</p>
+  <p>انتهت مهلة الدفع لطلبك رقم <strong dir="ltr">${opts.orderNumber}</strong> لأننا لم نستلم تحويل InstaPay خلال ${windowText}، فتم إلغاء الطلب وإرجاع المنتجات للمخزون.</p>
   <p>لو لسه حابب تشتري، تقدر تعمل طلب جديد من الموقع في أي وقت.</p>
   <p><strong>مهم:</strong> لو كنت حوّلت المبلغ بالفعل، كلمنا فوراً على واتساب <span dir="ltr">${opts.whatsapp}</span> ومعاك صورة الإيصال وهنظبطها معاك.</p>
   <p style="color:#777; font-size: 13px;">M.M Bags — سوهاج، مصر</p>

@@ -113,7 +113,7 @@ export function PaymentSelector({
                 بعد ما تأكد الطلب، هنعرضلك رقم الـ InstaPay و تحوّل.
               </p>
               <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                ابعت صورة الإيصال على WhatsApp، ولما نستلم التحويل هنأكّد الطلب فوراً.
+                ابعت صورة الإيصال على WhatsApp — بنراجع التحويلات ونأكّدها خلال ساعات العمل (يومياً 11 ص – 10 م).
               </p>
             </>
           ) : (
