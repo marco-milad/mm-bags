@@ -154,7 +154,12 @@ export function Hero({
       <div
         ref={bgRef}
         aria-hidden
-        className="absolute inset-0 -z-20 will-change-transform"
+        // The 1.18 over-scale is part of the hero's framing on every device
+        // (it also gives the parallax head-room). Only the parallax clients
+        // — motion-OK, fine pointer, same conditions as the JS `reduced`
+        // flag — get `will-change: transform`, so phones / touch /
+        // reduced-motion don't pay for a promoted full-viewport layer.
+        className="absolute inset-0 -z-20 motion-safe:pointer-fine:will-change-transform"
         style={{ transform: "scale(1.18)" }}
       >
         <Image
@@ -242,7 +247,13 @@ export function Hero({
           className="opacity-0"
           style={{ animation: RISE, animationDelay: "380ms" }}
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-brass-500/40 bg-brass-500/10 px-4 py-1.5 text-sm font-medium text-brass-100 backdrop-blur-sm">
+          {/* Solid semi-opaque fill instead of `backdrop-blur-sm`: the
+              badge sits over a full-viewport hero layer, and blurring
+              that backdrop on every entrance-animation frame was the
+              single most expensive style/layout cost on the page. The
+              navy base + brass wash reproduces the previous look over
+              the dark gradient without any backdrop-filter. */}
+          <span className="inline-flex items-center gap-2 rounded-full border border-brass-500/40 bg-navy-900/60 bg-[linear-gradient(rgba(184,151,90,0.12),rgba(184,151,90,0.12))] px-4 py-1.5 text-sm font-medium text-brass-100">
             <Tag className="h-3.5 w-3.5 text-brass-300" aria-hidden />
             {locale === "ar"
               ? "بتبدأ من 150 ج.م. فقط"
@@ -259,7 +270,7 @@ export function Hero({
           className="opacity-0"
           style={{ animation: RISE, animationDelay: "460ms" }}
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-brass-400/60 bg-brass-500/20 px-4 py-1.5 text-sm font-semibold text-brass-50 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-2 rounded-full border border-brass-400/60 bg-navy-900/60 bg-[linear-gradient(rgba(184,151,90,0.22),rgba(184,151,90,0.22))] px-4 py-1.5 text-sm font-semibold text-brass-50">
             <Rocket className="h-3.5 w-3.5 text-brass-200" aria-hidden />
             {locale === "ar"
               ? "شحن خلال 24 ساعة"
