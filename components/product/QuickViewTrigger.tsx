@@ -4,7 +4,7 @@ import { Eye } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
-import type { ProductWithVariants } from "@/lib/catalog-shared";
+import type { CatalogCardProduct } from "@/lib/catalog-shared";
 
 // Lazy-load the modal body. It's a non-trivial component (Dialog + Radix
 // portal + image grid + selectors) that we don't want to ship until a
@@ -28,7 +28,7 @@ export function QuickViewTrigger({
   product,
   locale,
 }: {
-  product: ProductWithVariants;
+  product: CatalogCardProduct;
   locale: Locale;
 }) {
   const [open, setOpen] = useState(false);

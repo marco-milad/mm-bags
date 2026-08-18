@@ -37,6 +37,9 @@ export function CatalogToolbar({
     const next = new URLSearchParams(searchParams?.toString());
     if (value === "featured") next.delete("sort");
     else next.set("sort", value);
+    // A new order starts from the first page — carrying `page=N` over
+    // would re-render N pages of the new order in one go.
+    next.delete("page");
     const qs = next.toString();
     startTransition(() => {
       router.replace(qs ? `${pathname}?${qs}` : pathname);

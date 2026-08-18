@@ -1,13 +1,37 @@
 import Link from "next/link";
+import { preconnect } from "react-dom";
 import { GitCompareArrows, MessageCircle } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { Collection } from "@/lib/supabase/types";
-import type { CatalogSort, ProductWithVariants } from "@/lib/catalog-shared";
+import type {
+  CatalogCardProduct,
+  CatalogSort,
+} from "@/lib/catalog-shared";
 import { effectivePrice } from "@/lib/catalog-shared";
-import { formatPriceEGP } from "@/lib/utils";
 import { CollectionFilter } from "./CollectionFilter";
 import { CatalogToolbar } from "./CatalogToolbar";
-import { ProductCard } from "@/components/product/ProductCard";
+import { CatalogCards } from "./CatalogCards";
+import { LoadMoreProducts } from "./LoadMoreProducts";
+
+/** Grid classes shared by the SSR'd first page and appended pages so
+    "load more" rows are visually continuous with the first ones.
+    `auto-rows-fr` makes every row the height of the tallest card in
+    that row, and `h-full` on the <li> propagates that height down so
+    the card stretches to fill its grid cell. */
+const GRID_CLASS =
+  "mt-8 grid auto-rows-fr grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-3 md:gap-x-6 md:gap-y-8 lg:grid-cols-4 lg:gap-x-6 lg:gap-y-10";
+
+/** Pagination state for the main /catalog page. Absent on collection
+    pages, which still render their full (small) list as before. */
+export type CatalogPagination = {
+  /** Total products matching the current filters, across all pages. */
+  total: number;
+  /** Cheapest effective price across ALL matching products. */
+  minPrice: number | null;
+  /** Page the "load more" button should request next. */
+  nextPage: number;
+  hasMore: boolean;
+};
 
 const WHATSAPP_NUMBER = (
   process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
@@ -26,10 +50,11 @@ export function CatalogView({
   filterAllLabel,
   compareHref,
   compareLabel,
+  pagination,
 }: {
   locale: Locale;
   collections: Collection[];
-  products: ProductWithVariants[];
+  products: CatalogCardProduct[];
   activeCollection?: Collection | null;
   sort: CatalogSort;
   crumbs?: CrumbLink[];
@@ -40,7 +65,16 @@ export function CatalogView({
   compareHref?: string;
   /** Localized labels for the compare CTA; falls back to default copy. */
   compareLabel?: { ar: string; en: string };
+  /** When set (main catalog), the toolbar shows the TOTAL count / min
+      price and a "load more" control appends further pages. */
+  pagination?: CatalogPagination;
 }) {
+  // Every card image comes from Supabase's render endpoint on a
+  // different origin than the HTML. Warming that connection from <head>
+  // takes DNS + TCP + TLS off the LCP image's critical path.
+  const imageOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (imageOrigin) preconnect(imageOrigin);
+
   const title = activeCollection
     ? locale === "ar"
       ? activeCollection.name_ar
@@ -113,12 +147,14 @@ export function CatalogView({
             cost?" click into a random card. */}
         <CatalogToolbar
           locale={locale}
-          count={products.length}
+          count={pagination ? pagination.total : products.length}
           currentSort={sort}
           minPrice={
-            products.length > 0
-              ? Math.min(...products.map((p) => effectivePrice(p)))
-              : null
+            pagination
+              ? pagination.minPrice
+              : products.length > 0
+                ? Math.min(...products.map((p) => effectivePrice(p)))
+                : null
           }
         />
       </div>
@@ -126,19 +162,20 @@ export function CatalogView({
       {products.length === 0 ? (
         <EmptyState locale={locale} hasFilter={!!activeCollection} />
       ) : (
-        // `auto-rows-fr` makes every row the height of the tallest card
-        // in that row, and `h-full` on the <li> propagates that height
-        // down so the card stretches to fill its grid cell. Together
-        // with the square image aspect inside ProductCard, this gives
-        // a clean, uniform grid regardless of source orientation or
-        // whether a product has spec chips / sale badge / low-stock line.
-        <ul className="mt-8 grid auto-rows-fr grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-3 md:gap-x-6 md:gap-y-8 lg:grid-cols-4 lg:gap-x-6 lg:gap-y-10">
-          {products.map((product) => (
-            <li key={product.id} className="h-full">
-              <ProductCard product={product} locale={locale} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className={GRID_CLASS}>
+            <CatalogCards products={products} locale={locale} />
+          </ul>
+          {pagination && (
+            <LoadMoreProducts
+              locale={locale}
+              nextPage={pagination.nextPage}
+              hasMore={pagination.hasMore}
+              total={pagination.total}
+              shown={products.length}
+            />
+          )}
+        </>
       )}
     </section>
   );

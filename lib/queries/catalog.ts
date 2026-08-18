@@ -2,7 +2,11 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Collection } from "@/lib/supabase/types";
-import type { CatalogSort, ProductWithVariants } from "@/lib/catalog-shared";
+import type {
+  CatalogCardProduct,
+  CatalogSort,
+  ProductWithVariants,
+} from "@/lib/catalog-shared";
 import { effectivePrice } from "@/lib/catalog-shared";
 
 export type ProductDetail = ProductWithVariants & { collection: Collection | null };
@@ -147,6 +151,171 @@ export async function getProducts(opts: {
     return products.slice(0, opts.limit);
   }
   return products;
+}
+
+// ─── Paginated catalog listing ───────────────────────────────────────
+//
+// The main /catalog page used to call getProducts() (select * + every
+// variant column for every active product) and render all ~80 cards at
+// once. This variant fetches ONLY the page being shown:
+//
+//   1. A tiny "index" query — id + the handful of columns the existing
+//      filter/sort logic needs (prices, sort_order, created_at, tags,
+//      variant sizes) — for every product matching the DB-side filters.
+//      Roughly 100 bytes per product, so ~10 KB for the whole store.
+//   2. Exactly the same in-JS filtering (size / set) and sorting
+//      (featured / newest / price) that getProducts() applies today,
+//      plus an explicit `id` tiebreak so page N+1 can never overlap or
+//      skip page N.
+//   3. A second query for JUST the card columns of JUST the ids on the
+//      requested slice, re-ordered to match.
+//
+// Behaviour is therefore identical to before for every filter and sort
+// combination, while the DB returns 24 card rows instead of 81 full
+// rows, and the total count / min price stay correct (they come from
+// the index, not the slice).
+
+const CATALOG_CARD_SELECT =
+  "id, slug, name_ar, name_en, base_price, sale_price, images, image_fit, " +
+  "material_type, dimensions, weight_kg, laptop_inches, capacity_liters, " +
+  "wheel_type, lock_type, is_water_resistant, is_expandable, " +
+  "product_variants(id, color_hex, color_ar, color_en, size_inches, stock_qty, price_override)";
+
+type CatalogIndexRow = {
+  id: string;
+  base_price: number;
+  sale_price: number | null;
+  sort_order: number | null;
+  created_at: string;
+  tags: string[] | null;
+  product_variants: { size_inches: number | null }[];
+};
+
+export type CatalogPageOptions = {
+  sort?: CatalogSort;
+  sizeInches?: number;
+  setOnly?: boolean;
+  q?: string;
+  material?: string;
+  materials?: string[];
+  /** 0-based offset into the filtered + sorted result set. */
+  offset: number;
+  /** Number of products to return. */
+  limit: number;
+};
+
+export type CatalogPage = {
+  products: CatalogCardProduct[];
+  /** Total products matching the filters (across all pages). */
+  total: number;
+  /** Cheapest effective price across ALL matching products, or null. */
+  minPrice: number | null;
+  /** Whether more products exist after `offset + limit`. */
+  hasMore: boolean;
+};
+
+export async function getCatalogPage(opts: CatalogPageOptions): Promise<CatalogPage> {
+  const supabase = await createSupabaseServerClient();
+
+  // ── 1. index query: DB-side filters (same predicates as getProducts) ──
+  let indexQuery = supabase
+    .from("products")
+    .select(
+      "id, base_price, sale_price, sort_order, created_at, tags, product_variants(size_inches)",
+    )
+    .eq("is_active", true);
+
+  if (opts.materials && opts.materials.length > 0) {
+    indexQuery = indexQuery.in("material_type", opts.materials);
+  } else if (opts.material) {
+    indexQuery = indexQuery.eq("material_type", opts.material);
+  }
+  if (opts.q) {
+    const safe = opts.q.trim().replace(/[*,()]/g, " ");
+    if (safe) {
+      indexQuery = indexQuery.or(`name_ar.ilike.*${safe}*,name_en.ilike.*${safe}*`);
+    }
+  }
+
+  const { data: indexData, error: indexError } = await indexQuery;
+  if (indexError) {
+    throw new Error(`getCatalogPage(index) failed: ${indexError.message}`);
+  }
+  let index = (indexData ?? []) as CatalogIndexRow[];
+
+  // ── 2. in-JS filters + sort — identical rules to getProducts() ──
+  if (opts.sizeInches !== undefined) {
+    const target = opts.sizeInches;
+    index = index.filter((p) =>
+      p.product_variants.some((v) => v.size_inches === target),
+    );
+  }
+  if (opts.setOnly) {
+    index = index.filter((p) => (p.tags ?? []).includes("set"));
+  }
+
+  const sort = opts.sort ?? "featured";
+  const byId = (a: CatalogIndexRow, b: CatalogIndexRow) =>
+    a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  const newestFirst = (a: CatalogIndexRow, b: CatalogIndexRow) =>
+    b.created_at.localeCompare(a.created_at);
+  const featured = (a: CatalogIndexRow, b: CatalogIndexRow) =>
+    (a.sort_order ?? 0) - (b.sort_order ?? 0) || newestFirst(a, b) || byId(a, b);
+
+  if (sort === "newest") {
+    index.sort((a, b) => newestFirst(a, b) || byId(a, b));
+  } else if (sort === "price-asc") {
+    // Stable secondary order so equal prices page deterministically.
+    index.sort((a, b) => effectivePrice(a) - effectivePrice(b) || featured(a, b));
+  } else if (sort === "price-desc") {
+    index.sort((a, b) => effectivePrice(b) - effectivePrice(a) || featured(a, b));
+  } else {
+    index.sort(featured);
+  }
+
+  const total = index.length;
+  const minPrice =
+    total > 0 ? Math.min(...index.map((p) => effectivePrice(p))) : null;
+
+  const pageIds = index
+    .slice(opts.offset, opts.offset + opts.limit)
+    .map((p) => p.id);
+  const hasMore = opts.offset + opts.limit < total;
+
+  if (pageIds.length === 0) {
+    return { products: [], total, minPrice, hasMore };
+  }
+
+  // ── 3. card data for just this page ──
+  // `.in()` puts every id in the request URL (~40 bytes each). Cumulative
+  // deep pages could otherwise approach proxy URL limits once the store
+  // is a few hundred products, so fetch in fixed-size chunks in parallel.
+  const CHUNK = 100;
+  const chunks: string[][] = [];
+  for (let i = 0; i < pageIds.length; i += CHUNK) {
+    chunks.push(pageIds.slice(i, i + CHUNK));
+  }
+  const cardResults = await Promise.all(
+    chunks.map((ids) =>
+      supabase.from("products").select(CATALOG_CARD_SELECT).in("id", ids),
+    ),
+  );
+  const cardError = cardResults.find((r) => r.error)?.error;
+  if (cardError) {
+    throw new Error(`getCatalogPage(cards) failed: ${cardError.message}`);
+  }
+  const byIdMap = new Map(
+    cardResults
+      .flatMap((r) => (r.data ?? []) as unknown as CatalogCardProduct[])
+      .map((p) => [p.id, p] as const),
+  );
+  // Preserve the index order; drop ids that vanished between the two
+  // queries (product deactivated mid-request) rather than rendering holes.
+  const products = pageIds
+    .map((id) => byIdMap.get(id))
+    .filter((p): p is CatalogCardProduct => p !== undefined);
+
+  return { products, total, minPrice, hasMore };
 }
 
 export async function getProductBySlug(slug: string): Promise<ProductDetail | null> {

@@ -107,6 +107,10 @@ export function ImageContainer({
           fill
           sizes={sizes}
           priority={priority}
+          // `priority` already preloads + eager-loads; the explicit hint
+          // additionally lets the browser schedule these (LCP-candidate)
+          // fetches ahead of other in-flight images.
+          fetchPriority={priority ? "high" : undefined}
           className={cn(
             "transition duration-300",
             isContain ? "object-contain" : "object-cover",
@@ -115,17 +119,24 @@ export function ImageContainer({
           )}
         />
         {secondarySrc && (
-          <Image
-            src={secondarySrc}
-            alt=""
-            aria-hidden
-            fill
-            sizes={sizes}
-            className={cn(
-              "opacity-0 transition duration-300 group-hover:opacity-100",
-              isContain ? "object-contain" : "object-cover",
-            )}
-          />
+          // The hover-swap image only ever becomes visible on hover, which
+          // touch devices don't have. Wrapping it in `hidden md:block`
+          // means the (lazy) <img> has no box below md, so browsers never
+          // fetch it there — halving catalog image requests on phones.
+          // Desktop behaviour is unchanged.
+          <div className="absolute inset-0 hidden md:block">
+            <Image
+              src={secondarySrc}
+              alt=""
+              aria-hidden
+              fill
+              sizes={sizes}
+              className={cn(
+                "opacity-0 transition duration-300 group-hover:opacity-100",
+                isContain ? "object-contain" : "object-cover",
+              )}
+            />
+          </div>
         )}
       </div>
       {children}

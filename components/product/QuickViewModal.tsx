@@ -5,8 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, ShoppingBag } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
-import type { ProductWithVariants } from "@/lib/catalog-shared";
-import type { ProductVariant } from "@/lib/supabase/types";
+import type { CatalogCardProduct, CatalogCardVariant } from "@/lib/catalog-shared";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { useCartStore } from "@/store/cart";
 import {
@@ -18,6 +17,10 @@ import {
 import { ProductSpecsChips } from "@/components/product/ProductSpecs";
 
 type Color = { hex: string; ar: string; en: string };
+
+/** The variant shape this modal needs — the catalog card subset. A full
+    ProductVariant satisfies it structurally. */
+type ProductVariant = CatalogCardVariant;
 
 /** First in-stock variant, falling back to the first variant overall. */
 function pickInitialVariant(variants: ProductVariant[]): ProductVariant | null {
@@ -53,7 +56,7 @@ export function QuickViewModal({
   open,
   onOpenChange,
 }: {
-  product: ProductWithVariants;
+  product: CatalogCardProduct;
   locale: Locale;
   open: boolean;
   onOpenChange: (open: boolean) => void;

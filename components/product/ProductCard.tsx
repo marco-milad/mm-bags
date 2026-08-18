@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n-config";
 import { cn, formatPriceEGP } from "@/lib/utils";
-import { effectivePrice, totalStock, type ProductWithVariants } from "@/lib/catalog-shared";
+import { effectivePrice, totalStock, type CatalogCardProduct } from "@/lib/catalog-shared";
 import { WishlistButton } from "@/components/product/WishlistButton";
 import { ProductSpecsChips } from "@/components/product/ProductSpecs";
 import { ImageContainer } from "@/components/product/ImageContainer";
@@ -25,9 +25,20 @@ export function ProductCard({
   locale,
   sizes = DEFAULT_SIZES,
   urgencyStockThreshold,
+  priority = false,
+  prefetch,
 }: {
-  product: ProductWithVariants;
+  /** Only the columns a card renders — a full ProductWithVariants
+      satisfies this too, so carousels/related lists pass full rows. */
+  product: CatalogCardProduct;
   locale: Locale;
+  /** Eager-load + preload the primary image (above-the-fold cards). */
+  priority?: boolean;
+  /** Passed straight to next/link. Catalog grids pass `false` because
+      viewport-prefetching dozens of dynamic product routes costs a
+      server render each and — with no loading boundary on the PDP —
+      buys nothing on click. Undefined keeps Next's default. */
+  prefetch?: boolean;
   /** Override the `sizes` attribute for hosts that render the card at a
       different width than the catalog grid (e.g. BestSellersCarousel
       uses a fixed ~290px card; pass `sizes="290px"` there). */
@@ -79,6 +90,7 @@ export function ProductCard({
   return (
     <Link
       href={`/${locale}/products/${product.slug}`}
+      prefetch={prefetch}
       className="group relative flex h-full flex-col overflow-hidden rounded-xl bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] transition hover:shadow-lg hover:ring-[var(--color-accent)]"
     >
       {primaryImage ? (
@@ -94,6 +106,7 @@ export function ProductCard({
           fit={product.image_fit}
           aspect="square"
           sizes={sizes}
+          priority={priority}
         >
           <WishlistButton
             locale={locale}

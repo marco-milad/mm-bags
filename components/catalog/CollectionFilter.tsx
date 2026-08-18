@@ -42,6 +42,9 @@ export function CollectionFilter({
           <Link
             key={item.slug ?? "all"}
             href={href}
+            // Every pill is a dynamic collection route; viewport-prefetching
+            // all of them costs one server render each for nothing.
+            prefetch={false}
             className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition ${
               isActive
                 ? "bg-[var(--color-primary)] text-white"

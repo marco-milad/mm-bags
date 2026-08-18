@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { CatalogView } from "@/components/catalog/CatalogView";
-import { isCatalogSort } from "@/lib/catalog-shared";
+import { CATALOG_PAGE_SIZE } from "@/lib/catalog-shared";
 import { localeAlternates } from "@/lib/seo/site";
-import { getProducts } from "@/lib/queries/catalog";
+import { getCatalogPage } from "@/lib/queries/catalog";
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
-import { bucketById } from "@/lib/material-buckets";
+import { pickCatalogFilters, resolveCatalogFilters } from "@/lib/catalog/filters";
 
 export const dynamic = "force-dynamic";
 
@@ -33,48 +33,38 @@ export default async function CatalogPage({
   if (!hasLocale(locale)) notFound();
 
   const sp = await searchParams;
-  const sortParam = typeof sp?.sort === "string" ? sp.sort : undefined;
-  const sort = isCatalogSort(sortParam) ? sortParam : "featured";
-  const sizeRaw = typeof sp?.size === "string" ? Number(sp.size) : NaN;
-  const sizeInches = Number.isInteger(sizeRaw) && sizeRaw > 0 ? sizeRaw : undefined;
-  const setOnly = sp?.type === "set";
-  const q = typeof sp?.q === "string" ? sp.q.trim().slice(0, 80) : undefined;
-  const material =
-    typeof sp?.material === "string"
-      ? sp.material.trim().slice(0, 80)
-      : undefined;
+  // Filter parsing lives in lib/catalog/filters.ts so the first render
+  // and the "load more" action interpret the URL identically. The
+  // bucket-based material filter (`?materialBucket=nylon`) expands into
+  // an IN (...) clause over every raw material_type in the bucket (see
+  // lib/material-buckets.ts) and falls back silently for unknown slugs.
+  const filters = pickCatalogFilters(sp);
+  const { sort, sizeInches, setOnly, q, material, materials, bucket } =
+    await resolveCatalogFilters(filters);
 
-  // Bucket-based material filter — `?materialBucket=nylon` expands into an
-  // IN (...) clause over every raw material_type that belongs to the bucket
-  // (see lib/material-buckets.ts). Falls back silently if the slug is
-  // unknown so a stale link doesn't error.
-  const materialBucketId =
-    typeof sp?.materialBucket === "string"
-      ? sp.materialBucket.trim().slice(0, 40)
-      : undefined;
-  const bucket = materialBucketId ? bucketById(materialBucketId) : null;
+  // `?page=N` means "the customer has loaded N pages" (the load-more
+  // control replaces the URL with page+1 and lets this page re-render).
+  // We render pages 1..N cumulatively so the URL is the single source
+  // of truth: a refresh, a shared link, or Back from a product page all
+  // show exactly what was loaded. The default (no param) is the first 24.
+  const pageRaw = typeof sp?.page === "string" ? Number(sp.page) : 1;
+  const pagesLoaded =
+    Number.isInteger(pageRaw) && pageRaw >= 1 ? Math.min(pageRaw, 50) : 1;
 
-  // Discover the raw member material_type values for this bucket. We do a
-  // tiny lookup here because the bucket meta only knows its matchers; the
-  // actual member list lives in the DB.
-  let bucketMembers: string[] | undefined;
-  if (bucket) {
-    const { getMaterialCounts } = await import("@/lib/queries/catalog");
-    const all = await getMaterialCounts();
-    bucketMembers = all.find((b) => b.id === bucket.id)?.members;
-  }
-
-  const [topLevel, products] = await Promise.all([
+  const [topLevel, page] = await Promise.all([
     getTopLevelCategoriesWithCounts(),
-    getProducts({
+    getCatalogPage({
       sort,
       sizeInches,
       setOnly,
       q,
       material,
-      materials: bucketMembers,
+      materials,
+      offset: 0,
+      limit: CATALOG_PAGE_SIZE * pagesLoaded,
     }),
   ]);
+  const products = page.products;
 
   const bucketLabel = bucket && (locale === "ar" ? bucket.ar : bucket.en);
 
@@ -120,6 +110,12 @@ export default async function CatalogPage({
       products={products}
       sort={sort}
       crumbs={crumbs}
+      pagination={{
+        total: page.total,
+        minPrice: page.minPrice,
+        nextPage: pagesLoaded + 1,
+        hasMore: page.hasMore,
+      }}
     />
   );
 }
