@@ -5,9 +5,10 @@ import type { Collection } from "@/lib/supabase/types";
 import type {
   CatalogCardProduct,
   CatalogSort,
+  MegaFeaturedItem,
   ProductWithVariants,
 } from "@/lib/catalog-shared";
-import { effectivePrice } from "@/lib/catalog-shared";
+import { effectivePrice, toMegaFeaturedItem } from "@/lib/catalog-shared";
 
 export type ProductDetail = ProductWithVariants & { collection: Collection | null };
 
@@ -67,6 +68,28 @@ export async function getCollectionBySlug(slug: string): Promise<Collection | nu
 
   if (error) throw new Error(`getCollectionBySlug(${slug}) failed: ${error.message}`);
   return data;
+}
+
+/**
+ * The three best-seller tiles the navbar mega-menu shows on every
+ * page. Same predicate + ordering + count as the previous
+ * `getProducts({ tag: "best-seller", limit: 3 })` call (is_active,
+ * tag match, sort_order asc then created_at desc), but selects ONLY
+ * the seven values the menu renders instead of `select *` with every
+ * variant — the rows cross into a client component on every request.
+ */
+export async function getMegaFeaturedItems(): Promise<MegaFeaturedItem[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, slug, name_ar, name_en, images, base_price, sale_price")
+    .eq("is_active", true)
+    .contains("tags", ["best-seller"])
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false })
+    .limit(3);
+  if (error) throw new Error(`getMegaFeaturedItems failed: ${error.message}`);
+  return (data ?? []).map(toMegaFeaturedItem);
 }
 
 export async function getProducts(opts: {

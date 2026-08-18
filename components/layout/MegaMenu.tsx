@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ChevronDown, HelpCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
-import type { ProductWithVariants } from "@/lib/catalog-shared";
+import type { MegaFeaturedItem } from "@/lib/catalog-shared";
 import { effectivePrice } from "@/lib/catalog-shared";
 import { categoryLucideIcon } from "@/lib/categories-config";
 import type { TopLevelCategory } from "@/lib/queries/categories";
@@ -29,7 +29,7 @@ export function MegaMenu({
   shopAllLabel: string;
   featuredLabel: string;
   categories: TopLevelCategory[];
-  featured: ProductWithVariants[];
+  featured: MegaFeaturedItem[];
 }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -202,9 +202,9 @@ export function MegaMenu({
                         className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-[var(--color-surface)]"
                       >
                         <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[var(--color-surface-2)]">
-                          {p.images?.[0] && (
+                          {p.image && (
                             <Image
-                              src={p.images[0]}
+                              src={p.image}
                               alt={name}
                               fill
                               sizes="56px"

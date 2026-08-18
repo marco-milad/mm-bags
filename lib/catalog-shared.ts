@@ -58,6 +58,75 @@ export type CatalogCardProduct = Pick<
 /** Products per catalog page ("Load more" step). */
 export const CATALOG_PAGE_SIZE = 24;
 
+/**
+ * Trim a full product row to exactly what a catalog card (and the
+ * client components inside it) renders. Used at server→client
+ * boundaries so `select *` rows never serialize into the RSC Flight
+ * payload — the wire shape becomes identical to what the paginated
+ * catalog query (Step 2) already selects.
+ */
+export function toCatalogCardProduct(p: ProductWithVariants): CatalogCardProduct {
+  return {
+    id: p.id,
+    slug: p.slug,
+    name_ar: p.name_ar,
+    name_en: p.name_en,
+    base_price: p.base_price,
+    sale_price: p.sale_price,
+    images: p.images,
+    image_fit: p.image_fit,
+    material_type: p.material_type,
+    dimensions: p.dimensions,
+    weight_kg: p.weight_kg,
+    laptop_inches: p.laptop_inches,
+    capacity_liters: p.capacity_liters,
+    wheel_type: p.wheel_type,
+    lock_type: p.lock_type,
+    is_water_resistant: p.is_water_resistant,
+    is_expandable: p.is_expandable,
+    product_variants: p.product_variants.map((v) => ({
+      id: v.id,
+      color_hex: v.color_hex,
+      color_ar: v.color_ar,
+      color_en: v.color_en,
+      size_inches: v.size_inches,
+      stock_qty: v.stock_qty,
+      price_override: v.price_override,
+    })),
+  };
+}
+
+/**
+ * The mega-menu's featured column renders exactly these seven values —
+ * nothing else from the product row should cross into the client
+ * bundle's props (MegaMenu is a "use client" component mounted on
+ * every page of the site).
+ */
+export type MegaFeaturedItem = {
+  id: string;
+  slug: string;
+  name_ar: string;
+  name_en: string;
+  /** First product image, already unwrapped from the images array. */
+  image: string | null;
+  base_price: number;
+  sale_price: number | null;
+};
+
+export function toMegaFeaturedItem(
+  p: Pick<Product, "id" | "slug" | "name_ar" | "name_en" | "images" | "base_price" | "sale_price">,
+): MegaFeaturedItem {
+  return {
+    id: p.id,
+    slug: p.slug,
+    name_ar: p.name_ar,
+    name_en: p.name_en,
+    image: p.images?.[0] ?? null,
+    base_price: p.base_price,
+    sale_price: p.sale_price,
+  };
+}
+
 export function effectivePrice(product: Pick<Product, "base_price" | "sale_price">): number {
   return product.sale_price ?? product.base_price;
 }

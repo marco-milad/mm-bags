@@ -13,7 +13,7 @@ import { SizeGuideFAB } from "@/components/size-guide/SizeGuideFAB";
 import { direction, hasLocale, locales } from "@/lib/i18n-config";
 import { getDictionary } from "@/lib/i18n";
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
-import { getProducts } from "@/lib/queries/catalog";
+import { getMegaFeaturedItems } from "@/lib/queries/catalog";
 import "../globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -96,7 +96,9 @@ export default async function RootLayout({
   const [t, megaCategories, megaFeatured] = await Promise.all([
     getDictionary(locale),
     getTopLevelCategoriesWithCounts(),
-    getProducts({ tag: "best-seller", limit: 3 }),
+    // Narrow 7-column rows — these serialize into the client MegaMenu's
+    // props on EVERY page, so they must not carry `select *` weight.
+    getMegaFeaturedItems(),
   ]);
   const dir = direction(locale);
 

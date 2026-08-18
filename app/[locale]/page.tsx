@@ -40,6 +40,7 @@ import {
 } from "@/lib/queries/catalog";
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 import { getFeaturedReviews } from "@/lib/queries/reviews";
+import { toCatalogCardProduct } from "@/lib/catalog-shared";
 
 export async function generateMetadata({
   params,
@@ -97,7 +98,7 @@ export default async function HomePage({ params }: PageProps<"/[locale]">) {
       <FounderMoment locale={locale} />
 
       {bestSellers.length > 0 && (
-        <BestSellersCarousel locale={locale} products={bestSellers} />
+        <BestSellersCarousel locale={locale} products={bestSellers.map(toCatalogCardProduct)} />
       )}
 
       <StatsStrip locale={locale} />

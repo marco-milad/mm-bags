@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";
 import type { Locale } from "@/lib/i18n-config";
-import type { ProductWithVariants } from "@/lib/catalog-shared";
+import type { CatalogCardProduct } from "@/lib/catalog-shared";
 import { ProductCard } from "@/components/product/ProductCard";
 
 /**
@@ -19,7 +19,7 @@ export function BestSellersCarousel({
   products,
 }: {
   locale: Locale;
-  products: ProductWithVariants[];
+  products: CatalogCardProduct[];
 }) {
   const scrollerRef = useRef<HTMLUListElement>(null);
 

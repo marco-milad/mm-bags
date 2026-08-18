@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, User } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
-import type { ProductWithVariants } from "@/lib/catalog-shared";
+import type { MegaFeaturedItem } from "@/lib/catalog-shared";
 import type { TopLevelCategory } from "@/lib/queries/categories";
 import { CartIconButton } from "@/components/cart/CartIconButton";
 import { LocaleSwitcher } from "./LocaleSwitcher";
@@ -40,7 +40,7 @@ export function Navbar({
   t: NavStrings;
   brandName: string;
   megaCategories: TopLevelCategory[];
-  megaFeatured: ProductWithVariants[];
+  megaFeatured: MegaFeaturedItem[];
 }) {
   const base = `/${locale}`;
   return (

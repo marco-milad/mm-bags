@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { ProductDetail } from "@/lib/queries/catalog";
+import { toCatalogCardProduct } from "@/lib/catalog-shared";
 import { effectivePrice } from "@/lib/catalog-shared";
 import { formatPriceEGP } from "@/lib/utils";
 import { ProductSpecsChips } from "@/components/product/ProductSpecs";
@@ -70,7 +71,7 @@ export function FeaturedProduct({
           {/* RIGHT — eyebrow + name + price + specs + swatches + CTAs */}
           <FeaturedProductInteractive
             locale={locale}
-            product={product}
+            product={toCatalogCardProduct(product)}
             header={
               <header className="flex flex-col gap-4">
                 {collectionLabel && (

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { ShoppingBag } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/i18n-config";
-import type { ProductWithVariants } from "@/lib/catalog-shared";
+import type { CatalogCardProduct } from "@/lib/catalog-shared";
 import { effectivePrice, totalStock } from "@/lib/catalog-shared";
 import { useCartStore } from "@/store/cart";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ export function FeaturedProductInteractive({
   footer,
 }: {
   locale: Locale;
-  product: ProductWithVariants;
+  product: CatalogCardProduct;
   header: ReactNode;
   footer: ReactNode;
 }) {
