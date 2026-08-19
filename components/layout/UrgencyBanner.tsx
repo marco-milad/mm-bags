@@ -6,32 +6,48 @@ import type { Locale } from "@/lib/i18n-config";
 
 const STORAGE_KEY = "mm-urgency-dismissed";
 
+/**
+ * Synchronous, parser-executed guard rendered INSIDE the banner. For
+ * sessions that already dismissed the banner it hides the wrapper and
+ * zeroes the navbar offset BEFORE first paint; otherwise it publishes
+ * the banner height. Either way the page never reflows because of this
+ * component — which is the whole point: the previous implementation
+ * mounted the banner only after hydration ("start hidden to avoid
+ * layout shift") and thereby *caused* a full-page 40px shift on every
+ * load. That was the site-wide CLS 0.045.
+ */
+const DISMISS_GUARD = `(function(){try{var d=sessionStorage.getItem(${JSON.stringify(
+  STORAGE_KEY,
+)})==="1";var s=document.currentScript;var w=s&&s.parentElement;if(d&&w){w.style.display="none";}document.documentElement.style.setProperty("--mm-banner-h",d?"0px":"2.5rem");}catch(e){}})();`;
+
 export function UrgencyBanner({ locale }: { locale: Locale }) {
-  const [mounted, setMounted] = useState(false);
-  const [dismissed, setDismissed] = useState(true); // start hidden to avoid layout shift
+  // Rendered in SSR (visible) so the banner is part of the very first
+  // paint — no post-hydration insertion, no layout shift. The inline
+  // guard above handles the "already dismissed this session" case
+  // before paint; this state only takes over from hydration onwards.
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     if (typeof window === "undefined") return;
+    // Sync React state with the pre-paint guard's decision. If the
+    // guard hid the wrapper, unmounting it here changes nothing
+    // visually (display was already none).
     setDismissed(window.sessionStorage.getItem(STORAGE_KEY) === "1");
   }, []);
 
-  // The navbar reads `--mm-banner-h` to offset its sticky `top` so the two
-  // sticky bars don't collide. Bumped to 2.5rem when visible, 0 when dismissed.
+  // The navbar reads `--mm-banner-h` to offset its sticky `top` so the
+  // two sticky bars don't collide. The pre-paint guard sets the initial
+  // value; this effect keeps it in sync after a same-session dismiss.
   useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
-    if (mounted && !dismissed) {
-      root.style.setProperty("--mm-banner-h", "2.5rem");
-    } else {
-      root.style.setProperty("--mm-banner-h", "0px");
-    }
+    root.style.setProperty("--mm-banner-h", dismissed ? "0px" : "2.5rem");
     return () => {
       root.style.setProperty("--mm-banner-h", "0px");
     };
-  }, [mounted, dismissed]);
+  }, [dismissed]);
 
-  if (!mounted || dismissed) return null;
+  if (dismissed) return null;
 
   const handleDismiss = () => {
     setDismissed(true);
@@ -53,6 +69,7 @@ export function UrgencyBanner({ locale }: { locale: Locale }) {
       aria-label={locale === "ar" ? "إعلان" : "Announcement"}
       className="sticky top-0 z-50 flex h-10 items-center justify-center bg-navy-900 px-10 text-brass-200"
     >
+      <script dangerouslySetInnerHTML={{ __html: DISMISS_GUARD }} />
       <p className="flex items-center justify-center gap-2 text-center text-[12.5px] font-medium sm:gap-3">
         {items.map((item, i) => (
           <span key={i} className="inline-flex items-center gap-2 sm:gap-3">
