@@ -27,6 +27,10 @@ const jost = Jost({
   variable: "--font-jost",
   subsets: ["latin"],
   display: "swap",
+  // 4A-1: paints nothing on ar (default locale / primary market); still
+  // loads on demand via CSS for the en body+badges. Keeps 26KB and one
+  // request off every page's critical path.
+  preload: false,
 });
 
 const tajawal = Tajawal({
@@ -40,6 +44,10 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   display: "swap",
+  // 4A-1: ar prices use Arabic-Indic digits (U+0660-0669) which the
+  // latin subset cannot paint, so this 40KB preload never draws a glyph
+  // on ar pages. Loads on demand where latin monospace really renders.
+  preload: false,
 });
 
 export const metadata: Metadata = {
