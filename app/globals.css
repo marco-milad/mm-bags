@@ -168,6 +168,18 @@
   h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; }
 
   /* Arabic / RTL: swap to Tajawal, relax leading, drop tracking */
+  /* Arabic display text must resolve to Tajawal, not the serif fallback.
+     Two things conspired against the [dir=rtl] rules below:
+       1. next/font appends a metric-matched fallback family
+          ("Cormorant Garamond Fallback" = local Times New Roman) that
+          carries NO unicode-range, so it claims Arabic glyphs before the
+          stack can reach Tajawal;
+       2. @theme auto-generates a .font-display utility, and the utilities
+          layer outranks @layer base no matter the selector specificity,
+          so the [dir=rtl] .font-display override never applied.
+     Rebinding the token itself sidesteps both (variables cascade normally)
+     and is scoped to RTL, so /en keeps Cormorant + its metric fallback. */
+  [dir="rtl"] { --font-display: "Cormorant Garamond", var(--font-tajawal), Georgia, serif; }
   [dir="rtl"] body { font-family: var(--font-ar); }
   [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3 {
     font-family: var(--font-ar); font-weight: 800; letter-spacing: 0; line-height: 1.3;
