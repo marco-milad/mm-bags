@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { categoryImage } from "@/lib/categories-config";
 import type { Collection } from "@/lib/supabase/types";
@@ -29,7 +30,11 @@ export type TopLevelCategory = Collection & {
  * A parent like "travel-bags" sums and samples across
  * milano-series + calvin-klein + travel-accessories.
  */
-export async function getTopLevelCategoriesWithCounts(): Promise<TopLevelCategory[]> {
+// The [locale] layout fetches this on every page, and /catalog, /categories
+// and the homepage each ask for it again inside the same render. cache()
+// collapses those to one execution per request, so the two Supabase
+// round-trips inside it run once instead of twice.
+export const getTopLevelCategoriesWithCounts = cache(async (): Promise<TopLevelCategory[]> => {
   const supabase = await createSupabaseServerClient();
 
   const { data: collections } = await supabase
@@ -133,7 +138,7 @@ export async function getTopLevelCategoriesWithCounts(): Promise<TopLevelCategor
         minPrice,
       };
     });
-}
+});
 
 export async function getSubCollections(parentSlug: string): Promise<Collection[]> {
   const supabase = await createSupabaseServerClient();

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Collection } from "@/lib/supabase/types";
 import type {
@@ -78,7 +79,9 @@ export async function getCollectionBySlug(slug: string): Promise<Collection | nu
  * the seven values the menu renders instead of `select *` with every
  * variant — the rows cross into a client component on every request.
  */
-export async function getMegaFeaturedItems(): Promise<MegaFeaturedItem[]> {
+// One call site today (the [locale] layout). Wrapped alongside the other
+// layout query so a future second caller can't silently double the work.
+export const getMegaFeaturedItems = cache(async (): Promise<MegaFeaturedItem[]> => {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("products")
@@ -90,7 +93,7 @@ export async function getMegaFeaturedItems(): Promise<MegaFeaturedItem[]> {
     .limit(3);
   if (error) throw new Error(`getMegaFeaturedItems failed: ${error.message}`);
   return (data ?? []).map(toMegaFeaturedItem);
-}
+});
 
 export async function getProducts(opts: {
   collectionId?: string;
@@ -341,7 +344,9 @@ export async function getCatalogPage(opts: CatalogPageOptions): Promise<CatalogP
   return { products, total, minPrice, hasMore };
 }
 
-export async function getProductBySlug(slug: string): Promise<ProductDetail | null> {
+// generateMetadata and the page component both resolve the same slug in one
+// request; cache() turns that into a single query.
+export const getProductBySlug = cache(async (slug: string): Promise<ProductDetail | null> => {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("products")
@@ -352,7 +357,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
 
   if (error) throw new Error(`getProductBySlug(${slug}) failed: ${error.message}`);
   return data as ProductDetail | null;
-}
+});
 
 /**
  * Returns the single product picked for the homepage spotlight section
