@@ -1,6 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  revalidateCatalogSet,
+  revalidateProduct,
+} from "@/lib/cache/revalidate-public";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -370,11 +374,12 @@ export async function saveProduct(
     }
     revalidatePath("/admin/products");
     revalidatePath(`/admin/products/${id}/edit`);
-    revalidatePath(`/ar/products/${basePayload.slug}`);
-    revalidatePath(`/en/products/${basePayload.slug}`);
+    // base_price/sale_price drive the per-category minPrice and images
+    // drive its cover art, so /categories moves with this save.
+    revalidateCatalogSet(basePayload.slug);
     if (prevRow?.slug && prevRow.slug !== basePayload.slug) {
-      revalidatePath(`/ar/products/${prevRow.slug}`);
-      revalidatePath(`/en/products/${prevRow.slug}`);
+      // The former URL has to stop serving this product.
+      revalidateProduct(prevRow.slug);
     }
     return { ok: true, id, saved: true };
   }
@@ -402,6 +407,7 @@ export async function saveProduct(
     return { ok: false, error: error?.message ?? "Insert failed" };
   }
   revalidatePath("/admin/products");
+  revalidateCatalogSet();
   // redirect() throws NEXT_REDIRECT which a useActionState client
   // handles cleanly (it's the standard form-action pattern).
   // `?created=1` lets the destination edit page render a one-shot
@@ -437,6 +443,9 @@ async function toggleFlag(
       .eq("id", id);
   }
   revalidatePath("/admin/products");
+  // is_active is the only one of the two that public queries filter on;
+  // show_in_store scopes the POS catalogue and must not disturb the store.
+  if (column === "is_active") revalidateCatalogSet();
 }
 
 export async function toggleProductActive(formData: FormData): Promise<void> {
@@ -477,6 +486,7 @@ export async function deleteProduct(
     return { ok: false, error: error.message };
   }
   revalidatePath("/admin/products");
+  revalidateCatalogSet();
   redirect("/admin/products");
 }
 
@@ -497,7 +507,9 @@ export async function reorderProductImages(
   // allow-list logic as saveProduct().
   const { data: imgRow } = await admin
     .from("products")
-    .select("images")
+    // slug rides along on this existing read; the first image is the
+    // catalog card thumbnail, so the grids move with the PDP.
+    .select("images, slug")
     .eq("id", id)
     .maybeSingle();
   const existingImages = (imgRow?.images as string[] | null) ?? [];
@@ -510,6 +522,7 @@ export async function reorderProductImages(
 
   await admin.from("products").update({ images: resolved }).eq("id", id);
   revalidatePath(`/admin/products/${id}/edit`);
+  revalidateCatalogSet(imgRow?.slug);
 }
 
 // ─── Variant CRUD ───────────────────────────────────────────────────
@@ -639,6 +652,10 @@ export async function saveVariant(
   }
   revalidatePath(`/admin/products/${rest.product_id}/edit`);
   revalidatePath("/admin/products");
+  // stock_qty and price_override are both public. Only product_id is in
+  // scope here and there is no read to piggyback on, so sweep the product
+  // pages rather than query for one slug.
+  revalidateProduct();
   return { ok: true };
 }
 
@@ -654,4 +671,6 @@ export async function deleteVariant(formData: FormData): Promise<void> {
     revalidatePath(`/admin/products/${product_id}/edit`);
   }
   revalidatePath("/admin/products");
+  // Removes a colour/size the storefront advertises.
+  revalidateProduct();
 }

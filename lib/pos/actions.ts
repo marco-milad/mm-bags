@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { deductStock } from "@/lib/inventory/deduct-stock";
+import { revalidateProduct } from "@/lib/cache/revalidate-public";
 import {
   calcTotals,
   completeSaleSchema,
@@ -181,6 +182,8 @@ export async function completeSale(
   // Revalidate the dashboard so the new sale shows up in "Recent POS"
   // and bumps the day's revenue card.
   revalidatePath("/admin");
+  // A counter sale moves the same stock the storefront prints.
+  revalidateProduct();
 
   return {
     ok: true,

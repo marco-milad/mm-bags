@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateProduct } from "@/lib/cache/revalidate-public";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin/auth";
@@ -236,6 +237,9 @@ export async function createOrderReturn(
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${input.orderId}`);
   revalidatePath("/admin");
+  // Returned lines went back into stock. The return input carries ids, not
+  // slugs, so invalidate the product pages as a set.
+  revalidateProduct();
 
   return { ok: true, returnId, refundAmount: input.refundAmount };
 }

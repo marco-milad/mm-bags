@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { revalidateProduct } from "@/lib/cache/revalidate-public";
 import { emailFrom, getResend } from "@/lib/email";
 import {
   businessHoursDurationAr,
@@ -95,6 +96,9 @@ export async function runInstapayExpirySweep(): Promise<ExpirySweepResult> {
   let emailed = 0;
   if (rows.length > 0) {
     emailed = await sendExpiryEmailsBestEffort(rows.map((r) => r.expired_order_id));
+    // The sweep restocked every line of every expired order inside SQL.
+    // One invalidation for the whole batch — never one per order.
+    revalidateProduct();
   }
 
   return {

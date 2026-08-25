@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateProduct } from "@/lib/cache/revalidate-public";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin/auth";
 
@@ -32,8 +33,8 @@ export async function approveReview(
   revalidatePath("/admin/reviews");
   revalidatePath("/admin");
   if (productSlug) {
-    revalidatePath(`/ar/products/${productSlug}`);
-    revalidatePath(`/en/products/${productSlug}`);
+    // Also refreshes the homepage reel, which renders approved reviews.
+    revalidateProduct(productSlug);
   }
   return { ok: true };
 }

@@ -3,6 +3,7 @@
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { deductStock } from "@/lib/inventory/deduct-stock";
+import { revalidateProduct } from "@/lib/cache/revalidate-public";
 import { EG_GOVERNORATES } from "./governorates";
 import {
   calcTotals,
@@ -151,6 +152,11 @@ export async function placeOrder(
         error: `المنتج خلص من المخزون. ${deductResult.error}`,
       };
     }
+
+    // Stock just moved for every line in this order. The cart carries
+    // ids, not slugs, so invalidate the product pages as a set rather
+    // than adding a lookup to the purchase path.
+    revalidateProduct();
 
     return { ok: true, orderId: order.id, orderNumber: order.order_number };
   }

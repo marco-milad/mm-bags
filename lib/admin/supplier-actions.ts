@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { revalidateProduct } from "@/lib/cache/revalidate-public";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -207,6 +208,9 @@ export async function markPurchaseOrderReceived(poId: string): Promise<void> {
   revalidatePath("/admin/purchase-orders");
   revalidatePath(`/admin/purchase-orders/${poId}`);
   revalidatePath("/admin/stock");
+  // Receiving a PO restocks every line; one sweep after the loop, not one
+  // per item.
+  revalidateProduct();
 }
 
 export async function recordPurchaseOrderPayment(

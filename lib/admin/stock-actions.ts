@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateProduct } from "@/lib/cache/revalidate-public";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -54,7 +55,9 @@ export async function adjustStock(
   // Read current qty + product_id for the movement row.
   const { data: variant, error: readErr } = await admin
     .from("product_variants")
-    .select("stock_qty, product_id")
+    // products(slug) rides along on the read this function already does,
+    // so the storefront invalidation below costs no extra round-trip.
+    .select("stock_qty, product_id, products(slug)")
     .eq("id", variantId)
     .maybeSingle();
   if (readErr || !variant) {
@@ -90,5 +93,8 @@ export async function adjustStock(
 
   revalidatePath("/admin/stock");
   revalidatePath("/admin");
+  revalidateProduct(
+    (variant as { products?: { slug?: string | null } | null }).products?.slug,
+  );
   return { ok: true, newQty: after };
 }
