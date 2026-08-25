@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabasePublicClient } from "@/lib/supabase/public";
 import { categoryImage } from "@/lib/categories-config";
 import type { Collection } from "@/lib/supabase/types";
 
@@ -35,7 +36,10 @@ export type TopLevelCategory = Collection & {
 // collapses those to one execution per request, so the two Supabase
 // round-trips inside it run once instead of twice.
 export const getTopLevelCategoriesWithCounts = cache(async (): Promise<TopLevelCategory[]> => {
-  const supabase = await createSupabaseServerClient();
+  // Cookie-free: the [locale] layout calls this on every page, and reading
+  // cookies() here would opt the entire site into dynamic rendering. The
+  // rows are identical either way (role-independent RLS).
+  const supabase = getSupabasePublicClient();
 
   const { data: collections } = await supabase
     .from("collections")

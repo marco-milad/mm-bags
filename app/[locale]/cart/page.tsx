@@ -2,6 +2,12 @@ import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { CartPageContent } from "@/components/cart/CartPageContent";
 
+// Personalized: the cart, the wishlist and the checkout form are all
+// per-visitor. They used to be dynamic only as a side effect of the layout
+// reading cookies(); now that the layout is cookie-free, say it directly so
+// they are never prerendered or served from a shared cache.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Cart — M.M Bags",
 };

@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabasePublicClient } from "@/lib/supabase/public";
 import type { Collection } from "@/lib/supabase/types";
 import type {
   CatalogCardProduct,
@@ -82,7 +83,9 @@ export async function getCollectionBySlug(slug: string): Promise<Collection | nu
 // One call site today (the [locale] layout). Wrapped alongside the other
 // layout query so a future second caller can't silently double the work.
 export const getMegaFeaturedItems = cache(async (): Promise<MegaFeaturedItem[]> => {
-  const supabase = await createSupabaseServerClient();
+  // Cookie-free for the same reason as getTopLevelCategoriesWithCounts:
+  // this is the layout's other per-page read.
+  const supabase = getSupabasePublicClient();
   const { data, error } = await supabase
     .from("products")
     .select("id, slug, name_ar, name_en, images, base_price, sale_price")

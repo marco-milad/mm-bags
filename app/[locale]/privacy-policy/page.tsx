@@ -11,6 +11,13 @@ import {
   Section,
 } from "@/components/policy/PolicyComponents";
 
+// Static with hourly ISR. These pages fetch nothing of their own; the only
+// per-request data in the tree is the [locale] layout's navigation, which is
+// now read through the cookie-free public client. An hour bounds how stale
+// the mega-menu can get, since the Step 5B invalidation helpers target the
+// catalogue routes rather than the content pages.
+export const revalidate = 3600;
+
 export async function generateMetadata({
   params,
 }: PageProps<"/[locale]/privacy-policy">): Promise<Metadata> {
