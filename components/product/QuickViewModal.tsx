@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ProductSpecsChips } from "@/components/product/ProductSpecs";
+import { ViewItemTracker } from "@/components/analytics/ViewItemTracker";
 
 type Color = { hex: string; ar: string; en: string };
 
@@ -157,6 +158,9 @@ export function QuickViewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* Same event as the product page, different surface. active={open}
+          starts the dwell timer when the modal opens, not when it mounts. */}
+      <ViewItemTracker productId={product.id} active={open} />
       <DialogContent
         className="max-w-3xl md:w-[90vw] md:max-w-4xl"
         closeAriaLabel={isRTL ? "إغلاق" : "Close"}

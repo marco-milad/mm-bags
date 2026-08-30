@@ -65,6 +65,13 @@ export const ADMIN_NAV: ReadonlyArray<AdminNavSection> = [
         icon: LayoutDashboard,
         allowedRoles: ["manager", "admin"],
       },
+      {
+        href: "/admin/analytics",
+        label_ar: "التحليلات",
+        label_en: "Analytics",
+        icon: BarChart3,
+        allowedRoles: ["manager", "admin"],
+      },
     ],
   },
   {

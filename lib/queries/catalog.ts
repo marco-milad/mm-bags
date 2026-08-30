@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabasePublicClient } from "@/lib/supabase/public";
+import { normalizeSearchTerm } from "@/lib/analytics/text";
 import type { Collection } from "@/lib/supabase/types";
 import type {
   CatalogCardProduct,
@@ -241,6 +242,15 @@ export type CatalogPage = {
   minPrice: number | null;
   /** Whether more products exist after `offset + limit`. */
   hasMore: boolean;
+  /**
+   * Ids of the matching products in rank order, capped at 20.
+   *
+   * These are what make search impressions possible, and they are nearly free:
+   * the index query already holds the full result set where `total` is
+   * computed. Impressions separate "nobody is looking for this" (a discovery
+   * problem) from "people see it and skip it" (a merchandising one).
+   */
+  rankedIds: string[];
 };
 
 export async function getCatalogPage(opts: CatalogPageOptions): Promise<CatalogPage> {
@@ -260,9 +270,18 @@ export async function getCatalogPage(opts: CatalogPageOptions): Promise<CatalogP
     indexQuery = indexQuery.eq("material_type", opts.material);
   }
   if (opts.q) {
-    const safe = opts.q.trim().replace(/[*,()]/g, " ");
-    if (safe) {
-      indexQuery = indexQuery.or(`name_ar.ilike.*${safe}*,name_en.ilike.*${safe}*`);
+    // Both sides of the comparison go through the same normalizer. Folding
+    // only the query would match nothing at all, because the stored text still
+    // carries the forms the fold removes.
+    const norm = normalizeSearchTerm(opts.q).replace(/[*,()]/g, " ").trim();
+    if (norm) {
+      // search_blob also carries slug, tags and curated keywords, so the
+      // shopper's spelling stops deciding whether a product exists. The name
+      // clauses stay as a fallback for rows whose blob has not been built yet.
+      const safe = opts.q.trim().replace(/[*,()]/g, " ");
+      indexQuery = indexQuery.or(
+        `search_blob.ilike.*${norm}*,name_ar.ilike.*${safe}*,name_en.ilike.*${safe}*`,
+      );
     }
   }
 
@@ -312,7 +331,7 @@ export async function getCatalogPage(opts: CatalogPageOptions): Promise<CatalogP
   const hasMore = opts.offset + opts.limit < total;
 
   if (pageIds.length === 0) {
-    return { products: [], total, minPrice, hasMore };
+    return { products: [], total, minPrice, hasMore, rankedIds: [] };
   }
 
   // ── 3. card data for just this page ──
@@ -344,7 +363,7 @@ export async function getCatalogPage(opts: CatalogPageOptions): Promise<CatalogP
     .map((id) => byIdMap.get(id))
     .filter((p): p is CatalogCardProduct => p !== undefined);
 
-  return { products, total, minPrice, hasMore };
+  return { products, total, minPrice, hasMore, rankedIds: pageIds.slice(0, 20) };
 }
 
 // generateMetadata and the page component both resolve the same slug in one

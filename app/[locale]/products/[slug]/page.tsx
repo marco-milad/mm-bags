@@ -10,6 +10,7 @@ import {
   productSchema,
 } from "@/lib/seo/jsonld";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { ViewItemTracker } from "@/components/analytics/ViewItemTracker";
 import { effectivePrice, totalStock } from "@/lib/catalog-shared";
 import { getProductBySlug, getRelatedProducts } from "@/lib/queries/catalog";
 import { ProductDetailLayout } from "@/components/product/ProductDetailLayout";
@@ -140,6 +141,7 @@ export default async function ProductDetailPage({
   return (
     <article className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-12">
       <JsonLd data={pdpSchemas} />
+      <ViewItemTracker productId={product.id} />
       {/* Breadcrumb */}
       <nav
         className="mb-6 flex items-center gap-2 text-xs text-[var(--color-text-secondary)]"

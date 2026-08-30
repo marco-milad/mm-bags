@@ -5,6 +5,7 @@ import {
   revalidateCatalogSet,
   revalidateProduct,
 } from "@/lib/cache/revalidate-public";
+import { buildSearchBlob } from "@/lib/analytics/text";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -319,6 +320,15 @@ export async function saveProduct(
     ...rest,
     collection_id: collection_id || null,
     tags: tagList,
+    // Recomputed on every save so the searchable text can never drift from the
+    // product. This is the ONLY writer — there is deliberately no database
+    // trigger doing the same job, because two writers means two answers.
+    search_blob: buildSearchBlob({
+      name_ar: rest.name_ar,
+      name_en: rest.name_en,
+      slug: rest.slug,
+      tags: tagList,
+    }),
     // sale_price = 0 means "no sale" by convention; null it out.
     sale_price:
       rest.sale_price && rest.sale_price > 0 ? rest.sale_price : null,
@@ -365,7 +375,9 @@ export async function saveProduct(
 
     const { error } = await admin
       .from("products")
-      .update(updatePayload)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated
+      // types predate migration 0020 (products.search_blob).
+      .update(updatePayload as any)
       .eq("id", id);
     if (error) {
       if (error.code === "23505")
@@ -398,7 +410,9 @@ export async function saveProduct(
   const insertImages = resolvedImages ?? [];
   const { data: created, error } = await admin
     .from("products")
-    .insert({ ...basePayload, images: insertImages, sort_order: nextSortOrder })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated
+    // types predate migration 0020 (products.search_blob).
+    .insert({ ...basePayload, images: insertImages, sort_order: nextSortOrder } as any)
     .select("id")
     .single();
   if (error || !created) {

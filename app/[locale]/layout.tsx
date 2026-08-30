@@ -9,6 +9,7 @@ import { WhatsAppFAB } from "@/components/shared/WhatsAppFAB";
 import { SocialBar } from "@/components/shared/SocialBar";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { SizeGuideFAB } from "@/components/size-guide/SizeGuideFAB";
 import { direction, hasLocale, locales } from "@/lib/i18n-config";
 import { getDictionary } from "@/lib/i18n";
@@ -149,6 +150,7 @@ export default async function RootLayout({
         <SocialBar locale={locale} />
         <ScrollToTop locale={locale} />
         <CartDrawer locale={locale} />
+        <PageViewTracker />
       </body>
     </html>
   );

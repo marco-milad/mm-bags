@@ -7,6 +7,7 @@ import { localeAlternates } from "@/lib/seo/site";
 import { getCatalogPage } from "@/lib/queries/catalog";
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 import { pickCatalogFilters, resolveCatalogFilters } from "@/lib/catalog/filters";
+import { logSearch } from "@/lib/analytics/log-search";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,26 @@ export default async function CatalogPage({
     }),
   ]);
   const products = page.products;
+
+  // Log the search where it actually executes. The client never sends this
+  // event: only here are result_count and result_ids known, and a client-sent
+  // count could be forged — which would corrupt the zero-result rate, the most
+  // actionable number this system produces.
+  //
+  // Deliberately not awaited and deliberately caught: analytics must never be
+  // able to slow or fail a catalog request. logSearch applies its own bot,
+  // prefetch and opt-out guards.
+  if (q) {
+    void logSearch({
+      id: crypto.randomUUID(),
+      query: q,
+      resultCount: page.total,
+      resultIds: page.rankedIds,
+      locale,
+      path: `/${locale}/catalog`,
+      sort,
+    }).catch((e) => console.warn("[analytics] search log failed", e));
+  }
 
   const bucketLabel = bucket && (locale === "ar" ? bucket.ar : bucket.en);
 
