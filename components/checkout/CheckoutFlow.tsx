@@ -16,6 +16,7 @@ import {
 } from "@/store/cart";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { StepIndicator, type CheckoutStep } from "./StepIndicator";
+import { CheckoutSkeleton } from "@/components/cart/CartSkeleton";
 import { ShippingForm } from "./ShippingForm";
 import { PaymentSelector } from "./PaymentSelector";
 import { OrderReview } from "./OrderReview";
@@ -118,12 +119,11 @@ export function CheckoutFlow({
     });
   });
 
+  // min-h-[40vh] reserved 360px on a 900px desktop viewport while the real
+  // form needs roughly three times that, so the footer sat above the fold and
+  // then jumped. The skeleton mirrors the two-column checkout layout instead.
   if (!hydrated) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center text-[var(--color-text-secondary)]">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
+    return <CheckoutSkeleton />;
   }
 
   if (items.length === 0) {

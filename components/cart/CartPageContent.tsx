@@ -11,6 +11,7 @@ import {
   useCartTotal,
 } from "@/store/cart";
 import { CartItem } from "./CartItem";
+import { CartSkeleton } from "./CartSkeleton";
 
 const FREE_SHIPPING_THRESHOLD = 1500;
 
@@ -31,12 +32,12 @@ export function CartPageContent({ locale }: { locale: Locale }) {
   const count = useCartItemCount();
   const subtotal = useCartTotal();
 
+  // A one-line "loading" message left the footer inside the viewport, so the
+  // real cart pushed it down and the growth counted as layout shift. The
+  // skeleton mirrors the loaded grid instead, reserving the space the content
+  // is about to occupy.
   if (!hydrated) {
-    return (
-      <p className="rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
-        {isRTL ? "جاري التحميل..." : "Loading..."}
-      </p>
-    );
+    return <CartSkeleton />;
   }
 
   if (items.length === 0) {
