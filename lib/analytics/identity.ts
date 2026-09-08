@@ -14,10 +14,47 @@
 export const VISITOR_COOKIE = "mm_vid";
 export const SESSION_COOKIE = "mm_sid";
 export const OPTOUT_COOKIE = "mm_optout";
+export const CONSENT_COOKIE = "mm_consent";
 
 export const VISITOR_MAX_AGE = 365 * 24 * 60 * 60; // 12 months
 export const SESSION_MAX_AGE = 30 * 60; // rolling 30-minute inactivity window
 export const OPTOUT_MAX_AGE = 2 * 365 * 24 * 60 * 60;
+export const CONSENT_MAX_AGE = 365 * 24 * 60 * 60; // 12 months, then ask again
+
+/**
+ * Analytics consent.
+ *
+ * Three states, and the absence of the cookie is "unknown" — never a yes. A
+ * visitor who has not answered is treated exactly like one who said no, so
+ * nothing is minted and nothing is stored until they choose.
+ *
+ * The cookie holds one of these three words and nothing else. No id, no
+ * timestamp, no visitor data: the decision is all that needs to persist, and
+ * anything more would be personal data stored to justify storing personal
+ * data.
+ *
+ * `rejected` is stored rather than left blank so the banner can tell "said no"
+ * from "has not been asked" and stop reappearing on every page.
+ */
+export type ConsentState = "unknown" | "accepted" | "rejected";
+
+export function readConsent(raw: string | undefined): ConsentState {
+  return raw === "accepted" || raw === "rejected" ? raw : "unknown";
+}
+
+/**
+ * The single question every tracking path asks.
+ *
+ * Deliberately not `!== "rejected"`: unknown must fail closed. The legacy
+ * mm_optout cookie also still vetoes — visitors who used the opt-out link
+ * before consent existed keep their choice without having to make it again.
+ */
+export function trackingAllowed(
+  consentRaw: string | undefined,
+  optOutRaw: string | undefined,
+): boolean {
+  return optOutRaw !== "1" && readConsent(consentRaw) === "accepted";
+}
 
 export const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

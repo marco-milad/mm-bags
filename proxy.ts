@@ -1,11 +1,13 @@
 import { NextResponse, after, type NextRequest } from "next/server";
 import { isbot } from "isbot";
 import {
+  CONSENT_COOKIE,
   COOKIE_OPTS,
   OPTOUT_COOKIE,
   SESSION_COOKIE,
   SESSION_MAX_AGE,
   touchVisitor,
+  trackingAllowed,
   UUID_RE,
   VISITOR_COOKIE,
   VISITOR_MAX_AGE,
@@ -39,10 +41,21 @@ function pickLocale(request: NextRequest): string {
  * object would lose identity for exactly the visitors who arrive at the root.
  */
 function attachIdentity(request: NextRequest, response: NextResponse) {
-  // Never Set-Cookie for bots or opted-out visitors. Bots inflate every count,
-  // and an opted-out visitor must have nothing written about them at all.
+  // Nothing is minted until the visitor has actually said yes.
+  //
+  // This is the gate, not the banner. The banner only asks the question; if it
+  // were the only thing standing between a visitor and an identity cookie,
+  // then blocking it, dismissing it, or arriving before it painted would all
+  // result in silent tracking. Enforcing here means an unanswered visitor is
+  // indistinguishable from one who declined: no cookie, no row, nothing.
+  //
+  // Bots are still excluded separately — they inflate every count and will
+  // never answer a banner.
   if (
-    request.cookies.get(OPTOUT_COOKIE)?.value === "1" ||
+    !trackingAllowed(
+      request.cookies.get(CONSENT_COOKIE)?.value,
+      request.cookies.get(OPTOUT_COOKIE)?.value,
+    ) ||
     isbot(request.headers.get("user-agent") ?? "")
   ) {
     return response;

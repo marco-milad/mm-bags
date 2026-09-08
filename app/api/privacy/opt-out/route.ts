@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  CONSENT_COOKIE,
+  CONSENT_MAX_AGE,
   COOKIE_OPTS,
   OPTOUT_COOKIE,
   OPTOUT_MAX_AGE,
@@ -29,6 +31,14 @@ function optOut(request: NextRequest) {
   response.cookies.set(OPTOUT_COOKIE, "1", {
     ...COOKIE_OPTS,
     maxAge: OPTOUT_MAX_AGE,
+  });
+  // Also record the decision so the consent banner does not reopen and ask a
+  // question this visitor has just answered by withdrawing. Not HttpOnly, for
+  // the same reason as everywhere else: the banner has to be able to read it.
+  response.cookies.set(CONSENT_COOKIE, "rejected", {
+    ...COOKIE_OPTS,
+    httpOnly: false,
+    maxAge: CONSENT_MAX_AGE,
   });
   // maxAge 0 expires them immediately; the path must match how they were set.
   response.cookies.set(VISITOR_COOKIE, "", { ...COOKIE_OPTS, maxAge: 0 });

@@ -330,13 +330,59 @@ export default async function PrivacyPolicyPage({
           </ul>
         </Section>
 
-        <Section title={isAr ? "الكوكيز" : "Cookies"}>
-          <Body isAr={isAr}>
-            {isAr
-              ? "بنستخدم عدد صغير جداً من الكوكيز الأساسية — بس اللي محتاجينها عشان الموقع يشتغل. مثلاً: تسجيل الدخول، لغة الموقع، ومحتويات عربة التسوّق. مفيش كوكيز إعلانية أو تتبّع خارجي."
-              : "We use a very small set of essential cookies — only those needed for the site to work. Examples: login sessions, language preference, and shopping cart contents. We don't use advertising cookies or third-party tracking."}
-          </Body>
-        </Section>
+          <Section title={isAr ? "الكوكيز والتحليلات" : "Cookies and analytics"}>
+            <Body isAr={isAr}>
+              {isAr
+                ? "الكوكيز الأساسية بتشتغل دايماً لأن الموقع مش هيشتغل من غيرها: تسجيل الدخول، لغة الموقع، ومحتويات عربة التسوّق."
+                : "Essential cookies always run, because the site does not work without them: login sessions, language preference, and shopping cart contents."}
+            </Body>
+            <Body isAr={isAr}>
+              {isAr
+                ? "وبنستخدم كمان كوكيز تحليلات خاصة بينا إحنا — مش بتشتغل غير لما توافق عليها، وأول ما تفتح الموقع بنسألك. لو مجاوبتش، أو قلت لأ، مش بنسجّل أي حاجة."
+                : "We also use our own analytics cookies. They do not run until you agree, and we ask the first time you visit. If you don't answer, or you decline, nothing at all is recorded."}
+            </Body>
+            <Bullet isAr={isAr}>
+              {isAr
+                ? "mm_vid — رقم عشوائي بيفضل ١٢ شهر، بيخلينا نعرف إن دي نفس الزيارة مش زيارة جديدة. مش مربوط باسمك ولا تليفونك ولا حسابك."
+                : "mm_vid — a random id kept for 12 months so a return visit isn't counted as a new one. It is not linked to your name, phone, or account."}
+            </Bullet>
+            <Bullet isAr={isAr}>
+              {isAr
+                ? "mm_sid — رقم عشوائي للجلسة الواحدة، بينتهي بعد ٣٠ دقيقة من عدم النشاط."
+                : "mm_sid — a random per-session id that expires after 30 minutes of inactivity."}
+            </Bullet>
+            <Bullet isAr={isAr}>
+              {isAr
+                ? "mm_consent — بيحفظ قرارك (موافق أو لأ) عشان منسألكش كل مرة."
+                : "mm_consent — remembers your answer so we don't ask again."}
+            </Bullet>
+            <Body isAr={isAr}>
+              {isAr
+                ? "لما توافق، بنسجّل: الصفحات اللي بتفتحها، الكلمات اللي بتدوّر بيها، والمنتجات اللي بتفتحها. بنشيل أرقام التليفونات والإيميلات من كلمات البحث قبل ما نخزّنها. بنحتفظ بالتفاصيل دي ٩٠ يوم، وبأرقام مجمّعة من غير تفاصيل بعد كده."
+                : "When you agree, we record which pages you open, what you search for, and which products you view. Phone numbers and email addresses are stripped from search terms before they are stored. These details are kept for 90 days, and only aggregate counts after that."}
+            </Body>
+            <Body isAr={isAr}>
+              {isAr
+                ? "دي تحليلات بتاعتنا إحنا وبتتخزن في قاعدة بياناتنا. مفيش Google Analytics ولا Meta Pixel ولا أي أداة تتبّع تانية، ومفيش كوكيز إعلانية، ومش بنشارك الداتا دي مع أي حد."
+                : "This is our own analytics, stored in our own database. There is no Google Analytics, no Meta Pixel, and no other third-party tracker; there are no advertising cookies, and none of it is shared with anyone."}
+            </Body>
+            <Body isAr={isAr}>
+              {isAr
+                ? "تقدر توقفها في أي وقت من رابط «إيقاف التحليلات» الموجود تحت في كل صفحة، أو من هنا:"
+                : "You can turn it off at any time from the “Turn off analytics” link in the footer of every page, or here:"}
+            </Body>
+            <p className="mt-2">
+              {/* Route handler, so a plain anchor. It clears mm_vid and mm_sid
+                  and records the refusal, and it must keep working: this is the
+                  mechanism the paragraph above promises. */}
+              <a
+                href={`/api/privacy/opt-out?locale=${locale}`}
+                className="font-semibold text-[var(--color-primary)] underline underline-offset-4"
+              >
+                {isAr ? "إيقاف تحليلات الموقع دلوقتي" : "Turn off site analytics now"}
+              </a>
+            </p>
+          </Section>
 
         <Section title={isAr ? "أمان بياناتك" : "Data security"}>
           <Body isAr={isAr}>

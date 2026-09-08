@@ -4,8 +4,10 @@ import { cookies, headers } from "next/headers";
 import { isbot } from "isbot";
 import { analyticsTable, type AnalyticsEventRow } from "@/lib/analytics/db";
 import {
+  CONSENT_COOKIE,
   OPTOUT_COOKIE,
   SESSION_COOKIE,
+  trackingAllowed,
   UUID_RE,
   VISITOR_COOKIE,
 } from "@/lib/analytics/identity";
@@ -54,7 +56,16 @@ export async function logSearch(input: SearchLogInput): Promise<void> {
   if (isPrefetch || isbot(ua)) return;
 
   const jar = await cookies();
-  if (jar.get(OPTOUT_COOKIE)?.value === "1") return;
+  // The search row is written from the server, so no client-side guard can
+  // stop it. Consent has to be checked right here.
+  if (
+    !trackingAllowed(
+      jar.get(CONSENT_COOKIE)?.value,
+      jar.get(OPTOUT_COOKIE)?.value,
+    )
+  ) {
+    return;
+  }
   const visitorId = jar.get(VISITOR_COOKIE)?.value;
   const sessionId = jar.get(SESSION_COOKIE)?.value;
   if (!visitorId || !UUID_RE.test(visitorId)) return;

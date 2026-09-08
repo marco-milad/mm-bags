@@ -26,6 +26,24 @@ type QueuedEvent = TrackInput & {
   referrerDomain?: string;
 };
 
+/**
+ * Consent is readable from the client because the decision cookie is
+ * deliberately NOT HttpOnly — unlike mm_vid, it carries no identity, and the
+ * page needs it to decide whether to render the banner and whether to emit at
+ * all.
+ *
+ * This is a courtesy stop, not the enforcement point. The proxy refuses to
+ * mint ids without consent and /api/events refuses to store without it; this
+ * only spares the network a beacon that would be discarded anyway, and stops
+ * path and referrer leaving the browser after someone has declined.
+ */
+function consentGranted(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie
+    .split("; ")
+    .some((c) => c === "mm_consent=accepted");
+}
+
 const ENDPOINT = "/api/events";
 const FLUSH_AT = 10;
 const IDLE_MS = 5_000;
@@ -113,6 +131,8 @@ function bindLifecycle() {
  */
 export function track(input: TrackInput) {
   if (typeof window === "undefined") return;
+  // Unknown and rejected both stop here. Absence of a decision is never a yes.
+  if (!consentGranted()) return;
   bindLifecycle();
 
   const path = location.pathname;

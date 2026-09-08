@@ -10,6 +10,7 @@ import { SocialBar } from "@/components/shared/SocialBar";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
+import { ConsentBanner } from "@/components/analytics/ConsentBanner";
 import { SizeGuideFAB } from "@/components/size-guide/SizeGuideFAB";
 import { direction, hasLocale, locales } from "@/lib/i18n-config";
 import { getDictionary } from "@/lib/i18n";
@@ -151,6 +152,10 @@ export default async function RootLayout({
         <ScrollToTop locale={locale} />
         <CartDrawer locale={locale} />
         <PageViewTracker />
+        {/* Reads its own cookie on the client. Deliberately NOT read here:
+            calling cookies() in this layout would opt every route back into
+            dynamic rendering and undo the eight prerendered content pages. */}
+        <ConsentBanner locale={locale} />
       </body>
     </html>
   );

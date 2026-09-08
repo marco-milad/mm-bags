@@ -3,8 +3,10 @@ import { isbot } from "isbot";
 import { z } from "zod";
 import { analyticsTable, type AnalyticsEventRow } from "@/lib/analytics/db";
 import {
+  CONSENT_COOKIE,
   OPTOUT_COOKIE,
   SESSION_COOKIE,
+  trackingAllowed,
   VISITOR_COOKIE,
   UUID_RE,
 } from "@/lib/analytics/identity";
@@ -61,7 +63,13 @@ export async function POST(request: Request) {
   const jar = await cookies();
   const visitorId = jar.get(VISITOR_COOKIE)?.value;
   const sessionId = jar.get(SESSION_COOKIE)?.value;
-  const optedOut = jar.get(OPTOUT_COOKIE)?.value === "1";
+  // Consent is checked here as well as in the proxy. Without consent no ids
+  // are minted, so the id check below would already reject the batch — but a
+  // forged or stale cookie pair must not be enough to get a row written.
+  const allowed = trackingAllowed(
+    jar.get(CONSENT_COOKIE)?.value,
+    jar.get(OPTOUT_COOKIE)?.value,
+  );
 
   // An event with no identity is not attributable to anyone and would pollute
   // every distinct count, so drop the batch rather than store it half-blind.
@@ -69,7 +77,7 @@ export async function POST(request: Request) {
   // Always answer 204 regardless of why: a beacon has nobody to read a body,
   // and reporting which events were dropped would leak the filter rules.
   if (
-    optedOut ||
+    !allowed ||
     isPrefetch ||
     isbot(h.get("user-agent") ?? "") ||
     !visitorId ||

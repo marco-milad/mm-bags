@@ -281,6 +281,20 @@ export function Footer({
               ·
             </li>
             <li>
+              {/* A plain link, not a JS control: withdrawing has to work on
+                  every page and must not depend on the banner still existing.
+                  It is a route handler, so <a> rather than next/link. */}
+              <a
+                href={`/api/privacy/opt-out?locale=${locale}`}
+                className="transition hover:text-paper"
+              >
+                {isRTL ? "إيقاف التحليلات" : "Turn off analytics"}
+              </a>
+            </li>
+            <li aria-hidden className="text-navy-500">
+              ·
+            </li>
+            <li>
               <Link
                 href={`${base}/refund-policy`}
                 className="transition hover:text-paper"
