@@ -145,17 +145,9 @@ export default async function RootLayout({
       dir={dir}
       className={`${cormorant.variable} ${jost.variable} ${tajawal.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <head>
-        {/* Performance: preconnect to font hosts so the first font
-            byte arrives in parallel with the HTML parse. Crossorigin
-            is required for font fetches per the CORS spec. */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-      </head>
+      {/* No preconnect to Google's font hosts: the fonts are served from
+          this origin now, so those hints only cost every visitor a TLS
+          handshake to a server the page never calls. */}
       <body className="min-h-full flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
         <UrgencyBanner locale={locale} />
         <Navbar
