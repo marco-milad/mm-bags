@@ -115,3 +115,43 @@ export async function deductStock(opts: {
 
   return { ok: true };
 }
+
+export type StockDeductBulkResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * All-or-nothing stock deduction for a whole order in ONE transaction via
+ * the `deduct_stock_bulk_atomic` RPC. Either every line is decremented or
+ * none is — there is no partial-deduction state to reconcile, so the caller
+ * can safely cancel the order on failure without leaking stock.
+ *
+ * This is the online-checkout path. The per-item `deductStock` above is kept
+ * for the POS flow, which is unchanged.
+ */
+export async function deductStockBulk(opts: {
+  items: ReadonlyArray<StockDeductItem>;
+  referenceType: "online_sale" | "pos_sale";
+  referenceId: string;
+  createdBy?: string | null;
+}): Promise<StockDeductBulkResult> {
+  const items = opts.items;
+  if (items.length === 0) return { ok: true };
+
+  const admin = getSupabaseAdminClient();
+  const movementType: StockMovementType =
+    opts.referenceType === "pos_sale" ? "pos_sale" : "online_sale";
+
+  const { error } = await admin.rpc("deduct_stock_bulk_atomic", {
+    p_items: items.map((i) => ({ variant_id: i.variantId, qty: i.qty })),
+    p_reference_type: opts.referenceType,
+    p_reference_id: opts.referenceId,
+    p_created_by: opts.createdBy ?? null,
+    p_movement_type: movementType,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}

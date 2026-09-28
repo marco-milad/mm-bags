@@ -43,6 +43,7 @@ export function CheckoutFlow({
   const hydrated = useCartHydrated();
   const items = useCartItems();
   const clearCart = useCartStore((s) => s.clearCart);
+  const repriceItems = useCartStore((s) => s.repriceItems);
 
   const [step, setStep] = useState<CheckoutStep>(1);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -111,6 +112,25 @@ export function CheckoutFlow({
         })),
       });
       if (!result.ok) {
+        // The cart went stale between add-to-cart and checkout: the server
+        // re-priced it and refused to charge the old total silently. Apply
+        // the fresh prices, send the shopper back to Review, and make them
+        // confirm the new total.
+        if (result.code === "PRICE_CHANGED" && result.reprice?.length) {
+          repriceItems(
+            result.reprice.map((r) => ({
+              variantId: r.variantId,
+              unitPrice: r.newUnitPrice,
+            })),
+          );
+          setStep(3);
+          setServerError(
+            locale === "ar"
+              ? "أسعار بعض المنتجات اتغيّرت. حدّثنا سلتك بالأسعار الجديدة — راجِع الإجمالي وأكّد الطلب تاني."
+              : "Some prices changed. We've updated your cart — please review the new total and place the order again.",
+          );
+          return;
+        }
         setServerError(result.error);
         return;
       }

@@ -1272,6 +1272,16 @@ export type Database = {
         };
         Returns: void;
       };
+      deduct_stock_bulk_atomic: {
+        Args: {
+          p_items: Array<{ variant_id: string; qty: number }>;
+          p_reference_type: string;
+          p_reference_id: string;
+          p_created_by: string | null;
+          p_movement_type?: StockMovementType;
+        };
+        Returns: void;
+      };
       is_active_staff: {
         Args: Record<string, never>;
         Returns: boolean;

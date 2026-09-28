@@ -27,6 +27,7 @@ type CartState = {
   addItem: (input: AddItemInput) => void;
   removeItem: (variantId: string) => void;
   updateQty: (variantId: string, qty: number) => void;
+  repriceItems: (updates: { variantId: string; unitPrice: number }[]) => void;
   clearCart: () => void;
   openDrawer: () => void;
   closeDrawer: () => void;
@@ -71,6 +72,23 @@ export const useCartStore = create<CartState>()(
             items: state.items.map((i) =>
               i.variantId === variantId ? { ...i, qty: clamped } : i,
             ),
+          };
+        }),
+
+      // Apply server-authoritative prices after checkout reports a stale
+      // cart (PRICE_CHANGED). Only touches lines still in the cart; unknown
+      // variantIds are ignored.
+      repriceItems: (updates) =>
+        set((state) => {
+          if (updates.length === 0) return state;
+          const priceById = new Map(
+            updates.map((u) => [u.variantId, u.unitPrice] as const),
+          );
+          return {
+            items: state.items.map((i) => {
+              const next = priceById.get(i.variantId);
+              return next != null ? { ...i, unitPrice: next } : i;
+            }),
           };
         }),
 

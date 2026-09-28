@@ -132,6 +132,29 @@ export function effectivePrice(product: Pick<Product, "base_price" | "sale_price
 }
 
 /**
+ * The authoritative WEBSITE price for a variant, most-specific first:
+ *
+ *   1. variant.price_override — per-colour/size website override
+ *   2. product.sale_price     — product-level discount
+ *   3. product.base_price     — list price
+ *
+ * This is the single source of truth for storefront pricing. The catalog
+ * cards, the PDP buy box, and — crucially — the server-side checkout
+ * validator all resolve price through here, so what a shopper sees can
+ * never drift from what the server charges. Client-supplied prices are a
+ * display hint only; the server always re-derives the price with this
+ * helper. Note this is the WEB price and deliberately ignores the POS-only
+ * store_price / store_price_override (see effectivePosPrice).
+ */
+export function effectiveWebPrice(
+  product: Pick<Product, "base_price" | "sale_price">,
+  variant?: Pick<ProductVariant, "price_override"> | null,
+): number {
+  if (variant?.price_override != null) return variant.price_override;
+  return product.sale_price ?? product.base_price;
+}
+
+/**
  * In-store (POS) price for a product, optionally narrowed to a
  * specific variant. Resolution order, most-specific first:
  *
@@ -166,7 +189,7 @@ export function hasStoreSpecificPrice(
   variant?: Pick<ProductVariant, "price_override" | "store_price_override"> | null,
 ): boolean {
   const pos = effectivePosPrice(product, variant);
-  const web = variant?.price_override ?? product.sale_price ?? product.base_price;
+  const web = effectiveWebPrice(product, variant);
   return Math.abs(pos - web) > 0.005;
 }
 
