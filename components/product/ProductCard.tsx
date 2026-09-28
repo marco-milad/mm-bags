@@ -118,19 +118,24 @@ export function ProductCard({
               image: primaryImage,
             }}
           />
-          {hasSale && !isOOS && (
+          {/* Availability is deliberately NOT surfaced on the card. A
+              grid of "out of stock" banners reads as a dead shop, so the
+              card sells the product and the detail page — where the
+              shopper has already committed a click — tells them it is
+              unavailable and offers the restock alert. The sale badge
+              therefore renders on stock and out-of-stock cards alike;
+              suppressing it here would leak the same fact the banner
+              used to state outright. */}
+          {hasSale && (
             <span className="absolute top-3 z-10 rounded-full bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--color-primary)] ltr:left-3 rtl:right-3">
               -{savings}%
             </span>
           )}
-          {isOOS && (
-            <span className="absolute inset-x-0 bottom-0 z-10 bg-[var(--color-primary)]/90 py-2 text-center text-xs font-medium text-white">
-              {locale === "ar" ? "غير متوفر حالياً" : "Out of stock"}
-            </span>
-          )}
-          {/* Quick view — hover-revealed pill, desktop only. Hidden when
-              the card is OOS since the modal's primary CTA (add to cart)
-              wouldn't be available anyway. */}
+          {/* Quick view — hover-revealed pill, desktop only. Still off for
+              OOS cards: the modal states availability and carries an
+              add-to-cart, so opening it would disclose on hover exactly
+              what the card is holding back. Those cards route to the
+              detail page instead. */}
           {!isOOS && <QuickViewTrigger product={product} locale={locale} />}
         </ImageContainer>
       ) : (

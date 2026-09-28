@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/i18n-config";
@@ -85,10 +86,17 @@ export function FeaturedProductInteractive({
     openDrawer();
   };
 
+  // Availability is not disclosed on the homepage either — same reasoning
+  // as ProductCard. A featured slot that is out of stock keeps a live,
+  // primary-styled CTA that routes to the detail page, which is where the
+  // shopper is told and offered the restock alert. A greyed "Out of stock"
+  // button here would announce on the homepage precisely what the card was
+  // changed to withhold. The label differs because the action differs: it
+  // navigates, so it must not claim to add anything to the cart.
   const ctaLabel = isOOS
     ? isRTL
-      ? "غير متوفر"
-      : "Out of stock"
+      ? "اشتري الآن"
+      : "Shop now"
     : isRTL
       ? "أضف للكارت"
       : "Add to cart";
@@ -214,20 +222,25 @@ export function FeaturedProductInteractive({
           </fieldset>
         )}
 
-        <button
-          type="button"
-          onClick={addToCart}
-          disabled={isOOS || !selectedVariant}
-          className={cn(
-            "inline-flex items-center justify-center gap-2 rounded-md px-7 py-3.5 text-sm font-semibold transition",
-            isOOS
-              ? "bg-[var(--color-surface-2)] text-[var(--color-text-secondary)]"
-              : "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-light)]",
-          )}
-        >
-          <ShoppingBag className="h-4 w-4" />
-          {ctaLabel}
-        </button>
+        {isOOS ? (
+          <Link
+            href={`/${locale}/products/${product.slug}`}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--color-primary)] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            {ctaLabel}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={addToCart}
+            disabled={!selectedVariant}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--color-primary)] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            {ctaLabel}
+          </button>
+        )}
 
         {footer}
       </div>
