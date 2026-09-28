@@ -9,6 +9,9 @@ import {
   type StockRow,
 } from "@/lib/queries/stock-admin";
 import { AdjustButton } from "@/components/admin/stock/AdjustButton";
+import { BulkSetStock } from "@/components/admin/stock/BulkSetStock";
+import { SetStockField } from "@/components/admin/stock/SetStockField";
+import { listAllCollections } from "@/lib/queries/admin-products";
 import { getAdminLocale, type AdminLocale } from "@/lib/admin/locale";
 import { cn } from "@/lib/utils";
 
@@ -120,7 +123,10 @@ async function CurrentStockTab({
   locale: AdminLocale;
 }) {
   const isAr = locale === "ar";
-  const rows = await listStockRows({ q, collectionSlug, status });
+  const [rows, collections] = await Promise.all([
+    listStockRows({ q, collectionSlug, status }),
+    listAllCollections(),
+  ]);
   return (
     <section className="space-y-3">
       {/* Filter bar — a plain GET form so reloads / shareable URLs
@@ -139,6 +145,18 @@ async function CurrentStockTab({
             className="h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] ps-9 pe-3 text-sm focus:border-[var(--color-accent)] focus:outline-none"
           />
         </div>
+        <select
+          name="collection"
+          defaultValue={collectionSlug ?? ""}
+          className="h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm"
+        >
+          <option value="">{isAr ? "كل التشكيلات" : "All collections"}</option>
+          {collections.map((c) => (
+            <option key={c.id} value={c.slug}>
+              {isAr ? c.name_ar : c.name_en}
+            </option>
+          ))}
+        </select>
         <select
           name="status"
           defaultValue={status ?? ""}
@@ -168,6 +186,19 @@ async function CurrentStockTab({
           ? `${rows.length} فاريانت`
           : `${rows.length} variant${rows.length === 1 ? "" : "s"}`}
       </p>
+
+      {/* Bulk lever, hidden when there is nothing listed to act on.
+          Keyed on the filters only, not the row count: applying a number
+          re-renders this tab, and keying on `rows.length` would remount
+          the bar and throw away the "N variants updated" confirmation it
+          had just earned. */}
+      {rows.length > 0 && (
+        <BulkSetStock
+          key={`${collectionSlug ?? ""}|${status ?? ""}|${q ?? ""}`}
+          variantIds={rows.map((r) => r.variantId)}
+          locale={locale}
+        />
+      )}
 
       <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
         <table className="w-full min-w-[760px] text-sm">
@@ -218,8 +249,13 @@ async function CurrentStockTab({
                 <td className="px-3 py-2 font-mono text-[11px] text-[var(--color-text-secondary)]">
                   {r.sku ?? "—"}
                 </td>
-                <td className="px-3 py-2 text-end font-mono text-sm">
-                  {r.stockQty}
+                <td className="px-3 py-2 text-end">
+                  <SetStockField
+                    key={`${r.variantId}:${r.stockQty}`}
+                    variantId={r.variantId}
+                    qty={r.stockQty}
+                    locale={locale}
+                  />
                 </td>
                 <td className="px-3 py-2">
                   <StockBadge status={r.status} qty={r.stockQty} isAr={isAr} />
