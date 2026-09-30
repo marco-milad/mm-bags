@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useEffect, useState } from "react";
+import { track } from "@/lib/analytics/track";
 
 export type CartItem = {
   variantId: string;
@@ -42,7 +43,12 @@ export const useCartStore = create<CartState>()(
       items: [],
       isOpen: false,
 
-      addItem: (input) =>
+      addItem: (input) => {
+        // Analytics: one add_to_cart per add action (covers PDP, quick view,
+        // home, and wishlist "move to cart" — every caller funnels here).
+        // Fired outside the set() updater so the state updater stays pure;
+        // track() no-ops without consent and on the server.
+        track({ name: "add_to_cart", productId: input.productId });
         set((state) => {
           const incoming = Math.max(1, Math.min(MAX_QTY, input.qty ?? 1));
           const existing = state.items.find((i) => i.variantId === input.variantId);
@@ -57,7 +63,8 @@ export const useCartStore = create<CartState>()(
           }
           const { qty: _ignored, ...rest } = input;
           return { items: [...state.items, { ...rest, qty: incoming }] };
-        }),
+        });
+      },
 
       removeItem: (variantId) =>
         set((state) => ({ items: state.items.filter((i) => i.variantId !== variantId) })),

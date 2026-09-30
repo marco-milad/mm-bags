@@ -51,6 +51,7 @@ export function CatalogView({
   compareHref,
   compareLabel,
   pagination,
+  select,
 }: {
   locale: Locale;
   collections: Collection[];
@@ -68,6 +69,9 @@ export function CatalogView({
   /** When set (main catalog), the toolbar shows the TOTAL count / min
       price and a "load more" control appends further pages. */
   pagination?: CatalogPagination;
+  /** When set (search results only), cards fire `select_item` with this
+      attribution so search click-through can be measured. */
+  select?: { searchId?: string; listId: string };
 }) {
   // Every card image comes from Supabase's render endpoint on a
   // different origin than the HTML. Warming that connection from <head>
@@ -164,7 +168,7 @@ export function CatalogView({
       ) : (
         <>
           <ul className={GRID_CLASS}>
-            <CatalogCards products={products} locale={locale} />
+            <CatalogCards products={products} locale={locale} select={select} />
           </ul>
           {pagination && (
             <LoadMoreProducts

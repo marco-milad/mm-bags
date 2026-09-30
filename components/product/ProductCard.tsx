@@ -6,6 +6,7 @@ import { WishlistButton } from "@/components/product/WishlistButton";
 import { ProductSpecsChips } from "@/components/product/ProductSpecs";
 import { ImageContainer } from "@/components/product/ImageContainer";
 import { QuickViewTrigger } from "@/components/product/QuickViewTrigger";
+import { SelectItemLink } from "@/components/product/SelectItemLink";
 
 /**
  * Default `sizes` matches the catalog grid (CatalogView): 2-col mobile,
@@ -27,6 +28,7 @@ export function ProductCard({
   urgencyStockThreshold,
   priority = false,
   prefetch,
+  select,
 }: {
   /** Only the columns a card renders — a full ProductWithVariants
       satisfies this too, so carousels/related lists pass full rows. */
@@ -49,6 +51,10 @@ export function ProductCard({
       Leave undefined for the standard catalog look (which only shows a
       muted "Only N left" line at ≤ 5). */
   urgencyStockThreshold?: number;
+  /** When set, clicking the card fires a `select_item` event with this
+      attribution (search funnel). Passed only by the search-results grid;
+      omitted elsewhere so those cards stay plain links. */
+  select?: { searchId?: string; listId: string; position?: number };
 }) {
   const name = locale === "ar" ? product.name_ar : product.name_en;
   const price = effectivePrice(product);
@@ -87,12 +93,11 @@ export function ProductCard({
   const primaryImage = product.images?.[0];
   const secondaryImage = product.images?.[1];
 
-  return (
-    <Link
-      href={`/${locale}/products/${product.slug}`}
-      prefetch={prefetch}
-      className="group relative flex h-full flex-col overflow-hidden rounded-xl bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] transition hover:shadow-lg hover:ring-[var(--color-accent)]"
-    >
+  const href = `/${locale}/products/${product.slug}`;
+  const cardClass =
+    "group relative flex h-full flex-col overflow-hidden rounded-xl bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] transition hover:shadow-lg hover:ring-[var(--color-accent)]";
+  const inner = (
+    <>
       {primaryImage ? (
         // Square aspect on the card image regardless of the product's
         // native orientation — uniform card heights are the dominant
@@ -215,6 +220,24 @@ export function ProductCard({
         {/* Up to 3 spec chips — skipped automatically when product has no specs */}
         <ProductSpecsChips product={product} locale={locale} max={3} />
       </div>
+    </>
+  );
+
+  return select ? (
+    <SelectItemLink
+      href={href}
+      prefetch={prefetch}
+      className={cardClass}
+      productId={product.id}
+      searchId={select.searchId}
+      listId={select.listId}
+      position={select.position}
+    >
+      {inner}
+    </SelectItemLink>
+  ) : (
+    <Link href={href} prefetch={prefetch} className={cardClass}>
+      {inner}
     </Link>
   );
 }

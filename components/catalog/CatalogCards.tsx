@@ -19,10 +19,14 @@ export function CatalogCards({
   products,
   locale,
   startIndex = 0,
+  select,
 }: {
   products: CatalogCardProduct[];
   locale: Locale;
   startIndex?: number;
+  /** When set, each card fires a `select_item` event with this attribution
+      plus its absolute grid position. Passed by the search-results grid. */
+  select?: { searchId?: string; listId: string };
 }) {
   return (
     <>
@@ -33,6 +37,9 @@ export function CatalogCards({
             locale={locale}
             priority={startIndex + i < PRIORITY_CARDS}
             prefetch={false}
+            select={
+              select ? { ...select, position: startIndex + i } : undefined
+            }
           />
         </li>
       ))}

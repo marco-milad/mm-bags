@@ -75,9 +75,14 @@ export default async function CatalogPage({
   // Deliberately not awaited and deliberately caught: analytics must never be
   // able to slow or fail a catalog request. logSearch applies its own bot,
   // prefetch and opt-out guards.
-  if (q) {
+  // One search id per render: written with the `search` event AND handed to
+  // the results grid (below) so a product click can fire a `select_item`
+  // linked back to this search — that link is what makes search CTR / the
+  // Product-Demand click column measurable.
+  const searchId = q ? crypto.randomUUID() : null;
+  if (q && searchId) {
     void logSearch({
-      id: crypto.randomUUID(),
+      id: searchId,
       query: q,
       resultCount: page.total,
       resultIds: page.rankedIds,
@@ -137,6 +142,11 @@ export default async function CatalogPage({
         nextPage: pagesLoaded + 1,
         hasMore: page.hasMore,
       }}
+      select={
+        q && searchId
+          ? { searchId, listId: "search_results" }
+          : undefined
+      }
     />
   );
 }
