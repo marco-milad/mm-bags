@@ -7,6 +7,7 @@ import type { ProductWithVariants } from "@/lib/catalog-shared";
 import type { ProductVariant } from "@/lib/supabase/types";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { useCartStore } from "@/store/cart";
+import { resolveSizeForColor } from "@/lib/product/variant-selection";
 import { WishlistButton } from "./WishlistButton";
 import { BackInStockForm } from "./BackInStockForm";
 import { SizeGuideModal } from "@/components/size-guide/SizeGuideModal";
@@ -222,6 +223,13 @@ export function ProductActions({
                   type="button"
                   onClick={() => {
                     setSelectedColor(c.hex);
+                    // Keep the chosen size if this color offers it; otherwise
+                    // fall back to a size that actually exists for it, so the
+                    // selection never resolves to a null variant (H1). The
+                    // functional updater avoids depending on a stale closure.
+                    setSelectedSize((prev) =>
+                      resolveSizeForColor(variants, c.hex, prev),
+                    );
                     // Mobile tap: phones don't fire pointer-leave/blur
                     // reliably after a tap, so we keep the previewed image
                     // pinned to the just-selected color until the next
@@ -285,6 +293,16 @@ export function ProductActions({
           </div>
           <div className="flex flex-wrap gap-2">
             {sizes.map((s) => {
+              // Whether this size exists at all for the selected colour.
+              // A struck-through-but-existing size (out of stock) stays
+              // selectable so the shopper can reach Notify-me; a size that
+              // doesn't exist for the colour is disabled so a click can't
+              // resolve to a null variant (the H1 dead-end via the size axis).
+              const existsForColor = selectedColor
+                ? variants.some(
+                    (v) => v.size_inches === s && v.color_hex === selectedColor,
+                  )
+                : variants.some((v) => v.size_inches === s);
               const stockedForSize = variantHasStock(
                 (v) =>
                   v.size_inches === s &&
@@ -296,6 +314,7 @@ export function ProductActions({
                   key={s}
                   type="button"
                   onClick={() => setSelectedSize(s)}
+                  disabled={!existsForColor}
                   aria-pressed={isActive ? "true" : "false"}
                   className={cn(
                     "inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border px-4 py-2 text-sm font-mono transition",
@@ -303,6 +322,7 @@ export function ProductActions({
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
                       : "border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-accent)]",
                     !stockedForSize && "line-through opacity-40",
+                    !existsForColor && "cursor-not-allowed",
                   )}
                 >
                   {s}&quot;
