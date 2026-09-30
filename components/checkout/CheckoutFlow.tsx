@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, ArrowRight, Loader2, ShoppingBag } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import { checkoutSchema, type CheckoutValues, calcTotals } from "@/lib/checkout/schema";
+import { checkoutErrorMessage } from "@/lib/checkout/error-messages";
 import { placeOrder } from "@/lib/checkout/actions";
 import {
   useCartHydrated,
@@ -112,10 +113,10 @@ export function CheckoutFlow({
         })),
       });
       if (!result.ok) {
-        // The cart went stale between add-to-cart and checkout: the server
-        // re-priced it and refused to charge the old total silently. Apply
-        // the fresh prices, send the shopper back to Review, and make them
-        // confirm the new total.
+        // PRICE_CHANGED: the cart went stale between add-to-cart and checkout;
+        // the server re-priced it and refused to charge the old total silently.
+        // Apply the fresh prices and send the shopper back to Review to confirm
+        // the new total. (Behavior unchanged — only the message is localized.)
         if (result.code === "PRICE_CHANGED" && result.reprice?.length) {
           repriceItems(
             result.reprice.map((r) => ({
@@ -124,14 +125,10 @@ export function CheckoutFlow({
             })),
           );
           setStep(3);
-          setServerError(
-            locale === "ar"
-              ? "أسعار بعض المنتجات اتغيّرت. حدّثنا سلتك بالأسعار الجديدة — راجِع الإجمالي وأكّد الطلب تاني."
-              : "Some prices changed. We've updated your cart — please review the new total and place the order again.",
-          );
-          return;
         }
-        setServerError(result.error);
+        // Localize every server error from its machine-readable H2 code; the
+        // human-readable server `error` string is ignored here (fallback only).
+        setServerError(checkoutErrorMessage(result.code, locale));
         return;
       }
       clearCart();

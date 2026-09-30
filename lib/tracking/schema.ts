@@ -25,6 +25,14 @@ export const verifyTrackingSchema = z.object({
 
 export type VerifyTrackingInput = z.infer<typeof verifyTrackingSchema>;
 
+/**
+ * Machine-readable tracking error codes (H3). Additive — the server keeps
+ * returning a human `error` string as a fallback, and the client localizes
+ * from this code. NOT_FOUND is used for BOTH "order doesn't exist" and
+ * "phone doesn't match" so the two cases stay indistinguishable.
+ */
+export type TrackingErrorCode = "INVALID_INPUT" | "NOT_FOUND";
+
 // Public-safe shape returned to the client after verification.
 export type TrackingTimelineStep =
   | "confirmed"

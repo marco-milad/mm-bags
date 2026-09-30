@@ -8,6 +8,7 @@ import {
   verifyTrackingSchema,
   type VerifyTrackingInput,
 } from "@/lib/tracking/schema";
+import { trackingFieldMessage } from "@/lib/tracking/error-messages";
 import { cn } from "@/lib/utils";
 
 export function TrackingForm({
@@ -70,7 +71,7 @@ export function TrackingForm({
         />
         {errors.orderIdOrNumber && (
           <span className="text-xs text-[var(--color-error)]">
-            {errors.orderIdOrNumber.message}
+            {trackingFieldMessage("orderIdOrNumber", locale)}
           </span>
         )}
       </label>
@@ -93,7 +94,7 @@ export function TrackingForm({
         />
         {errors.phoneLast4 && (
           <span className="text-xs text-[var(--color-error)]">
-            {errors.phoneLast4.message}
+            {trackingFieldMessage("phoneLast4", locale)}
           </span>
         )}
       </label>

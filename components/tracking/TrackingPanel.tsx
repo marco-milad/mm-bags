@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import type { Locale } from "@/lib/i18n-config";
 import { verifyAndGetTracking } from "@/lib/tracking/actions";
 import type { TrackingResult, VerifyTrackingInput } from "@/lib/tracking/schema";
+import { trackingErrorMessage } from "@/lib/tracking/error-messages";
 import { TrackingForm } from "./TrackingForm";
 import { TrackingDetails } from "./TrackingDetails";
 
@@ -25,7 +26,9 @@ export function TrackingPanel({
     startTransition(async () => {
       const result = await verifyAndGetTracking(values);
       if (!result.ok) {
-        setServerError(result.error);
+        // Localize from the machine-readable code (the server `error` string
+        // stays as a fallback only).
+        setServerError(trackingErrorMessage(result.code, locale));
         setTracking(null);
         return;
       }

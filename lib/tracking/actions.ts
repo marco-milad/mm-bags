@@ -5,13 +5,14 @@ import {
   isOrderNumber,
   isUuid,
   verifyTrackingSchema,
+  type TrackingErrorCode,
   type TrackingResult,
   type VerifyTrackingInput,
 } from "./schema";
 
 export type VerifyResult =
   | { ok: true; tracking: TrackingResult }
-  | { ok: false; error: string };
+  | { ok: false; code: TrackingErrorCode; error: string };
 
 function maskPhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");
@@ -24,7 +25,11 @@ export async function verifyAndGetTracking(
 ): Promise<VerifyResult> {
   const parsed = verifyTrackingSchema.safeParse(raw);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صحيحة" };
+    return {
+      ok: false,
+      code: "INVALID_INPUT",
+      error: parsed.error.issues[0]?.message ?? "بيانات غير صحيحة",
+    };
   }
   const { orderIdOrNumber, phoneLast4 } = parsed.data;
 
@@ -40,14 +45,18 @@ export async function verifyAndGetTracking(
   } else if (isOrderNumber(orderIdOrNumber)) {
     query.eq("order_number", orderIdOrNumber.toUpperCase());
   } else {
-    return { ok: false, error: "رقم الطلب غير صحيح" };
+    return { ok: false, code: "INVALID_INPUT", error: "رقم الطلب غير صحيح" };
   }
 
   const { data: order, error } = await query.maybeSingle();
   if (error || !order) {
-    // Same message whether the order doesn't exist or phone is wrong, so
-    // attackers can't enumerate orders by guessing IDs.
-    return { ok: false, error: "البيانات مش متطابقة. تأكد من رقم الطلب والموبايل." };
+    // Same code AND message whether the order doesn't exist or the phone is
+    // wrong, so attackers can't enumerate orders by guessing IDs.
+    return {
+      ok: false,
+      code: "NOT_FOUND",
+      error: "البيانات مش متطابقة. تأكد من رقم الطلب والموبايل.",
+    };
   }
 
   // Extract phone for verification: prefer shipping_address.phone, fall back to guest_phone.
@@ -62,7 +71,12 @@ export async function verifyAndGetTracking(
   const last4 = storedPhone.slice(-4);
 
   if (last4 !== phoneLast4) {
-    return { ok: false, error: "البيانات مش متطابقة. تأكد من رقم الطلب والموبايل." };
+    // Identical to the not-found branch above — never reveal which failed.
+    return {
+      ok: false,
+      code: "NOT_FOUND",
+      error: "البيانات مش متطابقة. تأكد من رقم الطلب والموبايل.",
+    };
   }
 
   const codRow = Array.isArray(order.cod_tracking)

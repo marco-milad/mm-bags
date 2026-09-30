@@ -4,6 +4,7 @@ import type { UseFormReturn } from "react-hook-form";
 import type { Locale } from "@/lib/i18n-config";
 import { EG_GOVERNORATES } from "@/lib/checkout/governorates";
 import type { CheckoutValues } from "@/lib/checkout/schema";
+import { checkoutFieldMessage } from "@/lib/checkout/error-messages";
 import { cn } from "@/lib/utils";
 
 export function ShippingForm({
@@ -49,7 +50,7 @@ export function ShippingForm({
     <div className="grid gap-5 md:grid-cols-2">
       <Field
         label={labels.name}
-        error={errors.name?.message}
+        error={errors.name ? checkoutFieldMessage("name", locale) : undefined}
         className="md:col-span-2"
       >
         <input
@@ -63,7 +64,7 @@ export function ShippingForm({
       <Field
         label={labels.phone}
         hint={labels.phoneHint}
-        error={errors.phone?.message}
+        error={errors.phone ? checkoutFieldMessage("phone", locale) : undefined}
       >
         <input
           type="tel"
@@ -76,7 +77,7 @@ export function ShippingForm({
         />
       </Field>
 
-      <Field label={labels.email} error={errors.email?.message}>
+      <Field label={labels.email} error={errors.email ? checkoutFieldMessage("email", locale) : undefined}>
         <input
           type="email"
           autoComplete="email"
@@ -86,7 +87,7 @@ export function ShippingForm({
         />
       </Field>
 
-      <Field label={labels.governorate} error={errors.governorate?.message}>
+      <Field label={labels.governorate} error={errors.governorate ? checkoutFieldMessage("governorate", locale) : undefined}>
         <select
           {...register("governorate")}
           className={inputClass(!!errors.governorate)}
@@ -103,7 +104,7 @@ export function ShippingForm({
         </select>
       </Field>
 
-      <Field label={labels.city} error={errors.city?.message}>
+      <Field label={labels.city} error={errors.city ? checkoutFieldMessage("city", locale) : undefined}>
         <input
           type="text"
           autoComplete="address-level2"
@@ -114,7 +115,7 @@ export function ShippingForm({
 
       <Field
         label={labels.street}
-        error={errors.street?.message}
+        error={errors.street ? checkoutFieldMessage("street", locale) : undefined}
         className="md:col-span-2"
       >
         <input
@@ -125,7 +126,7 @@ export function ShippingForm({
         />
       </Field>
 
-      <Field label={labels.building} error={errors.building?.message}>
+      <Field label={labels.building} error={errors.building ? checkoutFieldMessage("building", locale) : undefined}>
         <input
           type="text"
           autoComplete="address-line2"
@@ -136,7 +137,7 @@ export function ShippingForm({
 
       <Field
         label={labels.notes}
-        error={errors.notes?.message}
+        error={errors.notes ? checkoutFieldMessage("notes", locale) : undefined}
         className="md:col-span-2"
       >
         <textarea
