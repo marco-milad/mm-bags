@@ -63,9 +63,32 @@ export function rangeToDates(range: RangeKey): { from: Date; to: Date } {
   return { from: new Date(to.getTime() - days * 24 * 60 * 60 * 1000), to };
 }
 
+/**
+ * The equally long window immediately before the selected one (e.g. the 7 days
+ * before "last 7 days"), for period-over-period deltas. "All time" has no
+ * previous window.
+ */
+export function previousWindow(range: RangeKey): { from: Date; to: Date } | null {
+  if (range === "all") return null;
+  const { from, to } = rangeToDates(range);
+  const span = to.getTime() - from.getTime();
+  return { from: new Date(from.getTime() - span), to: from };
+}
+
 export async function getOverview(range: RangeKey = "30d"): Promise<Overview> {
   await requireAdmin();
   const { from, to } = rangeToDates(range);
+  return overviewBetween(from, to);
+}
+
+/** Same metrics for the previous window, or null for "all time". */
+export async function getPreviousOverview(range: RangeKey): Promise<Overview | null> {
+  await requireAdmin();
+  const w = previousWindow(range);
+  return w ? overviewBetween(w.from, w.to) : null;
+}
+
+async function overviewBetween(from: Date, to: Date): Promise<Overview> {
   const { data, error } = await getSupabaseAdminClient().rpc(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated
     // types predate migration 0018; see lib/analytics/db.ts for the same note.
@@ -210,6 +233,17 @@ export async function getAcquisition(range: RangeKey = "30d"): Promise<Acquisiti
 export async function getFunnel(range: RangeKey = "30d"): Promise<Funnel> {
   await requireAdmin();
   const { from, to } = rangeToDates(range);
+  return funnelBetween(from, to);
+}
+
+/** Funnel for the previous window, or null for "all time". */
+export async function getPreviousFunnel(range: RangeKey): Promise<Funnel | null> {
+  await requireAdmin();
+  const w = previousWindow(range);
+  return w ? funnelBetween(w.from, w.to) : null;
+}
+
+async function funnelBetween(from: Date, to: Date): Promise<Funnel> {
   const { data, error } = await getSupabaseAdminClient().rpc(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     "analytics_funnel" as any,

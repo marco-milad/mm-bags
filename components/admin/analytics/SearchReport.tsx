@@ -50,11 +50,11 @@ export function SearchReport({
     <>
       <section className="grid gap-4 lg:grid-cols-2">
         {/* Highest-value output in the project for a catalogue this size. */}
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 md:p-5">
           <h3 className="text-sm font-semibold text-[var(--color-text)]">
             {isAr ? "بحثوا ومالقوش" : "Searched, found nothing"}
           </h3>
-          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
             {isAr
               ? "إمّا مش عندنا المنتج، وإمّا عندنا بس باسم تاني — والمرادف بيحلّ التانية."
               : "Either we do not stock it, or we do but under another name — a synonym fixes the second."}
@@ -68,14 +68,14 @@ export function SearchReport({
               {report.zeroTerms.map((t) => (
                 <li
                   key={t.query_norm}
-                  className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs"
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
                 >
                   <span dir="auto" className="truncate font-medium text-[var(--color-text)]">
                     {t.query_norm}
                   </span>
                   {/* The raw sample is where Arabizi (kaba, shanta, 7aga) is discovered. */}
                   {t.sample_raw && t.sample_raw !== t.query_norm && (
-                    <span dir="auto" className="truncate text-[10px] text-[var(--color-text-secondary)]">
+                    <span dir="auto" className="truncate text-xs text-[var(--color-text-secondary)]">
                       ({t.sample_raw})
                     </span>
                   )}
@@ -89,11 +89,11 @@ export function SearchReport({
           )}
         </div>
 
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 md:p-5">
           <h3 className="text-sm font-semibold text-[var(--color-text)]">
             {isAr ? "لقوا نتائج وما فتحوش" : "Results shown, nothing opened"}
           </h3>
-          <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
             {isAr
               ? "بنردّ على البحث ده — بس بالمنتجات الغلط."
               : "We answer these searches, but with the wrong things."}
@@ -107,7 +107,7 @@ export function SearchReport({
               {report.noClickTerms.map((t) => (
                 <li
                   key={t.query_norm}
-                  className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs"
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
                 >
                   <span dir="auto" className="truncate text-[var(--color-text)]">
                     {t.query_norm}
@@ -122,38 +122,75 @@ export function SearchReport({
         </div>
       </section>
 
-      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 md:p-5">
         <h3 className="text-sm font-semibold text-[var(--color-text)]">
           {isAr ? "أكتر ما بيدوّروا عليه" : "Top searches"}
         </h3>
-        <p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">
+        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
           {isAr
-            ? "«أكتر منتج» هو الأكثر فتحًا مِن نتيجة البحث ده — مش تخمين من الاسم."
-            : "“Top product” is the one most often opened FROM that search — not a guess from the name."}
+            ? "الكلمات اللي الناس بتدوّر عليها أكتر، والمنتج اللي بيفتحوه أكتر من نتايج كل كلمة."
+            : "What people search for most, and the product they open most from each search."}
         </p>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[560px] text-xs">
+        {/* Mobile: one card per term */}
+        <ul className="mt-3 space-y-2 md:hidden">
+          {report.topTerms.map((t) => (
+            <li
+              key={t.query_norm}
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span dir="auto" className="truncate font-medium text-[var(--color-text)]">
+                  {t.query_norm}
+                </span>
+                <span className="shrink-0 font-mono text-[var(--color-text-secondary)]">
+                  {isAr ? `${n(t.searches)} بحث` : `${n(t.searches)} searches`}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                {isAr
+                  ? `مالقوش: ${n(t.zero_results)} · فتحوا منتج: ${n(t.clicks)}`
+                  : `Found nothing: ${n(t.zero_results)} · Opened a product: ${n(t.clicks)}`}
+              </p>
+              {t.top_product_slug && (
+                <Link
+                  href={`/${isAr ? "ar" : "en"}/products/${t.top_product_slug}`}
+                  target="_blank"
+                  dir="auto"
+                  className="mt-1 block truncate text-xs text-[var(--color-primary)] hover:underline"
+                >
+                  {isAr ? t.top_product_ar : t.top_product_en}
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
+        {/* Desktop: table */}
+        <div className="mt-3 hidden overflow-x-auto md:block">
+          <table className="w-full text-sm">
             <thead>
               <tr className="text-[var(--color-text-secondary)]">
-                <th className="py-1.5 text-start font-medium">{isAr ? "الكلمة" : "Term"}</th>
-                <th className="py-1.5 text-end font-medium">{isAr ? "بحث" : "Searches"}</th>
-                <th className="py-1.5 text-end font-medium">{isAr ? "مالقوش" : "Found nothing"}</th>
-                <th className="py-1.5 text-end font-medium">{isAr ? "اتفتح" : "Opened"}</th>
-                <th className="py-1.5 text-start font-medium">{isAr ? "أكتر منتج" : "Top product"}</th>
+                <th className="px-2 py-1.5 text-start font-medium">{isAr ? "الكلمة" : "Term"}</th>
+                <th className="px-2 py-1.5 text-end font-medium">{isAr ? "بحث" : "Searches"}</th>
+                <th className="px-2 py-1.5 text-end font-medium">{isAr ? "مالقوش" : "Found nothing"}</th>
+                <th className="px-2 py-1.5 text-end font-medium">{isAr ? "اتفتح" : "Opened"}</th>
+                <th className="px-2 py-1.5 text-start font-medium">{isAr ? "أكتر منتج" : "Top product"}</th>
               </tr>
             </thead>
             <tbody>
               {report.topTerms.map((t) => (
                 <tr key={t.query_norm} className="border-t border-[var(--color-border)]">
-                  <td dir="auto" className="max-w-[180px] truncate py-1.5">{t.query_norm}</td>
-                  <td className="py-1.5 text-end font-mono">{n(t.searches)}</td>
-                  <td className="py-1.5 text-end font-mono">{n(t.zero_results)}</td>
-                  <td className="py-1.5 text-end font-mono">{n(t.clicks)}</td>
-                  <td dir="auto" className="max-w-[200px] truncate py-1.5">
+                  <td className="max-w-[180px] truncate px-2 py-1.5 text-start">
+                    <span dir="auto">{t.query_norm}</span>
+                  </td>
+                  <td className="px-2 py-1.5 text-end font-mono">{n(t.searches)}</td>
+                  <td className="px-2 py-1.5 text-end font-mono">{n(t.zero_results)}</td>
+                  <td className="px-2 py-1.5 text-end font-mono">{n(t.clicks)}</td>
+                  <td className="max-w-[220px] truncate px-2 py-1.5 text-start">
                     {t.top_product_slug ? (
                       <Link
-                        href={`/ar/products/${t.top_product_slug}`}
+                        href={`/${isAr ? "ar" : "en"}/products/${t.top_product_slug}`}
                         target="_blank"
+                        dir="auto"
                         className="hover:underline"
                       >
                         {isAr ? t.top_product_ar : t.top_product_en}
@@ -171,7 +208,7 @@ export function SearchReport({
 
       {/* Only rendered when non-empty — an empty synonyms box is noise. */}
       {synonyms.length > 0 && (
-        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 md:p-5">
           <h3 className="text-sm font-semibold text-[var(--color-text)]">
             {isAr ? "المرادفات" : "Synonyms"}
           </h3>
@@ -179,7 +216,7 @@ export function SearchReport({
             {synonyms.map((s) => (
               <li
                 key={s.id}
-                className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs"
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
               >
                 <span dir="auto">{s.term}</span>
                 <span className="text-[var(--color-text-secondary)]">←</span>
@@ -188,7 +225,7 @@ export function SearchReport({
                   <input type="hidden" name="id" value={s.id} />
                   <button
                     type="submit"
-                    className="rounded px-2 py-0.5 text-[11px] text-[var(--color-error)] hover:bg-[var(--color-error)]/10"
+                    className="rounded px-2 py-0.5 text-xs text-[var(--color-error)] hover:bg-[var(--color-error)]/10"
                   >
                     {isAr ? "حذف" : "Remove"}
                   </button>

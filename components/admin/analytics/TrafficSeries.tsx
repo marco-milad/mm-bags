@@ -1,27 +1,24 @@
 import type { OverviewSeriesPoint } from "@/lib/admin/analytics";
 
 /**
- * The daily series.
+ * Daily visitors.
  *
- * Below three data points this renders a table instead of a chart. A bar chart
- * of one point is a rectangle, not information — and week one is exactly the
- * state that gets skipped when only the full-data case is designed for.
+ * Fix (was always blank): every bar sized itself as a % of a column that had
+ * no definite height, so it resolved to 0. Columns are now `h-full` of the
+ * fixed-height track, which makes the % heights real.
+ *
+ * Touch-friendly by design — no hover-only information: a summary line, date
+ * ticks, on-bar values when there are few days, and a native <details>
+ * day-by-day table that works with no JS on any device.
  */
 export function TrafficSeries({
   series,
-  collapseRatio,
-  searches,
   isAr,
 }: {
   series: OverviewSeriesPoint[];
-  collapseRatio: number | null;
-  searches: number;
   isAr: boolean;
 }) {
-  // Same numeral system as the tiles above. Two systems on one page reads
-  // like two different reports.
   const n = (v: number) => v.toLocaleString(isAr ? "ar-EG" : "en-US");
-  const max = Math.max(1, ...series.map((p) => p.visitors));
   const fmtDate = (d: string) =>
     new Date(d + "T00:00:00Z").toLocaleDateString(isAr ? "ar-EG" : "en-US", {
       day: "numeric",
@@ -29,70 +26,110 @@ export function TrafficSeries({
       timeZone: "UTC",
     });
 
+  const max = Math.max(1, ...series.map((p) => p.visitors));
+  const peak = series.reduce<OverviewSeriesPoint | null>(
+    (best, p) => (!best || p.visitors > best.visitors ? p : best),
+    null,
+  );
+  const avg = series.length
+    ? Math.round(series.reduce((s, p) => s + p.visitors, 0) / series.length)
+    : 0;
+  const showValues = series.length <= 14;
+  const ticks =
+    series.length > 2
+      ? [series[0], series[Math.floor((series.length - 1) / 2)], series[series.length - 1]]
+      : series;
+
+  const DayTable = (
+    <table className="mt-2 w-full text-xs">
+      <thead>
+        <tr className="text-[var(--color-text-secondary)]">
+          <th className="py-1.5 text-start font-medium">{isAr ? "اليوم" : "Day"}</th>
+          <th className="py-1.5 text-end font-medium">{isAr ? "زوّار" : "Visitors"}</th>
+          <th className="py-1.5 text-end font-medium">{isAr ? "زيارات" : "Visits"}</th>
+          <th className="py-1.5 text-end font-medium">{isAr ? "صفحات" : "Pages"}</th>
+          <th className="py-1.5 text-end font-medium">{isAr ? "بحث" : "Searches"}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[...series].reverse().map((p) => (
+          <tr key={p.date} className="border-t border-[var(--color-border)]">
+            <td className="py-1.5">{fmtDate(p.date)}</td>
+            <td className="py-1.5 text-end font-mono">{n(p.visitors)}</td>
+            <td className="py-1.5 text-end font-mono">{n(p.sessions)}</td>
+            <td className="py-1.5 text-end font-mono">{n(p.page_views)}</td>
+            <td className="py-1.5 text-end font-mono">{n(p.searches)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
   return (
-    <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold text-[var(--color-text)]">
-          {isAr ? "الحركة اليومية" : "Traffic"}
-        </h2>
-        {collapseRatio !== null && (
-          <span className="font-mono text-[11px] text-[var(--color-text-secondary)]">
-            {isAr ? "نسبة طيّ البحث" : "collapse ratio"} {n(Math.round(collapseRatio * 100) / 100)}
-            <span className="ms-1">
-              {/* On a stack with an as-you-type box, a ratio under 1.5 on real
-                  volume means the collapse view is not wired in. Here one search
-                  is one navigation, so 1.00 is expected and is not flagged. */}
-              {collapseRatio < 1.5 && searches > 20
-                ? isAr
-                  ? "(متوقّع: بحث بالتنقّل)"
-                  : "(expected: navigation search)"
-                : ""}
-            </span>
-          </span>
-        )}
-      </div>
+    <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 md:p-5">
+      <h2 className="text-sm font-semibold text-[var(--color-text)]">
+        {isAr ? "الزوّار يوم بيوم" : "Visitors per day"}
+      </h2>
 
       {series.length === 0 ? (
-        <p className="mt-4 text-xs text-[var(--color-text-secondary)]">
-          {isAr ? "لا بيانات في هذه الفترة." : "No data in this range."}
+        <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
+          {isAr ? "مفيش زيارات في الفترة دي." : "No visits in this period."}
         </p>
       ) : series.length < 3 ? (
-        <table className="mt-4 w-full text-xs">
-          <thead>
-            <tr className="text-start text-[var(--color-text-secondary)]">
-              <th className="py-1 text-start font-medium">{isAr ? "اليوم" : "Day"}</th>
-              <th className="py-1 text-end font-medium">{isAr ? "زوّار" : "Visitors"}</th>
-              <th className="py-1 text-end font-medium">{isAr ? "جلسات" : "Sessions"}</th>
-              <th className="py-1 text-end font-medium">{isAr ? "صفحات" : "Views"}</th>
-              <th className="py-1 text-end font-medium">{isAr ? "بحث" : "Searches"}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {series.map((p) => (
-              <tr key={p.date} className="border-t border-[var(--color-border)]">
-                <td className="py-1.5">{fmtDate(p.date)}</td>
-                <td className="py-1.5 text-end font-mono">{n(p.visitors)}</td>
-                <td className="py-1.5 text-end font-mono">{n(p.sessions)}</td>
-                <td className="py-1.5 text-end font-mono">{n(p.page_views)}</td>
-                <td className="py-1.5 text-end font-mono">{n(p.searches)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        // Two bars aren't a trend — a table says more.
+        DayTable
       ) : (
-        <div className="mt-4 flex h-40 items-end gap-1">
-          {series.map((p) => (
-            <div key={p.date} className="group relative flex flex-1 flex-col justify-end">
-              <div
-                className="rounded-t bg-[var(--color-primary)] transition-opacity group-hover:opacity-80"
-                style={{ height: `${Math.max(2, (p.visitors / max) * 100)}%` }}
-              />
-              <span className="pointer-events-none absolute -top-6 start-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-[var(--color-text)] px-1.5 py-0.5 font-mono text-[10px] text-white opacity-0 group-hover:opacity-100">
-                {fmtDate(p.date)} · {n(p.visitors)}
-              </span>
-            </div>
-          ))}
-        </div>
+        <>
+          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+            {isAr
+              ? `أعلى يوم: ${fmtDate(peak!.date)} (${n(peak!.visitors)} زائر) · المتوسط: ${n(avg)} زائر في اليوم`
+              : `Best day: ${fmtDate(peak!.date)} (${n(peak!.visitors)} visitors) · Average: ${n(avg)}/day`}
+          </p>
+
+          <div
+            className="mt-4 flex h-40 items-end gap-[3px]"
+            role="img"
+            aria-label={isAr ? "رسم بياني لعدد الزوّار يوميًا" : "Bar chart of daily visitors"}
+          >
+            {series.map((p) => {
+              // 85% cap leaves headroom for the value label above the tallest bar.
+              const h = Math.max(2, (p.visitors / max) * 85);
+              return (
+                <div
+                  key={p.date}
+                  className="relative h-full min-w-0 flex-1"
+                  title={`${fmtDate(p.date)} · ${n(p.visitors)}`}
+                >
+                  <div
+                    className="absolute inset-x-0 bottom-0 rounded-t bg-[var(--color-primary)]"
+                    style={{ height: `${h}%` }}
+                  />
+                  {showValues && (
+                    <span
+                      className="absolute inset-x-0 text-center font-mono text-[11px] text-[var(--color-text-secondary)]"
+                      style={{ bottom: `calc(${h}% + 2px)` }}
+                    >
+                      {n(p.visitors)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-1.5 flex justify-between text-xs text-[var(--color-text-secondary)]">
+            {ticks.map((p) => (
+              <span key={p.date}>{fmtDate(p.date)}</span>
+            ))}
+          </div>
+
+          <details className="mt-3 text-sm">
+            <summary className="cursor-pointer py-2 text-xs font-medium text-[var(--color-primary)]">
+              {isAr ? "عرض الأرقام يوم بيوم" : "Show day-by-day numbers"}
+            </summary>
+            <div className="overflow-x-auto">{DayTable}</div>
+          </details>
+        </>
       )}
     </section>
   );

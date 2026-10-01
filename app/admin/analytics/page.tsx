@@ -4,10 +4,14 @@ import {
   getFunnel,
   getLive,
   getOverview,
+  getPreviousFunnel,
+  getPreviousOverview,
   getProductDemand,
   getSearchReport,
   type RangeKey,
 } from "@/lib/admin/analytics";
+import { THRESHOLDS, buildInsights, deltaPct, deltaPoints } from "@/lib/analytics/insights";
+import { Delta, InsightsPanel, Kpi } from "@/components/admin/analytics/Summary";
 import { getAdminLocale } from "@/lib/admin/locale";
 import { LivePanel } from "@/components/admin/analytics/LivePanel";
 import { TrafficSeries } from "@/components/admin/analytics/TrafficSeries";
@@ -31,35 +35,6 @@ function isRange(v: unknown): v is RangeKey {
   return v === "7d" || v === "30d" || v === "all";
 }
 
-/**
- * Every tile carries its definition. A tile labelled just "Users" cannot be
- * defended when the owner asks what it means, so the sub-line is part of the
- * tile, not decoration.
- */
-function Tile({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-}) {
-  return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
-        {label}
-      </p>
-      <p className="mt-1 font-mono text-2xl font-semibold text-[var(--color-text)]">
-        {value}
-      </p>
-      <p className="mt-1 text-[11px] leading-relaxed text-[var(--color-text-secondary)]">
-        {sub}
-      </p>
-    </div>
-  );
-}
-
 export default async function AnalyticsPage({
   searchParams,
 }: PageProps<"/admin/analytics">) {
@@ -70,7 +45,7 @@ export default async function AnalyticsPage({
 
   // getOverview/getLive each call requireAdmin() before touching the
   // service-role client.
-  const [overview, live, demand, report, synonyms, acquisition, funnel] =
+  const [overview, live, demand, report, synonyms, acquisition, funnel, prevOverview, prevFunnel] =
     await Promise.all([
       getOverview(range),
       getLive(),
@@ -79,13 +54,44 @@ export default async function AnalyticsPage({
       listSynonyms(),
       getAcquisition(range),
       getFunnel(range),
+      // Same-length window just before this one; null for "all time".
+      getPreviousOverview(range),
+      getPreviousFunnel(range),
     ]);
 
   const n = (v: number) => v.toLocaleString(isAr ? "ar-EG" : "en-US");
   const hasAnyData = overview.pageViews > 0 || overview.visitors > 0;
+  const pctText = (v: number | null) => (v === null ? "—" : `${n(v)}%`);
+  const zeroRate = overview.searches > 0 ? overview.zeroResultRate : null;
+  const prevZeroRate =
+    prevOverview && prevOverview.searches > 0 ? prevOverview.zeroResultRate : null;
+
+  // No arrow when either period is too small to compare: 2 → 18 product
+  // opens is "+800%", which is noise, not news.
+  const enough = (cur: number, prev: number | null | undefined) =>
+    prev != null && cur >= THRESHOLDS.trafficBaseline && prev >= THRESHOLDS.trafficBaseline;
+  const pctDelta = (cur: number, prev: number | null | undefined) =>
+    enough(cur, prev) ? deltaPct(cur, prev) : null;
+  const ptDelta = (
+    cur: number | null,
+    prev: number | null | undefined,
+    curBase: number,
+    prevBase: number | null | undefined,
+  ) => (enough(curBase, prevBase) ? deltaPoints(cur, prev) : null);
+
+  const insights = buildInsights({
+    visitors: overview.visitors,
+    prevVisitors: prevOverview?.visitors ?? null,
+    purchased: funnel.purchased,
+    conversionRate: funnel.conversionRate,
+    cartedVisitors: funnel.cartedVisitors,
+    abandonmentRate: funnel.abandonmentRate,
+    zeroTerms: report.zeroTerms,
+    products: demand,
+  });
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-5 md:space-y-6 md:p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-[var(--color-text)]">
@@ -93,17 +99,17 @@ export default async function AnalyticsPage({
           </h1>
           <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
             {isAr
-              ? "كل الأرقام بتوقيت القاهرة، وتبدأ من يوم تركيب التتبّع."
-              : "All dates are Cairo time. Numbers start the day tracking shipped."}
+              ? "إزاي الزوّار بيلاقوا المحل، بيدوّروا على إيه، وبيشتروا إيه. الأسهم بتقارن بالفترة اللي قبلها بنفس الطول."
+              : "How visitors find the shop, what they look for, and what they buy. Arrows compare with the previous period of the same length."}
           </p>
         </div>
-        <nav className="flex gap-1 rounded-lg border border-[var(--color-border)] p-1">
+        <nav className="flex w-full gap-1 rounded-lg sm:w-auto border border-[var(--color-border)] p-1">
           {RANGES.map((r) => (
             <Link
               key={r.id}
               href={`/admin/analytics?range=${r.id}`}
               className={cn(
-                "rounded-md px-2.5 py-1 text-xs transition-colors",
+                "flex min-h-11 flex-1 items-center justify-center rounded-md px-3 text-sm transition-colors sm:flex-none md:min-h-0 md:py-1.5 md:text-xs",
                 r.id === range
                   ? "bg-[var(--color-primary)] text-white"
                   : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]",
@@ -114,8 +120,6 @@ export default async function AnalyticsPage({
           ))}
         </nav>
       </header>
-
-      <LivePanel initial={live} isAr={isAr} />
 
       {!hasAnyData ? (
         // The 0-event state is explicit rather than a grid of zeros: at this
@@ -132,73 +136,69 @@ export default async function AnalyticsPage({
         </section>
       ) : (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Tile
+          <InsightsPanel insights={insights} isAr={isAr} />
+
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Kpi
               label={isAr ? "الزوّار" : "Visitors"}
               value={n(overview.visitors)}
+              delta={<Delta value={pctDelta(overview.visitors, prevOverview?.visitors)} isAr={isAr} />}
               sub={
                 isAr
-                  ? `${n(overview.newVisitors)} جديد · ${n(overview.sessions)} جلسة — العدد لكل جهاز، والعائدون رقم أدنى لا حقيقة`
-                  : `${n(overview.newVisitors)} new · ${n(overview.sessions)} sessions — counted per device; returning is a floor, not a truth`
+                  ? `${n(overview.newVisitors)} أول مرة · ${n(overview.sessions)} زيارة`
+                  : `${n(overview.newVisitors)} first-time · ${n(overview.sessions)} visits`
               }
             />
-            <Tile
-              label={isAr ? "مشاهدات الصفحات" : "Page views"}
-              value={n(overview.pageViews)}
+            <Kpi
+              label={isAr ? "فتحوا منتجات" : "Product views"}
+              value={n(overview.productOpens)}
+              delta={<Delta value={pctDelta(overview.productOpens, prevOverview?.productOpens)} isAr={isAr} />}
+              sub={isAr ? `من ${n(overview.pageViews)} صفحة اتفتحت` : `of ${n(overview.pageViews)} pages viewed`}
+            />
+            <Kpi
+              label={isAr ? "معدل الشراء" : "Purchase rate"}
+              value={pctText(funnel.conversionRate)}
+              delta={
+                <Delta
+                  value={ptDelta(funnel.conversionRate, prevFunnel?.conversionRate, funnel.sessions, prevFunnel?.sessions)}
+                  unit="pt"
+                  isAr={isAr}
+                />
+              }
               sub={
                 isAr
-                  ? `${n(overview.productOpens)} فتح منتج`
-                  : `${n(overview.productOpens)} product opens`
+                  ? `${n(funnel.purchased)} شراء من ${n(funnel.sessions)} زيارة`
+                  : `${n(funnel.purchased)} purchases of ${n(funnel.sessions)} visits`
               }
             />
-            <Tile
-              label={isAr ? "عمليات البحث" : "Searches"}
-              value={n(overview.searches)}
-              sub={
-                isAr
-                  ? "الكتابة المتتابعة تُحسب مرة واحدة"
-                  : "as-you-type typing counts once"
+            <Kpi
+              label={isAr ? "بحثوا ومالقوش" : "Found nothing"}
+              value={pctText(zeroRate)}
+              delta={
+                <Delta value={ptDelta(zeroRate, prevZeroRate, overview.searches, prevOverview?.searches)} unit="pt" goodWhen="down" isAr={isAr} />
               }
-            />
-            <Tile
-              label={isAr ? "مالقوش حاجة" : "Found nothing"}
-              value={`${n(overview.zeroResultRate)}%`}
               sub={
                 isAr
-                  ? `${n(overview.zeroResults)} من ${n(overview.searches)} بحث`
-                  : `${n(overview.zeroResults)} of ${n(overview.searches)} searches`
+                  ? `${n(overview.zeroResults)} من ${n(overview.searches)} بحث — الأقل أحسن`
+                  : `${n(overview.zeroResults)} of ${n(overview.searches)} searches — lower is better`
               }
             />
           </section>
 
-          <TrafficSeries
-            series={overview.series}
-            collapseRatio={overview.collapseRatio}
-            searches={overview.searches}
-            isAr={isAr}
-          />
+          <TrafficSeries series={overview.series} isAr={isAr} />
 
           <FunnelReport funnel={funnel} isAr={isAr} />
 
-          <AcquisitionReport acquisition={acquisition} isAr={isAr} />
-
-          {/* "What to act on" sits above the demand table on purpose: it is
-              the section with a decision attached to it. */}
+          {/* Has a decision attached (add a synonym), so it sits high. */}
           <SearchReport report={report} synonyms={synonyms} isAr={isAr} />
 
-          <ProductDemand
-            rows={demand}
-            isAr={isAr}
-            hasSearch={overview.searches > 0}
-          />
+          <AcquisitionReport acquisition={acquisition} isAr={isAr} />
+
+          <ProductDemand rows={demand} isAr={isAr} />
         </>
       )}
 
-      <p className="text-[11px] leading-relaxed text-[var(--color-text-secondary)]">
-        {isAr
-          ? "ملاحظة: البحث في الموقع تنقّل لصفحة الكتالوج وليس بحثًا أثناء الكتابة، فنسبة الطيّ 1.00 هي القيمة الصحيحة هنا لا إشارة خطأ."
-          : "Note: search here is a navigation to the catalog, not an as-you-type box, so a collapse ratio of 1.00 is the correct value rather than a warning."}
-      </p>
+      <LivePanel initial={live} isAr={isAr} />
     </div>
   );
 }

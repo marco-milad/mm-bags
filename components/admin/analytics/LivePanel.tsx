@@ -47,12 +47,12 @@ export function LivePanel({ initial, isAr }: { initial: Live; isAr: boolean }) {
   }, []);
 
   return (
-    <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+    <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 md:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-[var(--color-text)]">
           {isAr ? "الآن" : "Live"}
         </h2>
-        <span className="text-[11px] text-[var(--color-text-secondary)]">
+        <span className="text-xs text-[var(--color-text-secondary)]">
           {isAr ? "يتحدّث كل 10 ثوانٍ" : "refreshes every 10s"}
         </span>
       </div>
@@ -91,7 +91,7 @@ export function LivePanel({ initial, isAr }: { initial: Live; isAr: boolean }) {
             key={`${e.occurred_at}-${i}`}
             className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs"
           >
-            <code className="shrink-0 font-mono text-[10px] text-[var(--color-text-secondary)]">
+            <code className="shrink-0 font-mono text-xs text-[var(--color-text-secondary)]">
               {e.visitor}
             </code>
             <span className="shrink-0 font-medium text-[var(--color-text)]">
@@ -100,7 +100,7 @@ export function LivePanel({ initial, isAr }: { initial: Live; isAr: boolean }) {
             {/* dir="auto" so an Arabic query renders right-to-left inside an
                 otherwise left-to-right row. */}
             {e.query_raw && (
-              <span dir="auto" className="truncate text-[var(--color-text)]">
+              <span dir="auto" className="min-w-0 truncate text-[var(--color-text)]">
                 “{e.query_raw}”
                 <span className="ms-1 text-[var(--color-text-secondary)]">
                   {e.result_count === 0
@@ -114,11 +114,11 @@ export function LivePanel({ initial, isAr }: { initial: Live; isAr: boolean }) {
               </span>
             )}
             {!e.query_raw && e.path && (
-              <span dir="auto" className="truncate text-[var(--color-text-secondary)]">
+              <span dir="auto" className="min-w-0 truncate text-[var(--color-text-secondary)]">
                 {e.path}
               </span>
             )}
-            <span className="ms-auto shrink-0 font-mono text-[10px] text-[var(--color-text-secondary)]">
+            <span className="ms-auto shrink-0 font-mono text-xs text-[var(--color-text-secondary)]">
               {timeAgo(e.occurred_at, isAr)}
             </span>
           </li>
