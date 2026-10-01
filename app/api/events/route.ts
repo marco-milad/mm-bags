@@ -10,7 +10,12 @@ import {
   VISITOR_COOKIE,
   UUID_RE,
 } from "@/lib/analytics/identity";
-import { deviceTypeFrom } from "@/lib/analytics/text";
+import {
+  browserFrom,
+  channelFrom,
+  deviceTypeFrom,
+  osFrom,
+} from "@/lib/analytics/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +43,9 @@ const eventSchema = z
     searchId: z.string().uuid().optional(),
     listId: z.string().max(64).optional(),
     position: z.number().int().min(0).max(10_000).optional(),
+    utmSource: z.string().max(200).optional(),
+    utmMedium: z.string().max(200).optional(),
+    utmCampaign: z.string().max(200).optional(),
   })
   // Unknown keys are rejected rather than ignored: the payload is attacker
   // controlled and every accepted field is one more thing to reason about.
@@ -97,7 +105,14 @@ export async function POST(request: Request) {
   }
   if (!parsed.success) return new Response(null, { status: 204 });
 
-  const deviceType = deviceTypeFrom(h.get("user-agent") ?? "");
+  const ua = h.get("user-agent") ?? "";
+  const deviceType = deviceTypeFrom(ua);
+  const browser = browserFrom(ua);
+  const os = osFrom(ua);
+  // Vercel edge geo — the COUNTRY only, derived at the edge from the IP that
+  // is never itself stored (same privacy stance as the rest of the system).
+  const country = h.get("x-vercel-ip-country") || null;
+
   const rows: AnalyticsEventRow[] = parsed.data.events.map((e) => ({
     id: e.id,
     name: e.name,
@@ -108,6 +123,17 @@ export async function POST(request: Request) {
     locale: e.locale ?? null,
     referrer_domain: e.referrerDomain ?? null,
     device_type: deviceType,
+    browser,
+    os,
+    country,
+    utm_source: e.utmSource ?? null,
+    utm_medium: e.utmMedium ?? null,
+    utm_campaign: e.utmCampaign ?? null,
+    channel: channelFrom({
+      referrerDomain: e.referrerDomain,
+      utmMedium: e.utmMedium,
+      utmSource: e.utmSource,
+    }),
     product_id: e.productId ?? null,
     search_id: e.searchId ?? null,
     list_id: e.listId ?? null,

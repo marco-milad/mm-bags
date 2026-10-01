@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  getAcquisition,
   getLive,
   getOverview,
   getProductDemand,
@@ -9,6 +10,7 @@ import {
 import { getAdminLocale } from "@/lib/admin/locale";
 import { LivePanel } from "@/components/admin/analytics/LivePanel";
 import { TrafficSeries } from "@/components/admin/analytics/TrafficSeries";
+import { AcquisitionReport } from "@/components/admin/analytics/AcquisitionReport";
 import { ProductDemand } from "@/components/admin/analytics/ProductDemand";
 import { SearchReport } from "@/components/admin/analytics/SearchReport";
 import { listSynonyms } from "@/lib/admin/synonyms";
@@ -66,13 +68,15 @@ export default async function AnalyticsPage({
 
   // getOverview/getLive each call requireAdmin() before touching the
   // service-role client.
-  const [overview, live, demand, report, synonyms] = await Promise.all([
-    getOverview(range),
-    getLive(),
-    getProductDemand(range),
-    getSearchReport(range),
-    listSynonyms(),
-  ]);
+  const [overview, live, demand, report, synonyms, acquisition] =
+    await Promise.all([
+      getOverview(range),
+      getLive(),
+      getProductDemand(range),
+      getSearchReport(range),
+      listSynonyms(),
+      getAcquisition(range),
+    ]);
 
   const n = (v: number) => v.toLocaleString(isAr ? "ar-EG" : "en-US");
   const hasAnyData = overview.pageViews > 0 || overview.visitors > 0;
@@ -170,6 +174,8 @@ export default async function AnalyticsPage({
             searches={overview.searches}
             isAr={isAr}
           />
+
+          <AcquisitionReport acquisition={acquisition} isAr={isAr} />
 
           {/* "What to act on" sits above the demand table on purpose: it is
               the section with a decision attached to it. */}

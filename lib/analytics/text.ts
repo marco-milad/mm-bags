@@ -85,6 +85,77 @@ export function deviceTypeFrom(userAgent: string): "mobile" | "tablet" | "deskto
 }
 
 /**
+ * Coarse browser family from the User-Agent. Order matters: Edge/Opera/Samsung
+ * all embed "Chrome" in their UA, so they must be tested before Chrome; Chrome
+ * embeds "Safari", so Safari is last with a Chrome/CriOS exclusion.
+ */
+export function browserFrom(userAgent: string): string {
+  const ua = userAgent.toLowerCase();
+  if (/edg\//.test(ua)) return "Edge";
+  if (/opr\/|opera/.test(ua)) return "Opera";
+  if (/samsungbrowser/.test(ua)) return "Samsung Internet";
+  if (/ucbrowser/.test(ua)) return "UC Browser";
+  if (/firefox|fxios/.test(ua)) return "Firefox";
+  if (/chrome|crios|chromium/.test(ua)) return "Chrome";
+  if (/safari/.test(ua) && !/chrome|crios|chromium/.test(ua)) return "Safari";
+  return "Other";
+}
+
+/** Coarse OS family from the User-Agent. iOS before macOS (iPad desktop-mode). */
+export function osFrom(userAgent: string): string {
+  const ua = userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) return "iOS";
+  if (/android/.test(ua)) return "Android";
+  if (/windows/.test(ua)) return "Windows";
+  if (/mac os x|macintosh/.test(ua)) return "macOS";
+  if (/linux/.test(ua)) return "Linux";
+  return "Other";
+}
+
+export type AnalyticsChannel =
+  | "direct"
+  | "organic_search"
+  | "social"
+  | "referral"
+  | "paid"
+  | "email";
+
+/**
+ * Classify the acquisition channel from the (client-observed) referrer domain
+ * and any UTM medium/source. UTM medium wins when present (an explicit campaign
+ * tag); otherwise the referrer domain decides; no referrer and no UTM = direct.
+ * Derived server-side at ingest so it stays consistent and un-forgeable.
+ */
+export function channelFrom(opts: {
+  referrerDomain?: string | null;
+  utmMedium?: string | null;
+  utmSource?: string | null;
+}): AnalyticsChannel {
+  const medium = (opts.utmMedium ?? "").toLowerCase();
+  if (medium) {
+    if (/cpc|ppc|paid|display|cpm|banner|retargeting/.test(medium)) return "paid";
+    if (/email|newsletter|e-mail/.test(medium)) return "email";
+    if (/social|social-network|social-media|^sm$/.test(medium)) return "social";
+  }
+  const ref = (opts.referrerDomain ?? "").toLowerCase();
+  if (ref) {
+    if (/(^|\.)(google|bing|yahoo|duckduckgo|yandex|ecosia|baidu)\./.test(ref))
+      return "organic_search";
+    if (
+      /(^|\.)(facebook|fb|instagram|tiktok|youtube|linkedin|pinterest|snapchat|twitter|reddit)\.|(^|\.)(t\.co|x\.com)$|l\.facebook|lm\.instagram/.test(
+        ref,
+      )
+    )
+      return "social";
+    return "referral";
+  }
+  // A UTM was present but not classifiable above, and no referrer → still a
+  // tagged visit, so treat as referral rather than mislabelling it direct.
+  if (opts.utmSource || medium) return "referral";
+  return "direct";
+}
+
+/**
  * The product side of the same fold.
  *
  * Deliberately in this file rather than its own: it must use the normalizer

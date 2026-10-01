@@ -11,7 +11,13 @@ import {
   UUID_RE,
   VISITOR_COOKIE,
 } from "@/lib/analytics/identity";
-import { deviceTypeFrom, normalizeSearchTerm, scrubPII } from "@/lib/analytics/text";
+import {
+  browserFrom,
+  deviceTypeFrom,
+  normalizeSearchTerm,
+  osFrom,
+  scrubPII,
+} from "@/lib/analytics/text";
 
 /**
  * Server-side `search` logging.
@@ -81,6 +87,9 @@ export async function logSearch(input: SearchLogInput): Promise<void> {
     path: input.path ?? null,
     locale: input.locale ?? null,
     device_type: deviceTypeFrom(ua),
+    browser: browserFrom(ua),
+    os: osFrom(ua),
+    country: h.get("x-vercel-ip-country") || null,
     query_raw: scrubbed,
     query_norm: normalizeSearchTerm(scrubbed),
     result_count: input.resultCount,

@@ -49,6 +49,14 @@ export type AnalyticsEventRow = {
   list_id?: string | null;
   position?: number | null;
   props?: Record<string, unknown> | null;
+  // Acquisition & tech (migration 0023)
+  channel?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  country?: string | null;
+  browser?: string | null;
+  os?: string | null;
 };
 
 export type AnalyticsVisitorRow = {

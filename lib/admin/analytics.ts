@@ -152,3 +152,45 @@ export async function getSearchReport(range: RangeKey = "30d"): Promise<SearchRe
   if (error) throw new Error(`analytics_search_report failed: ${error.message}`);
   return data as unknown as SearchReport;
 }
+
+export type Acquisition = {
+  /** Sessions grouped by acquisition channel (landing touch). */
+  channels: { channel: string; sessions: number }[];
+  /** Top UTM sources by sessions. */
+  sources: { source: string; sessions: number }[];
+  /** Top UTM campaigns by sessions. */
+  campaigns: { campaign: string; sessions: number }[];
+  /** Top countries by distinct visitors. */
+  countries: { country: string; visitors: number }[];
+  browsers: { browser: string; visitors: number }[];
+  os: { os: string; visitors: number }[];
+  devices: { device: string; visitors: number }[];
+};
+
+export async function getAcquisition(range: RangeKey = "30d"): Promise<Acquisition> {
+  await requireAdmin();
+  const empty: Acquisition = {
+    channels: [],
+    sources: [],
+    campaigns: [],
+    countries: [],
+    browsers: [],
+    os: [],
+    devices: [],
+  };
+  const { from, to } = rangeToDates(range);
+  const { data, error } = await getSupabaseAdminClient().rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    "analytics_acquisition" as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    { p_from: from.toISOString(), p_to: to.toISOString(), p_limit: 10 } as any,
+  );
+  if (error) {
+    // The acquisition RPC ships in migration 0023. If the code is deployed
+    // before that migration is applied, degrade to an empty (hidden) section
+    // instead of throwing and taking the whole analytics page down.
+    console.warn("[analytics] acquisition unavailable:", error.message);
+    return empty;
+  }
+  return (data as unknown as Acquisition) ?? empty;
+}

@@ -16,6 +16,11 @@ type TrackInput = {
   searchId?: string;
   listId?: string;
   position?: number;
+  // Campaign params from the landing URL — sent on page_view only. Channel is
+  // derived server-side from these plus the referrer.
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
 };
 
 type QueuedEvent = TrackInput & {
