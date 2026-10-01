@@ -68,6 +68,9 @@ export function ProductDemand({
                 {/* Honest label: this codebase opens products both as a page and
                     as a quick-view modal, so "opened" covers both. */}
                 <th className="py-1.5 text-end font-medium">{isAr ? "اتفتح" : "Opened"}</th>
+                <th className="py-1.5 text-end font-medium">
+                  {isAr ? "اتضاف للسلة" : "Carted"}
+                </th>
                 <th className="py-1.5 text-end font-medium">{isAr ? "اتشرى" : "Ordered"}</th>
                 <th className="py-1.5 text-end font-medium">
                   {isAr ? "فتح ← شراء" : "Opened → ordered"}
@@ -91,6 +94,7 @@ export function ProductDemand({
                   <td className="py-1.5 text-end font-mono">{n(r.clicks)}</td>
                   <td className="py-1.5 text-end font-mono">{pct(r.ctr)}</td>
                   <td className="py-1.5 text-end font-mono">{n(r.opens)}</td>
+                  <td className="py-1.5 text-end font-mono">{n(r.carts)}</td>
                   <td className="py-1.5 text-end font-mono">{n(r.orders)}</td>
                   <td className="py-1.5 text-end font-mono">{pct(r.openToOrder)}</td>
                 </tr>

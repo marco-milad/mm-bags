@@ -25,7 +25,10 @@ export type AnalyticsEventName =
   | "search"
   | "view_item"
   | "select_item"
-  | "add_to_cart";
+  | "add_to_cart"
+  // Server-only (migration 0024): written once per order from the
+  // order-confirmation page; never accepted from the client.
+  | "purchase";
 
 export type AnalyticsEventRow = {
   id: string;

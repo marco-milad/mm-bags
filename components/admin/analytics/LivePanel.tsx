@@ -9,6 +9,7 @@ const LABEL: Record<string, { ar: string; en: string }> = {
   view_item: { ar: "فتح منتج", en: "Product opened" },
   select_item: { ar: "ضغط نتيجة", en: "Result clicked" },
   add_to_cart: { ar: "أضاف للسلة", en: "Added to cart" },
+  purchase: { ar: "اشترى 🎉", en: "Purchased 🎉" },
 };
 
 function timeAgo(iso: string, isAr: boolean): string {

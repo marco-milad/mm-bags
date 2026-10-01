@@ -2,6 +2,14 @@ import "server-only";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin/auth";
+import {
+  computeFunnel,
+  EMPTY_FUNNEL_RAW,
+  type Funnel,
+  type FunnelRaw,
+} from "@/lib/analytics/funnel";
+
+export type { Funnel } from "@/lib/analytics/funnel";
 
 /**
  * Admin read layer for analytics.
@@ -86,6 +94,8 @@ export type DemandRow = {
   impressions: number;
   clicks: number;
   opens: number;
+  /** Sessions that added this product to the cart (migration 0024). */
+  carts: number;
   orders: number;
   /**
    * Derived here, not in SQL, and null rather than zero when the denominator
@@ -111,6 +121,8 @@ export async function getProductDemand(range: RangeKey = "30d"): Promise<DemandR
   const rows = (data ?? []) as unknown as Omit<DemandRow, "ctr" | "openToOrder">[];
   return rows.map((r) => ({
     ...r,
+    // Absent until migration 0024 is applied.
+    carts: r.carts ?? 0,
     ctr: r.impressions ? round1((100 * r.clicks) / r.impressions) : null,
     openToOrder: r.opens ? round1((100 * r.orders) / r.opens) : null,
   }));
@@ -193,4 +205,22 @@ export async function getAcquisition(range: RangeKey = "30d"): Promise<Acquisiti
     return empty;
   }
   return (data as unknown as Acquisition) ?? empty;
+}
+
+export async function getFunnel(range: RangeKey = "30d"): Promise<Funnel> {
+  await requireAdmin();
+  const { from, to } = rangeToDates(range);
+  const { data, error } = await getSupabaseAdminClient().rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    "analytics_funnel" as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    { p_from: from.toISOString(), p_to: to.toISOString() } as any,
+  );
+  if (error) {
+    // Ships in migration 0024 — degrade to an empty funnel rather than
+    // breaking the dashboard if the code lands first.
+    console.warn("[analytics] funnel unavailable:", error.message);
+    return computeFunnel(EMPTY_FUNNEL_RAW);
+  }
+  return computeFunnel((data as unknown as FunnelRaw) ?? EMPTY_FUNNEL_RAW);
 }

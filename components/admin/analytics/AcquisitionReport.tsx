@@ -1,4 +1,5 @@
 import type { Acquisition } from "@/lib/admin/analytics";
+import { channelLabel } from "@/lib/analytics/channel-labels";
 
 /**
  * Acquisition & tech: where visitors come from (channel / campaign / country)
@@ -6,15 +7,6 @@ import type { Acquisition } from "@/lib/admin/analytics";
  * presentation of the analytics_acquisition RPC output. Hidden entirely until
  * there is data, matching the dashboard's "nothing yet" posture.
  */
-
-const CHANNEL_LABELS: Record<string, { ar: string; en: string }> = {
-  direct: { ar: "مباشر", en: "Direct" },
-  organic_search: { ar: "بحث طبيعي", en: "Organic search" },
-  social: { ar: "سوشيال", en: "Social" },
-  referral: { ar: "إحالة", en: "Referral" },
-  paid: { ar: "إعلانات مدفوعة", en: "Paid" },
-  email: { ar: "إيميل", en: "Email" },
-};
 
 type Row = { label: string; value: number };
 
@@ -85,7 +77,7 @@ export function AcquisitionReport({
   const visitors = isAr ? "زائر" : "visitors";
 
   const channelRows: Row[] = acquisition.channels.map((c) => ({
-    label: (CHANNEL_LABELS[c.channel] ?? { ar: c.channel, en: c.channel })[isAr ? "ar" : "en"],
+    label: channelLabel(c.channel, isAr),
     value: c.sessions,
   }));
   const countryRows: Row[] = acquisition.countries.map((c) => ({ label: c.country, value: c.visitors }));

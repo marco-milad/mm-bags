@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   getAcquisition,
+  getFunnel,
   getLive,
   getOverview,
   getProductDemand,
@@ -11,6 +12,7 @@ import { getAdminLocale } from "@/lib/admin/locale";
 import { LivePanel } from "@/components/admin/analytics/LivePanel";
 import { TrafficSeries } from "@/components/admin/analytics/TrafficSeries";
 import { AcquisitionReport } from "@/components/admin/analytics/AcquisitionReport";
+import { FunnelReport } from "@/components/admin/analytics/FunnelReport";
 import { ProductDemand } from "@/components/admin/analytics/ProductDemand";
 import { SearchReport } from "@/components/admin/analytics/SearchReport";
 import { listSynonyms } from "@/lib/admin/synonyms";
@@ -68,7 +70,7 @@ export default async function AnalyticsPage({
 
   // getOverview/getLive each call requireAdmin() before touching the
   // service-role client.
-  const [overview, live, demand, report, synonyms, acquisition] =
+  const [overview, live, demand, report, synonyms, acquisition, funnel] =
     await Promise.all([
       getOverview(range),
       getLive(),
@@ -76,6 +78,7 @@ export default async function AnalyticsPage({
       getSearchReport(range),
       listSynonyms(),
       getAcquisition(range),
+      getFunnel(range),
     ]);
 
   const n = (v: number) => v.toLocaleString(isAr ? "ar-EG" : "en-US");
@@ -174,6 +177,8 @@ export default async function AnalyticsPage({
             searches={overview.searches}
             isAr={isAr}
           />
+
+          <FunnelReport funnel={funnel} isAr={isAr} />
 
           <AcquisitionReport acquisition={acquisition} isAr={isAr} />
 

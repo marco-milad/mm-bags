@@ -6,6 +6,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatPriceEGP } from "@/lib/utils";
 import { InstapayInstructions } from "@/components/order/InstapayInstructions";
 import { instapayExpirationBusinessHours } from "@/lib/orders/instapay-expiry";
+import { logPurchase } from "@/lib/analytics/log-purchase";
 
 // InstaPay handle read from env so Marco can edit it without a code
 // change. NO fallback: a fake placeholder handle would send customers'
@@ -97,6 +98,19 @@ export default async function OrderConfirmationPage({
     .maybeSingle();
 
   if (!order) notFound();
+
+  // Analytics: tie this order to the buyer's session (purchase event). Not
+  // awaited and caught — analytics must never slow or fail this page.
+  // logPurchase is idempotent by order id and only fires on a fresh order.
+  if (order.status !== "cancelled") {
+    void logPurchase({
+      orderId: order.id,
+      total: Number(order.total),
+      createdAt: order.created_at,
+      locale,
+      path: `/${locale}/order-confirmation`,
+    }).catch((e) => console.warn("[analytics] purchase log failed", e));
+  }
 
   const address = (order.shipping_address as ShippingAddressShape) ?? {};
   const phoneDigits = address.phone?.replace(/[^\d]/g, "") ?? "";
