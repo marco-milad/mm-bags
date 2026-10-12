@@ -10,6 +10,7 @@ import {
 } from "@/lib/account/actions";
 import type { Locale } from "@/lib/i18n-config";
 import { cn } from "@/lib/utils";
+import { resetWishlistForSignOut } from "@/components/wishlist/WishlistSync";
 
 /**
  * Profile summary card. Shows name + email + member-since date in
@@ -72,7 +73,10 @@ export function ProfileCard({
               <Pencil className="h-3.5 w-3.5" />
               {isRTL ? "تعديل" : "Edit"}
             </button>
-            <form action={signOut}>
+            {/* The server action clears the auth cookie, but the browser
+                Supabase client never sees a SIGNED_OUT event for it, so
+                drop the device's wishlist copy here. */}
+            <form action={signOut} onSubmit={resetWishlistForSignOut}>
               <input type="hidden" name="locale" value={locale} />
               <button
                 type="submit"

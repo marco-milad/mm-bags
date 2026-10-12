@@ -3,20 +3,18 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useEffect, useState } from "react";
+import { insertByAddedAt, type WishlistItem } from "@/lib/wishlist/merge";
 
-export type WishlistItem = {
-  productId: string;
-  productSlug: string;
-  name_ar: string;
-  name_en: string;
-  image: string | null;
-  addedAt: number;
-};
+// The type lives in the pure merge module so server actions and tests can
+// share it; re-exported here so existing imports keep working.
+export type { WishlistItem };
 
 type WishlistState = {
   items: WishlistItem[];
   toggle: (item: Omit<WishlistItem, "addedAt">) => boolean; // returns true if added
   add: (item: Omit<WishlistItem, "addedAt">) => void;
+  /** Puts a removed item back at its original position (undo / failed DB call). */
+  restore: (item: WishlistItem) => void;
   remove: (productId: string) => void;
   clear: () => void;
   isWishlisted: (productId: string) => boolean;
@@ -45,6 +43,8 @@ export const useWishlistStore = create<WishlistState>()(
             : { items: [{ ...item, addedAt: Date.now() }, ...s.items] },
         ),
 
+      restore: (item) => set((s) => ({ items: insertByAddedAt(s.items, item) })),
+
       remove: (productId) =>
         set((s) => ({ items: s.items.filter((i) => i.productId !== productId) })),
 
@@ -64,6 +64,17 @@ export const useWishlistStore = create<WishlistState>()(
 
 export const useWishlistItems = () => useWishlistStore((s) => s.items);
 export const useWishlistCount = () => useWishlistStore((s) => s.items.length);
+
+/** Resolves once the persisted (localStorage) wishlist has been loaded. */
+export function whenWishlistHydrated(): Promise<void> {
+  if (useWishlistStore.persist.hasHydrated()) return Promise.resolve();
+  return new Promise((resolve) => {
+    const unsub = useWishlistStore.persist.onFinishHydration(() => {
+      unsub();
+      resolve();
+    });
+  });
+}
 
 export function useWishlistHydrated() {
   const [hydrated, setHydrated] = useState(false);

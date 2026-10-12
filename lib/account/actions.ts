@@ -47,7 +47,12 @@ export async function updateProfile(
   return { ok: true };
 }
 
-/** Sign-out form action — clears the session cookie + redirects home. */
+/**
+ * Sign-out form action — clears the session cookie + redirects home.
+ * The wishlist lives in localStorage, which a server action can't touch,
+ * and this path doesn't make the browser Supabase client emit SIGNED_OUT;
+ * ProfileCard clears it on submit via resetWishlistForSignOut().
+ */
 export async function signOut(formData: FormData): Promise<void> {
   const locale = formData.get("locale") === "en" ? "en" : "ar";
   const supabase = await createSupabaseServerClient();

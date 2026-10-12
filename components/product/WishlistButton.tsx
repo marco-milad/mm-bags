@@ -2,6 +2,8 @@
 
 import { Heart } from "lucide-react";
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import type { Locale } from "@/lib/i18n-config";
 import { dbWishlistAdd, dbWishlistRemove } from "@/lib/wishlist/actions";
 import {
@@ -23,11 +25,15 @@ export function WishlistButton({
   variant?: Variant;
 }) {
   const toggle = useWishlistStore((s) => s.toggle);
+  const restore = useWishlistStore((s) => s.restore);
+  const remove = useWishlistStore((s) => s.remove);
   const isWishlisted = useWishlistStore((s) =>
     s.items.some((i) => i.productId === product.productId),
   );
   const hydrated = useWishlistHydrated();
+  const router = useRouter();
   const [, startTransition] = useTransition();
+  const isAr = locale === "ar";
 
   const label = isWishlisted
     ? locale === "ar"
@@ -40,10 +46,48 @@ export function WishlistButton({
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Keep the exact row (incl. addedAt) so a failed remove can put it back
+    // where it was.
+    const before = useWishlistStore
+      .getState()
+      .items.find((i) => i.productId === product.productId);
     const added = toggle(product);
+    // One toast id per product: rapid toggles replace instead of stacking.
+    const toastId = `wishlist-${product.productId}`;
+
+    if (added) {
+      toast.success(isAr ? "اتضافت للمفضّلة" : "Added to wishlist", {
+        id: toastId,
+        action: {
+          label: isAr ? "شوف المفضّلة" : "View",
+          onClick: () => router.push(`/${locale}/account/wishlist`),
+        },
+      });
+    } else {
+      toast(isAr ? "اتشالت من المفضّلة" : "Removed from wishlist", {
+        id: toastId,
+      });
+    }
+
     startTransition(async () => {
-      if (added) await dbWishlistAdd(product.productId);
-      else await dbWishlistRemove(product.productId);
+      let ok = false;
+      try {
+        ok = added
+          ? await dbWishlistAdd(product.productId)
+          : await dbWishlistRemove(product.productId);
+      } catch {
+        ok = false;
+      }
+      if (ok) return;
+      // Roll the heart back so it matches what the account actually has.
+      if (added) remove(product.productId);
+      else if (before) restore(before);
+      toast.error(
+        isAr
+          ? "حصلت مشكلة ومقدرناش نحفظ التغيير، جرّب تاني"
+          : "Couldn't save that change. Please try again.",
+        { id: toastId },
+      );
     });
   };
 
