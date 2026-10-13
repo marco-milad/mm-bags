@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { RegisterForm } from "@/components/auth/RegisterForm";
+import { safeNextPath } from "@/lib/auth/safe-next";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function RegisterPage({
   if (!hasLocale(locale)) notFound();
   const sp = await searchParams;
   const nextRaw = typeof sp?.next === "string" ? sp.next : undefined;
-  const next = nextRaw && nextRaw.startsWith("/") ? nextRaw : undefined;
+  const next = safeNextPath(nextRaw) ?? undefined;
 
   // Defensive: corrupt cookies shouldn't 500 the register path.
   try {

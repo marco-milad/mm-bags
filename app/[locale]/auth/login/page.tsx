@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { safeNextPath } from "@/lib/auth/safe-next";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export default async function LoginPage({
   const sp = await searchParams;
   const nextRaw = typeof sp?.next === "string" ? sp.next : undefined;
   // Only honour relative paths — open-redirect defence.
-  const next = nextRaw && nextRaw.startsWith("/") ? nextRaw : undefined;
+  const next = safeNextPath(nextRaw) ?? undefined;
 
   // If the user already has a session, bounce them to the next URL
   // (or their account page) — saves a round trip on stale tabs. The

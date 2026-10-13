@@ -101,6 +101,10 @@ export function proxy(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/admin") ||
+    // The auth callback lives outside [locale] on purpose (one redirect URI
+    // for Supabase/Google). Locale-prefixing it sent every email-confirm,
+    // password-reset and OAuth return to /ar/auth/callback — a 404.
+    pathname === "/auth/callback" ||
     pathname === "/favicon.ico" ||
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml" ||

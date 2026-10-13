@@ -7,6 +7,7 @@ import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Locale } from "@/lib/i18n-config";
 import { cn } from "@/lib/utils";
+import { safeNextPath } from "@/lib/auth/safe-next";
 import { GoogleAuthButton } from "./GoogleAuthButton";
 
 /**
@@ -31,8 +32,7 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
 
   function safeNext(): string {
-    if (next && next.startsWith("/")) return next;
-    return `/${locale}/account`;
+    return safeNextPath(next) ?? `/${locale}/account`;
   }
 
   async function handleSubmit(e: React.FormEvent) {

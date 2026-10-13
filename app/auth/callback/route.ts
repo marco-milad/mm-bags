@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/auth/safe-next";
 
 export const runtime = "nodejs";
 
@@ -24,9 +25,9 @@ export async function GET(request: Request) {
   const nextRaw = url.searchParams.get("next");
   const locale = url.searchParams.get("locale") ?? "ar";
 
-  // Relative-only — defends against `?next=https://attacker.com`.
-  const next =
-    nextRaw && nextRaw.startsWith("/") ? nextRaw : `/${locale}/account`;
+  // Same-site paths only — defends against `?next=https://attacker.com`
+  // and `?next=//attacker.com` (which new URL() resolves off-site).
+  const next = safeNextPath(nextRaw) ?? `/${locale}/account`;
 
   if (code) {
     const supabase = await createSupabaseServerClient();
