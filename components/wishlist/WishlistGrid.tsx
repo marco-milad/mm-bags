@@ -114,7 +114,7 @@ function WishlistCard({
 
   const onAdd = () => {
     if (!firstInStock) return;
-    addToCart({
+    const added = addToCart({
       variantId: firstInStock.id,
       productId: product.id,
       productSlug: product.slug,
@@ -126,10 +126,24 @@ function WishlistCard({
       color_en: firstInStock.color_en,
       size_inches: firstInStock.size_inches,
       unitPrice: price,
+      // Lets the cart cap this line at what's actually in stock.
+      stock: firstInStock.stock_qty,
     });
+    const toastId = `wishlist-cart-${product.id}`;
+    if (!added) {
+      // The line is already at its stock cap — nothing was added, so don't
+      // claim a success.
+      toast(
+        locale === "ar"
+          ? "وصلت لأقصى كمية متاحة"
+          : "You already have all available",
+        { id: toastId },
+      );
+      return;
+    }
     openDrawer();
     toast.success(locale === "ar" ? "اتضافت للكارت" : "Added to cart", {
-      id: `wishlist-cart-${product.id}`,
+      id: toastId,
     });
   };
 

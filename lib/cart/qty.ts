@@ -1,6 +1,6 @@
 // Pure quantity rules for cart lines (M6 — qty must not exceed stock).
 // No React / Zustand / "server-only" imports so Vitest can exercise them
-// directly; store/cart.ts is the only runtime caller.
+// directly; store/cart.ts and the cart/checkout components call them.
 
 /** Absolute per-line cap. Matches MAX_LINE_QTY enforced at checkout. */
 export const MAX_QTY = 99;
@@ -55,6 +55,36 @@ export function qtyAfterAdd(
   const add = Math.max(1, Math.min(MAX_QTY, toInt(incoming, 1)));
   if (existing == null) return Math.min(add, qtyCap(stock));
   return clampLineQty(existing, existing + add, stock);
+}
+
+/** A line whose known stock is 0 (or below). Unknown stock is not sold out. */
+export function isSoldOut(stock: number | undefined): boolean {
+  return typeof stock === "number" && Number.isFinite(stock) && stock <= 0;
+}
+
+/** True when any cart line is known to be sold out — checkout is blocked
+ *  until the shopper removes it (the server would reject it anyway). */
+export function hasSoldOutLine(lines: readonly { stock?: number }[]): boolean {
+  return lines.some((l) => isSoldOut(l.stock));
+}
+
+/**
+ * Why "+" can't raise a line any further, or null when it can:
+ * - "sold_out": stock is 0
+ * - "stock":    qty already equals (or exceeds) the stock we have
+ * - "max":      the absolute MAX_QTY cap (stock unknown or above it)
+ */
+export type QtyCapReason = "sold_out" | "stock" | "max";
+
+export function qtyCapReason(
+  qty: number,
+  stock: number | undefined,
+): QtyCapReason | null {
+  if (isSoldOut(stock)) return "sold_out";
+  if (qty < qtyCap(stock)) return null;
+  return typeof stock === "number" && Number.isFinite(stock) && stock <= MAX_QTY
+    ? "stock"
+    : "max";
 }
 
 /**

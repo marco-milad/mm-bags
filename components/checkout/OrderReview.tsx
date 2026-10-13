@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/i18n-config";
 import { EG_GOVERNORATES } from "@/lib/checkout/governorates";
 import type { CheckoutValues } from "@/lib/checkout/schema";
 import { calcTotals } from "@/lib/checkout/schema";
+import { isSoldOut } from "@/lib/cart/qty";
 import { formatPriceEGP } from "@/lib/utils";
 import type { CartItem } from "@/store/cart";
 
@@ -32,12 +33,18 @@ export function OrderReview({
             const name = locale === "ar" ? item.name_ar : item.name_en;
             const colorLabel =
               (locale === "ar" ? item.color_ar : item.color_en) ?? null;
+            const soldOut = isSoldOut(item.stock);
             return (
               <li key={item.variantId} className="flex justify-between gap-3 py-2 text-sm">
                 <div className="min-w-0">
                   <p className="line-clamp-1 font-medium text-[var(--color-text)]">
                     {name}
                   </p>
+                  {soldOut && (
+                    <p className="text-xs font-medium text-[var(--color-error)]">
+                      {locale === "ar" ? "خلص من المخزون" : "Out of stock"}
+                    </p>
+                  )}
                   <p className="text-xs text-[var(--color-text-secondary)]">
                     {[
                       colorLabel,
