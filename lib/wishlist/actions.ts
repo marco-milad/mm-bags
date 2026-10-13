@@ -59,14 +59,22 @@ export async function dbWishlistRemove(productId: string): Promise<boolean> {
  * already saved and ones that are not active products (a stale guest
  * wishlist would otherwise fail the whole insert on the FK). Used by
  * WishlistSync to upload a device's guest wishlist after sign-in.
+ *
+ * `expectedUserId` is who the browser thinks is signed in. If the server's
+ * session disagrees (expired cookie, different account) this reports
+ * failure rather than a silent no-op success, so the caller keeps its local
+ * list instead of reconciling it against the wrong (or no) account.
  */
-export async function dbWishlistMerge(productIds: unknown): Promise<boolean> {
+export async function dbWishlistMerge(
+  productIds: unknown,
+  expectedUserId: string,
+): Promise<boolean> {
   const ids = sanitizeProductIds(productIds);
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return true;
+  if (!user || user.id !== expectedUserId) return false;
   if (ids.length === 0) return true;
 
   const [{ data: existing, error: readErr }, { data: live, error: liveErr }] =
@@ -114,14 +122,18 @@ export async function getWishlistedProducts(
 /**
  * The signed-in user's saved wishlist as store items (product display
  * fields joined from `products`), or null when the read failed so callers
- * can tell "empty" from "unknown". Guests get [].
+ * can tell "empty" from "unknown". Also null when the server's session is
+ * not `expectedUserId` (see dbWishlistMerge): an empty list for "no user"
+ * would otherwise wipe the device's list.
  */
-export async function dbWishlistFetch(): Promise<WishlistItem[] | null> {
+export async function dbWishlistFetch(
+  expectedUserId: string,
+): Promise<WishlistItem[] | null> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return [];
+  if (!user || user.id !== expectedUserId) return null;
 
   const { data, error } = await supabase
     .from("wishlists")

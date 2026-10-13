@@ -94,14 +94,22 @@ async function syncFor(userId: string) {
     const snapshot = useWishlistStore.getState().items;
 
     if (mode === "merge-guest" && snapshot.length > 0) {
-      const ok = await dbWishlistMerge(snapshot.map((i) => i.productId));
+      const ok = await dbWishlistMerge(
+        snapshot.map((i) => i.productId),
+        userId,
+      );
       if (!ok || inFlight !== userId) return; // retry on the next trigger
     }
-    const remote = await dbWishlistFetch();
+    const remote = await dbWishlistFetch(userId);
     if (remote === null || inFlight !== userId) return;
 
     const store = useWishlistStore.getState();
-    store.replaceAll(reconcileWishlist(mode, snapshot, store.items, remote));
+    const next = reconcileWishlist(mode, snapshot, store.items, remote);
+    // Skip a no-op replace: a new array would make WishlistGrid refetch.
+    const same =
+      next.length === store.items.length &&
+      next.every((it, i) => it.productId === store.items[i].productId);
+    if (!same) store.replaceAll(next);
     store.setOwner(userId);
     writeStamp({ userId, at: Date.now() });
   } catch {
@@ -146,8 +154,10 @@ export function WishlistSync() {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       void supabase.auth.getSession().then(({ data }) => {
-        const id = data.session?.user.id;
-        if (id) void syncFor(id);
+        // Same as mount: no session (e.g. signed out in another tab via the
+        // server action, which emits no SIGNED_OUT here) drops a list an
+        // account left behind.
+        onSession(data.session?.user.id);
       });
     };
     document.addEventListener("visibilitychange", onVisible);
