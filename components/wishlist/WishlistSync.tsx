@@ -130,7 +130,10 @@ export function WishlistSync() {
 
     // Initial check on mount. INITIAL_SESSION below normally covers this
     // too; syncFor() dedupes, so whichever arrives first does the work.
-    void supabase.auth.getSession().then(({ data }) => {
+    // A null session WITH an error means "couldn't refresh" (e.g. offline
+    // after the access token expired), not "signed out" — leave the list be.
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (error) return;
       onSession(data.session?.user.id);
     });
 
@@ -153,10 +156,11 @@ export function WishlistSync() {
     // the shopper comes back to the tab (rate-limited inside syncFor).
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
-      void supabase.auth.getSession().then(({ data }) => {
+      void supabase.auth.getSession().then(({ data, error }) => {
         // Same as mount: no session (e.g. signed out in another tab via the
         // server action, which emits no SIGNED_OUT here) drops a list an
-        // account left behind.
+        // account left behind; a refresh error is not a sign-out.
+        if (error) return;
         onSession(data.session?.user.id);
       });
     };
