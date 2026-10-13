@@ -49,6 +49,7 @@ export function ShippingForm({
   return (
     <div className="grid gap-5 md:grid-cols-2">
       <Field
+        id="shipping-name"
         label={labels.name}
         error={errors.name ? checkoutFieldMessage("name", locale) : undefined}
         className="md:col-span-2"
@@ -56,12 +57,14 @@ export function ShippingForm({
         <input
           type="text"
           autoComplete="name"
+          {...fieldA11y("shipping-name", !!errors.name)}
           {...register("name")}
           className={inputClass(!!errors.name)}
         />
       </Field>
 
       <Field
+        id="shipping-phone"
         label={labels.phone}
         hint={labels.phoneHint}
         error={errors.phone ? checkoutFieldMessage("phone", locale) : undefined}
@@ -71,24 +74,27 @@ export function ShippingForm({
           inputMode="numeric"
           autoComplete="tel"
           dir="ltr"
+          {...fieldA11y("shipping-phone", !!errors.phone, true)}
           {...register("phone")}
           className={inputClass(!!errors.phone)}
           placeholder="01012345678"
         />
       </Field>
 
-      <Field label={labels.email} error={errors.email ? checkoutFieldMessage("email", locale) : undefined}>
+      <Field id="shipping-email" label={labels.email} error={errors.email ? checkoutFieldMessage("email", locale) : undefined}>
         <input
           type="email"
           autoComplete="email"
           dir="ltr"
+          {...fieldA11y("shipping-email", !!errors.email)}
           {...register("email")}
           className={inputClass(!!errors.email)}
         />
       </Field>
 
-      <Field label={labels.governorate} error={errors.governorate ? checkoutFieldMessage("governorate", locale) : undefined}>
+      <Field id="shipping-governorate" label={labels.governorate} error={errors.governorate ? checkoutFieldMessage("governorate", locale) : undefined}>
         <select
+          {...fieldA11y("shipping-governorate", !!errors.governorate)}
           {...register("governorate")}
           className={inputClass(!!errors.governorate)}
           defaultValue=""
@@ -104,16 +110,18 @@ export function ShippingForm({
         </select>
       </Field>
 
-      <Field label={labels.city} error={errors.city ? checkoutFieldMessage("city", locale) : undefined}>
+      <Field id="shipping-city" label={labels.city} error={errors.city ? checkoutFieldMessage("city", locale) : undefined}>
         <input
           type="text"
           autoComplete="address-level2"
+          {...fieldA11y("shipping-city", !!errors.city)}
           {...register("city")}
           className={inputClass(!!errors.city)}
         />
       </Field>
 
       <Field
+        id="shipping-street"
         label={labels.street}
         error={errors.street ? checkoutFieldMessage("street", locale) : undefined}
         className="md:col-span-2"
@@ -121,27 +129,31 @@ export function ShippingForm({
         <input
           type="text"
           autoComplete="address-line1"
+          {...fieldA11y("shipping-street", !!errors.street)}
           {...register("street")}
           className={inputClass(!!errors.street)}
         />
       </Field>
 
-      <Field label={labels.building} error={errors.building ? checkoutFieldMessage("building", locale) : undefined}>
+      <Field id="shipping-building" label={labels.building} error={errors.building ? checkoutFieldMessage("building", locale) : undefined}>
         <input
           type="text"
           autoComplete="address-line2"
+          {...fieldA11y("shipping-building", !!errors.building)}
           {...register("building")}
           className={inputClass(!!errors.building)}
         />
       </Field>
 
       <Field
+        id="shipping-notes"
         label={labels.notes}
         error={errors.notes ? checkoutFieldMessage("notes", locale) : undefined}
         className="md:col-span-2"
       >
         <textarea
           rows={3}
+          {...fieldA11y("shipping-notes", !!errors.notes)}
           {...register("notes")}
           className={cn(inputClass(!!errors.notes), "resize-none")}
         />
@@ -150,13 +162,18 @@ export function ShippingForm({
   );
 }
 
+// M7: the control inside each Field must carry the same `id` (via
+// fieldA11y) so its aria-describedby points at this Field's error — or its
+// hint when there is no error — and screen readers announce the message.
 function Field({
+  id,
   label,
   hint,
   error,
   children,
   className,
 }: {
+  id: string;
   label: string;
   hint?: string;
   error?: string;
@@ -164,16 +181,36 @@ function Field({
   className?: string;
 }) {
   return (
-    <label className={cn("flex flex-col gap-1.5 text-sm", className)}>
-      <span className="font-medium text-[var(--color-text)]">{label}</span>
+    // The <label> wraps only the title so the error/hint text stays out of
+    // the control's accessible name (it is announced once, as a description).
+    <div className={cn("flex flex-col gap-1.5 text-sm", className)}>
+      <label htmlFor={id} className="font-medium text-[var(--color-text)]">
+        {label}
+      </label>
       {children}
       {error ? (
-        <span className="text-xs text-[var(--color-error)]">{error}</span>
+        <span id={`${id}-error`} role="alert" className="text-xs text-[var(--color-error)]">
+          {error}
+        </span>
       ) : hint ? (
-        <span className="text-xs text-[var(--color-text-secondary)]">{hint}</span>
+        <span id={`${id}-hint`} className="text-xs text-[var(--color-text-secondary)]">
+          {hint}
+        </span>
       ) : null}
-    </label>
+    </div>
   );
+}
+
+function fieldA11y(id: string, hasError: boolean, hasHint = false) {
+  return {
+    id,
+    "aria-invalid": hasError,
+    "aria-describedby": hasError
+      ? `${id}-error`
+      : hasHint
+        ? `${id}-hint`
+        : undefined,
+  };
 }
 
 function inputClass(hasError: boolean) {

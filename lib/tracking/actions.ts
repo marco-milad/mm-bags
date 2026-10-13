@@ -1,6 +1,7 @@
 "use server";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { firstName, maskPhone } from "@/lib/mask";
 import {
   isOrderNumber,
   isUuid,
@@ -13,12 +14,6 @@ import {
 export type VerifyResult =
   | { ok: true; tracking: TrackingResult }
   | { ok: false; code: TrackingErrorCode; error: string };
-
-function maskPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 4) return phone;
-  return `${"•".repeat(Math.max(0, digits.length - 4))}${digits.slice(-4)}`;
-}
 
 export async function verifyAndGetTracking(
   raw: VerifyTrackingInput,
@@ -90,7 +85,10 @@ export async function verifyAndGetTracking(
     total: order.total,
     createdAt: order.created_at,
     estimatedDelivery: codRow?.estimated_delivery ?? null,
-    recipientName: addr.name ?? "",
+    // First name only: the last-4 check is a weak credential (anyone who
+    // saw the order number + those digits passes it), so never hand back
+    // the full name on the strength of it.
+    recipientName: firstName(addr.name),
     recipientPhone: maskPhone(storedPhone),
     governorate: addr.governorate ?? "",
     city: addr.city ?? "",

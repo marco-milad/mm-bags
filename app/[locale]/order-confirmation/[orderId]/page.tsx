@@ -1,8 +1,17 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { CheckCircle2, Clock, MessageCircle, Package, XCircle } from "lucide-react";
 import { hasLocale } from "@/lib/i18n-config";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { shippingContactForViewer } from "@/lib/mask";
+import {
+  ORDER_OWNER_COOKIE,
+  isOrderOwner,
+  orderCookieSecret,
+  parseOwnedOrders,
+} from "@/lib/orders/ownership";
 import { formatPriceEGP } from "@/lib/utils";
 import { InstapayInstructions } from "@/components/order/InstapayInstructions";
 import { instapayExpirationBusinessHours } from "@/lib/orders/instapay-expiry";
@@ -92,7 +101,7 @@ export default async function OrderConfirmationPage({
   const { data: order } = await admin
     .from("orders")
     .select(
-      "id, order_number, status, payment_method, payment_status, subtotal, shipping_fee, total, shipping_address, created_at, order_items (qty, unit_price, snapshot_name)",
+      "id, order_number, user_id, status, payment_method, payment_status, subtotal, shipping_fee, total, shipping_address, created_at, order_items (qty, unit_price, snapshot_name)",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -112,8 +121,22 @@ export default async function OrderConfirmationPage({
     }).catch((e) => console.warn("[analytics] purchase log failed", e));
   }
 
+  // L1: the URL alone is not proof of ownership (it can be shared,
+  // screenshotted or sit in browser history). Full name, full phone and the
+  // track-link prefill are shown only to the browser that placed the order
+  // (signed cookie set by placeOrder) or the signed-in account holder.
+  const viewerIsOwner = await resolveViewerIsOwner(order.id, order.user_id);
+
   const address = (order.shipping_address as ShippingAddressShape) ?? {};
-  const phoneDigits = address.phone?.replace(/[^\d]/g, "") ?? "";
+  const phoneDigits = viewerIsOwner
+    ? (address.phone?.replace(/[^\d]/g, "") ?? "")
+    : "";
+  // Non-owners get no phone digits at all: the order number is on this page
+  // and the last 4 digits are the /track verification code.
+  const { name: shownName, phone: shownPhone } = shippingContactForViewer(
+    address,
+    viewerIsOwner,
+  );
   const whatsappNumber = (
     process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
   ).replace(/[^\d]/g, "");
@@ -280,9 +303,9 @@ export default async function OrderConfirmationPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
             {locale === "ar" ? "هيوصل لـ" : "Shipping to"}
           </h2>
-          <p className="text-sm font-medium text-[var(--color-text)]">{address.name}</p>
+          <p className="text-sm font-medium text-[var(--color-text)]">{shownName}</p>
           <p className="text-sm text-[var(--color-text-secondary)]" dir="ltr">
-            {address.phone}
+            {shownPhone}
           </p>
           <p className="text-sm text-[var(--color-text)]">
             {[address.city, address.governorate].filter(Boolean).join(" — ")}
@@ -320,6 +343,38 @@ export default async function OrderConfirmationPage({
       </div>
     </section>
   );
+}
+
+// Cookie first (no network); only orders tied to an account need the
+// Supabase auth lookup. Any auth failure (stale/bad cookie) means "not the
+// owner" — the page still renders, just with masked contact details.
+async function resolveViewerIsOwner(
+  orderId: string,
+  orderUserId: string | null,
+): Promise<boolean> {
+  const secret = orderCookieSecret();
+  const cookieStore = await cookies();
+  const ownedOrderIds = secret
+    ? parseOwnedOrders(
+        cookieStore.get(ORDER_OWNER_COOKIE)?.value,
+        Date.now() / 1000,
+        secret,
+      ).map((e) => e.id)
+    : [];
+  if (isOrderOwner({ orderId, orderUserId, ownedOrderIds, viewerUserId: null })) {
+    return true;
+  }
+  if (!orderUserId) return false;
+
+  let viewerUserId: string | null = null;
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getUser();
+    viewerUserId = data.user?.id ?? null;
+  } catch {
+    viewerUserId = null;
+  }
+  return isOrderOwner({ orderId, orderUserId, ownedOrderIds, viewerUserId });
 }
 
 function Row({ label, value }: { label: string; value: string }) {

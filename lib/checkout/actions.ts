@@ -1,9 +1,16 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { deductStockBulk } from "@/lib/inventory/deduct-stock";
 import { revalidateProduct } from "@/lib/cache/revalidate-public";
+import {
+  ORDER_OWNER_COOKIE,
+  ORDER_OWNER_TTL_SECONDS,
+  addOwnedOrder,
+  orderCookieSecret,
+} from "@/lib/orders/ownership";
 import { EG_GOVERNORATES } from "./governorates";
 import { validateCart, type ValidateCartResult } from "./validate-cart";
 import {
@@ -238,6 +245,39 @@ export async function placeOrder(
     // ids, not slugs, so invalidate the product pages as a set rather
     // than adding a lookup to the purchase path.
     revalidateProduct();
+
+    // L1: remember that THIS browser placed the order, so the confirmation
+    // page can show full contact details to it (and only it, besides the
+    // signed-in account holder). Set only once the order fully committed —
+    // never for a rolled-back id. A cookie failure must not fail an order
+    // that already exists.
+    try {
+      const secret = orderCookieSecret();
+      if (secret) {
+        const cookieStore = await cookies();
+        cookieStore.set(
+          ORDER_OWNER_COOKIE,
+          addOwnedOrder(
+            cookieStore.get(ORDER_OWNER_COOKIE)?.value,
+            order.id,
+            Date.now() / 1000,
+            secret,
+          ),
+          {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: ORDER_OWNER_TTL_SECONDS,
+          },
+        );
+      }
+    } catch (err) {
+      console.warn(
+        "[placeOrder] could not set order-owner cookie:",
+        err instanceof Error ? err.message : err,
+      );
+    }
 
     return { ok: true, orderId: order.id, orderNumber: order.order_number };
   }
