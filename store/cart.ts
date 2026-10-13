@@ -7,9 +7,9 @@ import { track } from "@/lib/analytics/track";
 import {
   MAX_STOCK_LOOKUP,
   clampLineQty,
+  hasSoldOutLine,
   qtyAfterAdd,
   qtyAfterStockSync,
-  qtyCap,
   type VariantStock,
 } from "@/lib/cart/qty";
 import { getCartStock } from "@/lib/cart/stock-actions";
@@ -37,7 +37,9 @@ export type AddItemInput = Omit<CartItem, "qty"> & { qty?: number };
 type CartState = {
   items: CartItem[];
   isOpen: boolean;
-  addItem: (input: AddItemInput) => void;
+  /** Returns true when the cart actually gained units — false for a sold-out
+   *  variant or a line already at its stock/MAX_QTY cap. */
+  addItem: (input: AddItemInput) => boolean;
   removeItem: (variantId: string) => void;
   updateQty: (variantId: string, qty: number) => void;
   repriceItems: (updates: { variantId: string; unitPrice: number }[]) => void;
@@ -55,34 +57,37 @@ export const useCartStore = create<CartState>()(
       isOpen: false,
 
       addItem: (input) => {
-        // A variant known to be sold out can't start a new line. Callers
-        // already gate their buttons on stock; this is the backstop, checked
-        // before track() so a no-op add isn't counted.
-        const alreadyInCart = get().items.some((i) => i.variantId === input.variantId);
-        if (!alreadyInCart && qtyCap(input.stock) === 0) return;
-        // Analytics: one add_to_cart per add action (covers PDP, quick view,
-        // home, and wishlist "move to cart" — every caller funnels here).
-        // Fired outside the set() updater so the state updater stays pure;
-        // track() no-ops without consent and on the server.
-        track({ name: "add_to_cart", productId: input.productId });
-        set((state) => {
-          const existing = state.items.find((i) => i.variantId === input.variantId);
-          if (existing) {
-            // Fresh stock from the caller wins over the persisted value.
-            const stock = input.stock ?? existing.stock;
-            return {
-              items: state.items.map((i) =>
-                i.variantId === input.variantId
-                  ? { ...i, stock, qty: qtyAfterAdd(i.qty, input.qty, stock) }
-                  : i,
-              ),
-            };
-          }
-          const qty = qtyAfterAdd(undefined, input.qty, input.stock);
-          if (qty === 0) return state;
-          const { qty: _ignored, ...rest } = input;
-          return { items: [...state.items, { ...rest, qty }] };
-        });
+        const existing = get().items.find((i) => i.variantId === input.variantId);
+        // Fresh stock from the caller wins over the persisted value.
+        const stock = input.stock ?? existing?.stock;
+        const qty = qtyAfterAdd(existing?.qty, input.qty, stock);
+        // A variant known to be sold out can't start a new line, and a line
+        // already at its cap can't grow. Callers gate their buttons on stock;
+        // this is the backstop, and the false return lets them say so
+        // instead of showing a success.
+        const grew = qty > (existing?.qty ?? 0);
+        if (grew) {
+          // Analytics: one add_to_cart per add action that actually added
+          // (covers PDP, quick view, home, and wishlist "move to cart" —
+          // every caller funnels here). Fired outside set() so the state
+          // updater stays pure; track() no-ops without consent and on the
+          // server.
+          track({ name: "add_to_cart", productId: input.productId });
+        }
+        if (existing) {
+          // Still record fresher stock even when qty couldn't move.
+          if (qty === existing.qty && stock === existing.stock) return false;
+          set((state) => ({
+            items: state.items.map((i) =>
+              i.variantId === input.variantId ? { ...i, stock, qty } : i,
+            ),
+          }));
+          return grew;
+        }
+        if (qty === 0) return false;
+        const { qty: _ignored, ...rest } = input;
+        set((state) => ({ items: [...state.items, { ...rest, qty }] }));
+        return true;
       },
 
       removeItem: (variantId) =>
@@ -162,6 +167,8 @@ export const useCartItemCount = () =>
 export const useCartTotal = () =>
   useCartStore((s) => s.items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0));
 export const useCartIsOpen = () => useCartStore((s) => s.isOpen);
+/** Any line known to be sold out — checkout CTAs are blocked until it's removed. */
+export const useCartHasSoldOut = () => useCartStore((s) => hasSoldOutLine(s.items));
 
 /**
  * Pull current stock for every cart line from the server and apply it

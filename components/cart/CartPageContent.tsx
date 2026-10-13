@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useId } from "react";
 import { ShoppingBag } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import { formatPriceEGP } from "@/lib/utils";
 import {
+  useCartHasSoldOut,
   useCartHydrated,
   useCartItems,
   useCartItemCount,
@@ -32,6 +34,8 @@ export function CartPageContent({ locale }: { locale: Locale }) {
   const items = useCartItems();
   const count = useCartItemCount();
   const subtotal = useCartTotal();
+  const hasSoldOut = useCartHasSoldOut();
+  const blockedReasonId = useId();
 
   // Persisted lines can be days stale: refresh stock once the store has
   // hydrated, so qty is clamped and sold-out lines are flagged.
@@ -81,7 +85,7 @@ export function CartPageContent({ locale }: { locale: Locale }) {
             key={item.variantId}
             className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
           >
-            <CartItem item={item} locale={locale} />
+            <CartItem item={item} locale={locale} as="div" />
           </li>
         ))}
       </ul>
@@ -121,12 +125,35 @@ export function CartPageContent({ locale }: { locale: Locale }) {
           </div>
         </dl>
 
-        <Link
-          href={`/${locale}/checkout`}
-          className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary)]/90"
-        >
-          {isRTL ? "إتمام الشراء" : "Checkout"}
-        </Link>
+        {/* A sold-out line would only fail at the server, so block checkout
+            here with the reason instead of linking to a dead end. */}
+        {hasSoldOut ? (
+          <>
+            <p
+              id={blockedReasonId}
+              className="mt-5 text-xs font-medium text-[var(--color-error)]"
+            >
+              {isRTL
+                ? "شيل المنتجات اللي خلصت عشان تكمل"
+                : "Remove sold-out items to continue"}
+            </p>
+            <button
+              type="button"
+              disabled
+              aria-describedby={blockedReasonId}
+              className="mt-2 inline-flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 text-sm font-semibold text-white opacity-40"
+            >
+              {isRTL ? "إتمام الشراء" : "Checkout"}
+            </button>
+          </>
+        ) : (
+          <Link
+            href={`/${locale}/checkout`}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary)]/90"
+          >
+            {isRTL ? "إتمام الشراء" : "Checkout"}
+          </Link>
+        )}
         <Link
           href={`/${locale}/catalog`}
           className="mt-2 block text-center text-xs text-[var(--color-text-secondary)] underline-offset-4 hover:underline"

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, ArrowRight, Loader2, ShoppingBag } from "lucide-react";
@@ -12,9 +12,11 @@ import { checkoutErrorMessage } from "@/lib/checkout/error-messages";
 import { placeOrder } from "@/lib/checkout/actions";
 import {
   refreshCartStock,
+  useCartHasSoldOut,
   useCartHydrated,
   useCartItems,
   useCartStore,
+  useSyncCartStock,
 } from "@/store/cart";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { StepIndicator, type CheckoutStep } from "./StepIndicator";
@@ -46,6 +48,12 @@ export function CheckoutFlow({
   const items = useCartItems();
   const clearCart = useCartStore((s) => s.clearCart);
   const repriceItems = useCartStore((s) => s.repriceItems);
+  // UX guard only — placeOrder re-validates stock server-side. Refresh stock
+  // on arrival so a line that sold out since it was added is flagged in
+  // Review and blocks "Place order" instead of failing at the server.
+  const hasSoldOut = useCartHasSoldOut();
+  const blockedReasonId = useId();
+  useSyncCartStock(hydrated && items.length > 0);
 
   const [step, setStep] = useState<CheckoutStep>(1);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -95,6 +103,8 @@ export function CheckoutFlow({
   };
 
   const onSubmit = form.handleSubmit((values) => {
+    // The submit button is disabled too; this also covers Enter-to-submit.
+    if (hasSoldOut) return;
     setServerError(null);
     startTransition(async () => {
       const result = await placeOrder({
@@ -234,6 +244,25 @@ export function CheckoutFlow({
                 </p>
               </header>
               <OrderReview values={values} items={items} locale={locale} />
+              {hasSoldOut && (
+                // role="status": the stock refresh can flip this on after the
+                // shopper reached Review, so it must be announced.
+                <p
+                  id={blockedReasonId}
+                  role="status"
+                  className="rounded-md border border-[var(--color-error)]/40 bg-[var(--color-error)]/10 px-3 py-2 text-sm text-[var(--color-error)]"
+                >
+                  {locale === "ar"
+                    ? "شيل المنتجات اللي خلصت عشان تكمل"
+                    : "Remove sold-out items to continue"}{" "}
+                  <Link
+                    href={`/${locale}/cart`}
+                    className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4"
+                  >
+                    {locale === "ar" ? "افتح السلة" : "Open cart"}
+                  </Link>
+                </p>
+              )}
               {serverError && (
                 <p
                   role="alert"
@@ -273,8 +302,13 @@ export function CheckoutFlow({
             ) : (
               <button
                 type="submit"
-                disabled={isPending}
-                className="inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)] disabled:opacity-70"
+                disabled={isPending || hasSoldOut}
+                aria-describedby={hasSoldOut ? blockedReasonId : undefined}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)] disabled:opacity-70",
+                  hasSoldOut &&
+                    "cursor-not-allowed hover:bg-[var(--color-primary)] disabled:opacity-40",
+                )}
               >
                 {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 {locale === "ar" ? "إتمام الطلب" : "Place order"}

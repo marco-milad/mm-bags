@@ -5,33 +5,53 @@ import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import { formatPriceEGP } from "@/lib/utils";
-import { qtyCap } from "@/lib/cart/qty";
+import { qtyCapReason } from "@/lib/cart/qty";
 import { useCartStore, type CartItem as CartItemType } from "@/store/cart";
 
 export function CartItem({
   item,
   locale,
+  as: Tag = "li",
 }: {
   item: CartItemType;
   locale: Locale;
+  /** "div" when the caller already wraps each line in its own <li>. */
+  as?: "li" | "div";
 }) {
   const updateQty = useCartStore((s) => s.updateQty);
   const removeItem = useCartStore((s) => s.removeItem);
   const closeDrawer = useCartStore((s) => s.closeDrawer);
 
-  const name = locale === "ar" ? item.name_ar : item.name_en;
-  const colorLabel =
-    locale === "ar" ? item.color_ar ?? null : item.color_en ?? null;
+  const isAr = locale === "ar";
+  const name = isAr ? item.name_ar : item.name_en;
+  const colorLabel = isAr ? item.color_ar ?? null : item.color_en ?? null;
   const sizeLabel = item.size_inches ? `${item.size_inches}"` : null;
   const lineTotal = item.unitPrice * item.qty;
-  // Stock is optional (old persisted lines) — unknown stock shows no note
-  // and only the absolute MAX_QTY caps "+".
-  const atCap = item.qty >= qtyCap(item.stock);
-  const isOOS = item.stock === 0;
+  // Stock is optional (old persisted lines) — unknown stock shows no stock
+  // note and only the absolute MAX_QTY caps "+".
+  const capReason = qtyCapReason(item.qty, item.stock);
   const isLow = item.stock != null && item.stock > 0 && item.stock <= 5;
 
+  // One line under the variant explaining the stock situation. At the cap it
+  // doubles as the reason "+" is disabled, so it's also in "+"'s label.
+  const capNote =
+    capReason === "sold_out"
+      ? isAr
+        ? "خلص من المخزون — شيله عشان تكمل الطلب"
+        : "Out of stock — remove it to check out"
+      : capReason === "stock"
+        ? isAr
+          ? "ده كل اللي عندنا"
+          : "That's all we have"
+        : capReason === "max"
+          ? isAr
+            ? "دي أقصى كمية للطلب الواحد"
+            : "That's the most per order"
+          : null;
+  const increaseLabel = isAr ? "زيادة" : "Increase";
+
   return (
-    <li className="flex gap-3 border-b border-[var(--color-border)] py-4">
+    <Tag className="flex gap-3 border-b border-[var(--color-border)] py-4">
       <Link
         href={`/${locale}/products/${item.productSlug}`}
         onClick={closeDrawer}
@@ -77,11 +97,15 @@ export function CartItem({
           </div>
         )}
 
-        {isOOS ? (
-          <p className="text-xs font-medium text-[var(--color-error)]">
-            {locale === "ar"
-              ? "خلص من المخزون — شيله عشان تكمل الطلب"
-              : "Out of stock — remove it to check out"}
+        {capNote ? (
+          <p
+            className={
+              capReason === "sold_out"
+                ? "text-xs font-medium text-[var(--color-error)]"
+                : "text-xs font-medium text-[var(--color-warning)]"
+            }
+          >
+            {capNote}
           </p>
         ) : isLow ? (
           <p className="text-xs font-medium text-[var(--color-warning)]">
@@ -110,12 +134,17 @@ export function CartItem({
             >
               {item.qty}
             </span>
+            {/* aria-disabled (not disabled) keeps "+" focusable at the cap so
+                screen readers can still reach it and hear why. */}
             <button
               type="button"
-              aria-label={locale === "ar" ? "زيادة" : "Increase"}
-              onClick={() => updateQty(item.variantId, item.qty + 1)}
-              disabled={atCap}
-              className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-text)] transition hover:bg-[var(--color-surface)] disabled:opacity-30"
+              aria-label={capNote ? `${increaseLabel} — ${capNote}` : increaseLabel}
+              aria-disabled={capReason ? true : undefined}
+              onClick={() => {
+                if (capReason) return;
+                updateQty(item.variantId, item.qty + 1);
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-text)] transition hover:bg-[var(--color-surface)] aria-disabled:cursor-not-allowed aria-disabled:opacity-30 aria-disabled:hover:bg-transparent"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -135,6 +164,6 @@ export function CartItem({
       >
         <Trash2 className="h-4 w-4" />
       </button>
-    </li>
+    </Tag>
   );
 }

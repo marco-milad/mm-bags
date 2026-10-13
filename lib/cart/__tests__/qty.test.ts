@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_QTY,
   clampLineQty,
+  hasSoldOutLine,
+  isSoldOut,
   qtyAfterAdd,
   qtyAfterStockSync,
   qtyCap,
+  qtyCapReason,
 } from "../qty";
 
 describe("qtyCap", () => {
@@ -106,5 +109,56 @@ describe("qtyAfterStockSync", () => {
 
   it("caps at MAX_QTY even with huge stock", () => {
     expect(qtyAfterStockSync(150, 1000)).toBe(MAX_QTY);
+  });
+});
+
+describe("isSoldOut / hasSoldOutLine", () => {
+  it("only known stock <= 0 counts as sold out", () => {
+    expect(isSoldOut(0)).toBe(true);
+    expect(isSoldOut(-1)).toBe(true);
+    expect(isSoldOut(1)).toBe(false);
+    expect(isSoldOut(undefined)).toBe(false);
+    expect(isSoldOut(Number.NaN)).toBe(false);
+  });
+
+  it("flags a cart with any sold-out line", () => {
+    expect(hasSoldOutLine([])).toBe(false);
+    expect(hasSoldOutLine([{ stock: 3 }, {}])).toBe(false);
+    expect(hasSoldOutLine([{ stock: 3 }, { stock: 0 }])).toBe(true);
+  });
+});
+
+describe("qtyCapReason", () => {
+  it("null while there is room to add", () => {
+    expect(qtyCapReason(2, 5)).toBeNull();
+    expect(qtyCapReason(1, undefined)).toBeNull();
+  });
+
+  it("sold_out when stock is 0, regardless of qty", () => {
+    expect(qtyCapReason(1, 0)).toBe("sold_out");
+    expect(qtyCapReason(3, 0)).toBe("sold_out");
+  });
+
+  it("stock when qty reached the stock we have — any stock value", () => {
+    expect(qtyCapReason(3, 3)).toBe("stock");
+    expect(qtyCapReason(20, 20)).toBe("stock");
+    expect(qtyCapReason(5, 2)).toBe("stock");
+    expect(qtyCapReason(MAX_QTY, MAX_QTY)).toBe("stock");
+  });
+
+  it("max when the absolute cap is hit (stock unknown or above it)", () => {
+    expect(qtyCapReason(MAX_QTY, undefined)).toBe("max");
+    expect(qtyCapReason(MAX_QTY, 500)).toBe("max");
+  });
+});
+
+describe("qtyAfterAdd as the addItem 'did it grow?' signal", () => {
+  it("a line already at stock does not grow", () => {
+    expect(qtyAfterAdd(3, 1, 3)).toBe(3);
+    expect(qtyAfterAdd(MAX_QTY, 1, undefined)).toBe(MAX_QTY);
+  });
+
+  it("a line under stock grows", () => {
+    expect(qtyAfterAdd(2, 1, 3)).toBeGreaterThan(2);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useId } from "react";
 import { RefreshCcw, ShieldCheck, ShoppingBag, Wallet } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import { formatPriceEGP } from "@/lib/utils";
@@ -11,6 +12,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
+  useCartHasSoldOut,
   useCartIsOpen,
   useCartItems,
   useCartItemCount,
@@ -28,6 +30,8 @@ export function CartDrawer({ locale }: { locale: Locale }) {
   const items = useCartItems();
   const itemCount = useCartItemCount();
   const subtotal = useCartTotal();
+  const hasSoldOut = useCartHasSoldOut();
+  const blockedReasonId = useId();
 
   // The drawer stays mounted app-wide, so refresh stock when it OPENS
   // (persisted lines can be days stale), not on every page load.
@@ -93,13 +97,36 @@ export function CartDrawer({ locale }: { locale: Locale }) {
                 </p>
               </dl>
 
-              <Link
-                href={`/${locale}/checkout`}
-                onClick={() => setOpen(false)}
-                className="flex w-full items-center justify-center rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
-              >
-                {locale === "ar" ? "إكمال الشراء" : "Checkout"}
-              </Link>
+              {/* A sold-out line would only fail at the server, so block
+                  checkout here with the reason instead of linking on. */}
+              {hasSoldOut ? (
+                <>
+                  <p
+                    id={blockedReasonId}
+                    className="mb-2 text-center text-xs font-medium text-[var(--color-error)]"
+                  >
+                    {locale === "ar"
+                      ? "شيل المنتجات اللي خلصت عشان تكمل"
+                      : "Remove sold-out items to continue"}
+                  </p>
+                  <button
+                    type="button"
+                    disabled
+                    aria-describedby={blockedReasonId}
+                    className="flex h-11 w-full cursor-not-allowed items-center justify-center rounded-full bg-[var(--color-primary)] px-6 text-sm font-semibold text-white opacity-40"
+                  >
+                    {locale === "ar" ? "إكمال الشراء" : "Checkout"}
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href={`/${locale}/checkout`}
+                  onClick={() => setOpen(false)}
+                  className="flex w-full items-center justify-center rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
+                >
+                  {locale === "ar" ? "إكمال الشراء" : "Checkout"}
+                </Link>
+              )}
 
               {/* Trust micro-line under the checkout CTA — same three
                   objections the Hero pill-set answers ("safe to pay?",
