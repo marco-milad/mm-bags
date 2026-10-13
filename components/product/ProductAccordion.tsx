@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { Product } from "@/lib/supabase/types";
+import { pickLocalized } from "@/lib/i18n/pick";
 import { ProductSpecs } from "@/components/product/ProductSpecs";
 
 export function ProductAccordion({
@@ -67,13 +68,18 @@ export function ProductAccordion({
         : "Cash on delivery available (+EGP 25 fee).",
     },
   ];
-  const description =
-    (locale === "ar" ? product.description_ar : product.description_en) ?? "";
+  // Falls back to the other language's copy rather than "No description"
+  // when only one side was filled in.
+  const description = pickLocalized(
+    product.description_ar,
+    product.description_en,
+    isAr,
+  );
   // Fallback prose-material line (material_ar/material_en) — surfaces above
   // the icon grid since it's free-form and complements the structured
   // material_type chip. Keeps backwards compat for products imported before
   // the specs migration.
-  const proseMaterial = locale === "ar" ? product.material_ar : product.material_en;
+  const proseMaterial = pickLocalized(product.material_ar, product.material_en, isAr);
 
   const sections: { title: string; content: React.ReactNode }[] = [
     {

@@ -8,6 +8,7 @@ import type {
   CatalogSort,
 } from "@/lib/catalog-shared";
 import { effectivePrice } from "@/lib/catalog-shared";
+import { pickLocalized } from "@/lib/i18n/pick";
 import { CollectionFilter } from "./CollectionFilter";
 import { CatalogToolbar } from "./CatalogToolbar";
 import { CatalogCards } from "./CatalogCards";
@@ -63,10 +64,12 @@ export function CatalogView({
   crumbs?: CrumbLink[];
   filterAllHref?: string;
   filterAllLabel?: { ar: string; en: string };
-  /** When set, renders a "Compare models" CTA under the title that links
-      to the given URL (typically the collection's `/compare` page). */
+  /** When set together with `compareLabel`, renders a "Compare models" CTA
+      under the title that links to the given URL (typically the
+      collection's `/compare` page). */
   compareHref?: string;
-  /** Localized labels for the compare CTA; falls back to default copy. */
+  /** Localized labels for the compare CTA. Required for the CTA to render —
+      no hardcoded default, so EN never shows Arabic copy (or vice versa). */
   compareLabel?: { ar: string; en: string };
   /** When set (main catalog), the toolbar shows the TOTAL count / min
       price and a "load more" control appends further pages. */
@@ -91,6 +94,15 @@ export function CatalogView({
     : locale === "ar"
       ? "كل المنتجات"
       : "All products";
+  // Shown when either language has copy (falls back to the other side),
+  // not only when the Arabic description exists.
+  const description = activeCollection
+    ? pickLocalized(
+        activeCollection.description_ar,
+        activeCollection.description_en,
+        locale === "ar",
+      )
+    : "";
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
@@ -119,22 +131,18 @@ export function CatalogView({
           {locale === "ar" ? "تسوق" : "Shop"}
         </p>
         <h1 className="font-display text-3xl md:text-4xl">{title}</h1>
-        {activeCollection?.description_ar && (
+        {description && (
           <p className="max-w-2xl text-sm text-[var(--color-text-secondary)]">
-            {locale === "ar"
-              ? activeCollection.description_ar
-              : activeCollection.description_en ?? activeCollection.description_ar}
+            {description}
           </p>
         )}
-        {compareHref && (
+        {compareHref && compareLabel && (
           <Link
             href={compareHref}
             className="mt-1 inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)]/10 px-4 py-2 text-sm font-semibold text-[var(--color-primary)] transition hover:bg-[var(--color-accent)] hover:text-[var(--color-primary)]"
           >
             <GitCompareArrows className="h-4 w-4" />
-            {locale === "ar"
-              ? compareLabel?.ar ?? "قارن بين الموديلات"
-              : compareLabel?.en ?? "Compare models"}
+            {locale === "ar" ? compareLabel.ar : compareLabel.en}
           </Link>
         )}
       </header>

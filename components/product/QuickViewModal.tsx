@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
 import type { CatalogCardProduct, CatalogCardVariant } from "@/lib/catalog-shared";
 import { cn, formatPriceEGP } from "@/lib/utils";
+import { pickLocalized } from "@/lib/i18n/pick";
 import { useCartStore } from "@/store/cart";
 import {
   Dialog,
@@ -84,8 +85,10 @@ export function QuickViewModal({
       if (!map.has(v.color_hex)) {
         map.set(v.color_hex, {
           hex: v.color_hex,
-          ar: v.color_ar ?? "",
-          en: v.color_en ?? "",
+          // Each side falls back to the other language, so a variant with
+          // only one colour name never renders a blank swatch label.
+          ar: pickLocalized(v.color_ar, v.color_en, true),
+          en: pickLocalized(v.color_ar, v.color_en, false),
         });
       }
     }
