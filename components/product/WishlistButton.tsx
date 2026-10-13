@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Locale } from "@/lib/i18n-config";
 import { dbWishlistAdd, dbWishlistRemove } from "@/lib/wishlist/actions";
+import { wishlistSaveErrorText } from "@/lib/wishlist/merge";
 import {
   useWishlistHydrated,
   useWishlistStore,
@@ -82,12 +83,7 @@ export function WishlistButton({
       // Roll the heart back so it matches what the account actually has.
       if (added) remove(product.productId);
       else if (before) restore(before);
-      toast.error(
-        isAr
-          ? "حصلت مشكلة ومقدرناش نحفظ التغيير، جرّب تاني"
-          : "Couldn't save that change. Please try again.",
-        { id: toastId },
-      );
+      toast.error(wishlistSaveErrorText(isAr), { id: toastId });
     });
   };
 

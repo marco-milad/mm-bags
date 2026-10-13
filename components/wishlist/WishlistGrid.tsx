@@ -20,12 +20,9 @@ import {
   dbWishlistRemove,
   getWishlistedProducts,
 } from "@/lib/wishlist/actions";
+import { wishlistSaveErrorText } from "@/lib/wishlist/merge";
 
-function saveErrorText(locale: Locale) {
-  return locale === "ar"
-    ? "حصلت مشكلة ومقدرناش نحفظ التغيير، جرّب تاني"
-    : "Couldn't save that change. Please try again.";
-}
+const saveErrorText = (locale: Locale) => wishlistSaveErrorText(locale === "ar");
 
 export function WishlistGrid({ locale }: { locale: Locale }) {
   const hydrated = useWishlistHydrated();

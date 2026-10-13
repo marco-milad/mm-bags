@@ -1,8 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   insertByAddedAt,
+  isSyncFresh,
   mergeWishlists,
+  reconcileWishlist,
   sanitizeProductIds,
+  wishlistSyncMode,
   type WishlistItem,
 } from "@/lib/wishlist/merge";
 
@@ -81,6 +84,87 @@ describe("sanitizeProductIds (M1)", () => {
 
   it("caps the list length", () => {
     expect(sanitizeProductIds([A, B, C], 2)).toEqual([A, B]);
+  });
+});
+
+describe("wishlistSyncMode (M1)", () => {
+  it("treats an unowned list as guest saves to upload", () => {
+    expect(wishlistSyncMode(null, "u1")).toBe("merge-guest");
+    expect(wishlistSyncMode(undefined, "u1")).toBe("merge-guest");
+    expect(wishlistSyncMode("", "u1")).toBe("merge-guest");
+  });
+
+  it("treats this account's list as a cache", () => {
+    expect(wishlistSyncMode("u1", "u1")).toBe("refresh-cache");
+  });
+
+  it("treats another account's list as foreign", () => {
+    expect(wishlistSyncMode("u2", "u1")).toBe("discard-foreign");
+  });
+});
+
+describe("reconcileWishlist (M1)", () => {
+  it("merge-guest: unions the guest list with the account", () => {
+    const local = [item(A, 10)];
+    const out = reconcileWishlist("merge-guest", local, local, [item(B, 20)]);
+    expect(out.map((i) => i.productId)).toEqual([B, A]);
+  });
+
+  it("refresh-cache: a removal on another device sticks (no resurrection)", () => {
+    // Laptop still caches A and B; the phone removed A, so the DB has only B.
+    const cache = [item(A, 10), item(B, 20)];
+    const out = reconcileWishlist("refresh-cache", cache, cache, [item(B, 20)]);
+    expect(out.map((i) => i.productId)).toEqual([B]);
+  });
+
+  it("refresh-cache: picks up items saved on another device", () => {
+    const cache = [item(A, 10)];
+    const out = reconcileWishlist("refresh-cache", cache, cache, [item(A, 10), item(C, 30)]);
+    expect(out.map((i) => i.productId)).toEqual([C, A]);
+  });
+
+  it("discard-foreign: drops the previous account's list", () => {
+    const foreign = [item(A, 10), item(B, 20)];
+    const out = reconcileWishlist("discard-foreign", foreign, foreign, [item(C, 30)]);
+    expect(out.map((i) => i.productId)).toEqual([C]);
+  });
+
+  it("discard-foreign: an empty account yields an empty list", () => {
+    const foreign = [item(A, 10)];
+    expect(reconcileWishlist("discard-foreign", foreign, foreign, [])).toEqual([]);
+  });
+
+  it.each(["merge-guest", "refresh-cache", "discard-foreign"] as const)(
+    "%s: keeps hearts toggled while the sync was in flight",
+    (mode) => {
+      const snapshot = [item(A, 10), item(B, 20)];
+      // During the sync: B removed, C added (both already sent to the DB).
+      const current = [item(C, 30), item(A, 10)];
+      // The fetch raced the remove, so B is still in the account's rows.
+      const remote = [item(A, 10), item(B, 20)];
+      const ids = reconcileWishlist(mode, snapshot, current, remote).map((i) => i.productId);
+      expect(ids).toContain(C);
+      expect(ids).toContain(A);
+      expect(ids).not.toContain(B);
+    },
+  );
+});
+
+describe("isSyncFresh (M1)", () => {
+  const now = 1_000_000;
+
+  it("is stale with no stamp or another user's stamp", () => {
+    expect(isSyncFresh(null, "u1", now)).toBe(false);
+    expect(isSyncFresh({ userId: "u2", at: now }, "u1", now)).toBe(false);
+  });
+
+  it("is fresh within the window and stale after it", () => {
+    expect(isSyncFresh({ userId: "u1", at: now - 1000 }, "u1", now, 5000)).toBe(true);
+    expect(isSyncFresh({ userId: "u1", at: now - 5000 }, "u1", now, 5000)).toBe(false);
+  });
+
+  it("treats a stamp from the future (clock change) as stale", () => {
+    expect(isSyncFresh({ userId: "u1", at: now + 1000 }, "u1", now, 5000)).toBe(false);
   });
 });
 

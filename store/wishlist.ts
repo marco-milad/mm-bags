@@ -11,6 +11,13 @@ export type { WishlistItem };
 
 type WishlistState = {
   items: WishlistItem[];
+  /**
+   * Account that last synced `items` on this device, or null for a guest
+   * list. Persisted with the items so WishlistSync can tell a guest list
+   * (upload it) from this account's cache (just refresh it).
+   */
+  ownerId: string | null;
+  setOwner: (ownerId: string | null) => void;
   toggle: (item: Omit<WishlistItem, "addedAt">) => boolean; // returns true if added
   add: (item: Omit<WishlistItem, "addedAt">) => void;
   /** Puts a removed item back at its original position (undo / failed DB call). */
@@ -25,6 +32,9 @@ export const useWishlistStore = create<WishlistState>()(
   persist(
     (set, get) => ({
       items: [],
+      ownerId: null,
+
+      setOwner: (ownerId) => set({ ownerId }),
 
       toggle: (item) => {
         const exists = get().items.some((i) => i.productId === item.productId);
@@ -48,7 +58,7 @@ export const useWishlistStore = create<WishlistState>()(
       remove: (productId) =>
         set((s) => ({ items: s.items.filter((i) => i.productId !== productId) })),
 
-      clear: () => set({ items: [] }),
+      clear: () => set({ items: [], ownerId: null }),
 
       isWishlisted: (productId) =>
         get().items.some((i) => i.productId === productId),
