@@ -5,7 +5,7 @@ import { CheckCircle2, Clock, MessageCircle, Package, XCircle } from "lucide-rea
 import { hasLocale } from "@/lib/i18n-config";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { firstName, maskPhone } from "@/lib/mask";
+import { shippingContactForViewer } from "@/lib/mask";
 import {
   ORDER_OWNER_COOKIE,
   isOrderOwner,
@@ -131,12 +131,12 @@ export default async function OrderConfirmationPage({
   const phoneDigits = viewerIsOwner
     ? (address.phone?.replace(/[^\d]/g, "") ?? "")
     : "";
-  const shownName = viewerIsOwner ? address.name : firstName(address.name);
-  const shownPhone = address.phone
-    ? viewerIsOwner
-      ? address.phone
-      : maskPhone(address.phone)
-    : "";
+  // Non-owners get no phone digits at all: the order number is on this page
+  // and the last 4 digits are the /track verification code.
+  const { name: shownName, phone: shownPhone } = shippingContactForViewer(
+    address,
+    viewerIsOwner,
+  );
   const whatsappNumber = (
     process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
   ).replace(/[^\d]/g, "");

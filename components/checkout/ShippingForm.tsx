@@ -181,8 +181,12 @@ function Field({
   className?: string;
 }) {
   return (
-    <label htmlFor={id} className={cn("flex flex-col gap-1.5 text-sm", className)}>
-      <span className="font-medium text-[var(--color-text)]">{label}</span>
+    // The <label> wraps only the title so the error/hint text stays out of
+    // the control's accessible name (it is announced once, as a description).
+    <div className={cn("flex flex-col gap-1.5 text-sm", className)}>
+      <label htmlFor={id} className="font-medium text-[var(--color-text)]">
+        {label}
+      </label>
       {children}
       {error ? (
         <span id={`${id}-error`} role="alert" className="text-xs text-[var(--color-error)]">
@@ -193,7 +197,7 @@ function Field({
           {hint}
         </span>
       ) : null}
-    </label>
+    </div>
   );
 }
 
