@@ -147,6 +147,9 @@ export default async function CatalogPage({
           ? { searchId, listId: "search_results" }
           : undefined
       }
+      // Lets an empty result render "no results for …" instead of the
+      // empty-catalog copy, which read as "this shop sells nothing".
+      q={q}
     />
   );
 }

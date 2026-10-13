@@ -3,7 +3,8 @@ import "server-only";
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabasePublicClient } from "@/lib/supabase/public";
-import { normalizeSearchTerm } from "@/lib/analytics/text";
+import { buildSearchOrFilter } from "@/lib/search/expand";
+import { getSearchSynonyms } from "@/lib/search/synonyms";
 import type { Collection } from "@/lib/supabase/types";
 import type {
   CatalogCardProduct,
@@ -273,16 +274,16 @@ export async function getCatalogPage(opts: CatalogPageOptions): Promise<CatalogP
     // Both sides of the comparison go through the same normalizer. Folding
     // only the query would match nothing at all, because the stored text still
     // carries the forms the fold removes.
-    const norm = normalizeSearchTerm(opts.q).replace(/[*,()]/g, " ").trim();
-    if (norm) {
-      // search_blob also carries slug, tags and curated keywords, so the
-      // shopper's spelling stops deciding whether a product exists. The name
-      // clauses stay as a fallback for rows whose blob has not been built yet.
-      const safe = opts.q.trim().replace(/[*,()]/g, " ");
-      indexQuery = indexQuery.or(
-        `search_blob.ilike.*${norm}*,name_ar.ilike.*${safe}*,name_en.ilike.*${safe}*`,
-      );
-    }
+    //
+    // search_blob also carries slug, tags and curated keywords, so the
+    // shopper's spelling stops deciding whether a product exists. The name
+    // clauses stay as a fallback for rows whose blob has not been built yet.
+    //
+    // Admin-curated synonyms (search_synonyms) are OR'd in as extra terms, so
+    // `total` / `rankedIds` — and therefore the logged search result_count —
+    // describe what the shopper actually sees. See lib/search/expand.ts.
+    const filter = buildSearchOrFilter(opts.q, await getSearchSynonyms());
+    if (filter) indexQuery = indexQuery.or(filter);
   }
 
   const { data: indexData, error: indexError } = await indexQuery;
