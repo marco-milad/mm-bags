@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ShoppingBag } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/i18n-config";
@@ -65,11 +66,20 @@ export function FeaturedProductInteractive({
   const stock = totalStock(product);
   const isOOS = stock === 0;
 
+  const router = useRouter();
   const openDrawer = useCartStore((s) => s.openDrawer);
   const addItem = useCartStore((s) => s.addItem);
 
   const addToCart = () => {
     if (!selectedVariant || isOOS) return;
+    // The product has stock but this colour doesn't: send the shopper to
+    // the detail page (same as the fully-OOS CTA) instead of adding a line
+    // the cart would refuse — keeps availability off the homepage.
+    const variantStock = selectedVariant.stock_qty ?? 0;
+    if (variantStock === 0) {
+      router.push(`/${locale}/products/${product.slug}`);
+      return;
+    }
     addItem({
       variantId: selectedVariant.id,
       productId: product.id,
@@ -82,6 +92,7 @@ export function FeaturedProductInteractive({
       color_en: selectedVariant.color_en,
       size_inches: selectedVariant.size_inches,
       unitPrice: effectivePrice(product),
+      stock: variantStock,
     });
     openDrawer();
   };
