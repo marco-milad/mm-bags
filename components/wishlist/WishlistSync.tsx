@@ -10,6 +10,7 @@ import {
   type WishlistSyncStamp,
 } from "@/lib/wishlist/merge";
 import { useWishlistStore, whenWishlistHydrated } from "@/store/wishlist";
+import { useAuthPresence } from "@/store/auth-presence";
 
 /**
  * Keeps the localStorage wishlist and the account's `wishlists` rows in step
@@ -124,6 +125,9 @@ export function WishlistSync() {
     const supabase = createSupabaseBrowserClient();
 
     const onSession = (userId: string | undefined) => {
+      // Shared with WishlistButton/WishlistGrid for the guest "sign in to
+      // keep it on every device" nudge.
+      useAuthPresence.getState().setSignedIn(!!userId);
       if (userId) void syncFor(userId);
       else void forgetStaleOwner();
     };
@@ -141,6 +145,7 @@ export function WishlistSync() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
+        useAuthPresence.getState().setSignedIn(false);
         resetWishlistForSignOut();
         return;
       }

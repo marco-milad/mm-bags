@@ -12,6 +12,7 @@ import {
   useWishlistStore,
   type WishlistItem,
 } from "@/store/wishlist";
+import { useAuthPresence } from "@/store/auth-presence";
 import { cn } from "@/lib/utils";
 
 type Variant = "icon" | "button";
@@ -57,12 +58,27 @@ export function WishlistButton({
     const toastId = `wishlist-${product.productId}`;
 
     if (added) {
+      // Guests' lists live on this device only — say so, and offer the way
+      // to keep it everywhere. Unknown auth state (null) gets the plain toast.
+      const guest = useAuthPresence.getState().signedIn === false;
+      const wishlistPath = `/${locale}/account/wishlist`;
       toast.success(isAr ? "اتضافت للمفضّلة" : "Added to wishlist", {
         id: toastId,
-        action: {
-          label: isAr ? "شوف المفضّلة" : "View",
-          onClick: () => router.push(`/${locale}/account/wishlist`),
-        },
+        description: guest
+          ? isAr
+            ? "محفوظة على الجهاز ده بس — سجّل دخول عشان تلاقيها على أي جهاز."
+            : "Saved on this device only — sign in to see it on any device."
+          : undefined,
+        action: guest
+          ? {
+              label: isAr ? "سجّل دخول" : "Sign in",
+              onClick: () =>
+                router.push(`/${locale}/auth/login?next=${encodeURIComponent(wishlistPath)}`),
+            }
+          : {
+              label: isAr ? "شوف المفضّلة" : "View",
+              onClick: () => router.push(wishlistPath),
+            },
       });
     } else {
       toast(isAr ? "اتشالت من المفضّلة" : "Removed from wishlist", {

@@ -15,6 +15,7 @@ import {
 } from "@/store/wishlist";
 import { toast } from "sonner";
 import { useCartStore } from "@/store/cart";
+import { useAuthPresence } from "@/store/auth-presence";
 import {
   dbWishlistAdd,
   dbWishlistRemove,
@@ -27,6 +28,7 @@ const saveErrorText = (locale: Locale) => wishlistSaveErrorText(locale === "ar")
 export function WishlistGrid({ locale }: { locale: Locale }) {
   const hydrated = useWishlistHydrated();
   const items = useWishlistItems();
+  const signedIn = useAuthPresence((s) => s.signedIn);
   const [products, setProducts] = useState<ProductWithVariants[] | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -75,6 +77,21 @@ export function WishlistGrid({ locale }: { locale: Locale }) {
 
   return (
     <>
+      {signedIn === false && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/5 p-4">
+          <p className="text-sm text-[var(--color-text)]">
+            {locale === "ar"
+              ? "القايمة دي محفوظة على الجهاز ده بس. سجّل دخول عشان تلاقيها على موبايلك وأي جهاز تاني."
+              : "This list is saved on this device only. Sign in to see it on your phone and any other device."}
+          </p>
+          <Link
+            href={`/${locale}/auth/login?next=${encodeURIComponent(`/${locale}/account/wishlist`)}`}
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--color-primary)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
+          >
+            {locale === "ar" ? "سجّل دخول" : "Sign in"}
+          </Link>
+        </div>
+      )}
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {ordered.map((p) => (
           <WishlistCard key={p.id} product={p} locale={locale} />

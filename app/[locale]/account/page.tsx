@@ -14,6 +14,7 @@ import {
   getRecentUserOrders,
   getUserWishlistCount,
 } from "@/lib/queries/account-orders";
+import { claimGuestOrders } from "@/lib/account/claim-guest-orders";
 import { TrackOrderForm } from "@/components/account/TrackOrderForm";
 import { ProfileCard } from "@/components/account/ProfileCard";
 import { OrdersHistory } from "@/components/account/OrdersHistory";
@@ -61,6 +62,10 @@ export default async function AccountPage({
   } catch {
     user = null;
   }
+
+  // Orders placed as a guest with this account's confirmed email join the
+  // account first, so they appear in the list below (idempotent, never throws).
+  if (user) await claimGuestOrders(user);
 
   // Fetch orders + wishlist count in parallel only when signed in —
   // unauthenticated users would see empty rows anyway.
@@ -209,8 +214,8 @@ export default async function AccountPage({
             </h2>
             <p className="text-sm text-[var(--color-text-secondary)]">
               {isRTL
-                ? "اكتب رقم الطلب اللي وصلك على الواتساب أو الإيميل."
-                : "Enter the order ID we sent you on WhatsApp or email."}
+                ? "اكتب رقم الطلب اللي ظهرلك في صفحة تأكيد الطلب (يبدأ بـ MM-)."
+                : "Enter the order number shown on your order confirmation page (starts with MM-)."}
             </p>
           </div>
         </div>

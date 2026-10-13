@@ -16,6 +16,8 @@ import { formatPriceEGP } from "@/lib/utils";
 import { InstapayInstructions } from "@/components/order/InstapayInstructions";
 import { instapayExpirationBusinessHours } from "@/lib/orders/instapay-expiry";
 import { logPurchase } from "@/lib/analytics/log-purchase";
+import { SITE_URL } from "@/lib/seo/site";
+import { SaveOrderNumber } from "@/components/order/SaveOrderNumber";
 
 // InstaPay handle read from env so Marco can edit it without a code
 // change. NO fallback: a fake placeholder handle would send customers'
@@ -101,7 +103,7 @@ export default async function OrderConfirmationPage({
   const { data: order } = await admin
     .from("orders")
     .select(
-      "id, order_number, user_id, status, payment_method, payment_status, subtotal, shipping_fee, total, shipping_address, created_at, order_items (qty, unit_price, snapshot_name)",
+      "id, order_number, user_id, guest_email, status, payment_method, payment_status, subtotal, shipping_fee, total, shipping_address, created_at, order_items (qty, unit_price, snapshot_name)",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -222,7 +224,33 @@ export default async function OrderConfirmationPage({
             {order.order_number}
           </p>
         </div>
+        {/* Only the buyer needs "keep your number" — and only the buyer's
+            browser may get a one-tap share of it. */}
+        {viewerIsOwner && (
+          <SaveOrderNumber orderNumber={order.order_number} siteUrl={SITE_URL} locale={locale} />
+        )}
       </div>
+
+      {/* Guest who gave an email: tell them how this order reaches an
+          account (claimGuestOrders attaches it once that email is confirmed). */}
+      {viewerIsOwner && !order.user_id && order.guest_email && (
+        <div className="mt-6 rounded-2xl border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/5 p-4 text-center text-sm">
+          <p className="text-[var(--color-text)]">
+            {locale === "ar"
+              ? "عايز تلاقي الطلب ده في حسابك على أي جهاز؟ اعمل حساب بنفس الإيميل اللي كتبته وهيظهر لوحده:"
+              : "Want this order in an account you can open on any device? Sign up with the same email and it shows up automatically:"}
+          </p>
+          <p className="mt-1 font-mono text-[var(--color-text-secondary)]" dir="ltr">
+            {order.guest_email}
+          </p>
+          <Link
+            href={`/${locale}/auth/register`}
+            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--color-primary)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
+          >
+            {locale === "ar" ? "اعمل حساب" : "Create account"}
+          </Link>
+        </div>
+      )}
 
       <div className="mt-10 space-y-6">
         {/* InstaPay payment instructions — first thing the customer

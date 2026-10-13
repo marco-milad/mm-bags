@@ -44,8 +44,8 @@ export default async function TrackIndexPage({
         </h1>
         <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
           {isRTL
-            ? "اكتب رقم الطلب اللي وصلك على الواتساب أو الإيميل."
-            : "Enter the order ID we sent you on WhatsApp or email."}
+            ? "اكتب رقم الطلب اللي ظهرلك في صفحة تأكيد الطلب (يبدأ بـ MM-)."
+            : "Enter the order number shown on your order confirmation page (starts with MM-)."}
         </p>
       </header>
 
