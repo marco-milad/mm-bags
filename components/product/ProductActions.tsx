@@ -8,6 +8,7 @@ import type { ProductVariant } from "@/lib/supabase/types";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { useCartStore } from "@/store/cart";
 import { resolveSizeForColor } from "@/lib/product/variant-selection";
+import { pickLocalized } from "@/lib/i18n/pick";
 import { WishlistButton } from "./WishlistButton";
 import { BackInStockForm } from "./BackInStockForm";
 import { SizeGuideModal } from "@/components/size-guide/SizeGuideModal";
@@ -78,8 +79,10 @@ export function ProductActions({
       if (!map.has(v.color_hex)) {
         map.set(v.color_hex, {
           hex: v.color_hex,
-          ar: v.color_ar ?? "",
-          en: v.color_en ?? "",
+          // Each side falls back to the other language, so a variant with
+          // only one colour name never renders a blank swatch label.
+          ar: pickLocalized(v.color_ar, v.color_en, true),
+          en: pickLocalized(v.color_ar, v.color_en, false),
         });
       }
     }
