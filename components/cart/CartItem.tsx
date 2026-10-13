@@ -6,6 +6,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import { formatPriceEGP } from "@/lib/utils";
 import { qtyCapReason } from "@/lib/cart/qty";
+import { pickLocalized } from "@/lib/i18n/pick";
 import { useCartStore, type CartItem as CartItemType } from "@/store/cart";
 
 export function CartItem({
@@ -24,7 +25,7 @@ export function CartItem({
 
   const isAr = locale === "ar";
   const name = isAr ? item.name_ar : item.name_en;
-  const colorLabel = isAr ? item.color_ar ?? null : item.color_en ?? null;
+  const colorLabel = pickLocalized(item.color_ar, item.color_en, isAr) || null;
   const sizeLabel = item.size_inches ? `${item.size_inches}"` : null;
   const lineTotal = item.unitPrice * item.qty;
   // Stock is optional (old persisted lines) — unknown stock shows no stock

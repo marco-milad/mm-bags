@@ -5,6 +5,7 @@ import { EG_GOVERNORATES } from "@/lib/checkout/governorates";
 import type { CheckoutValues } from "@/lib/checkout/schema";
 import { calcTotals } from "@/lib/checkout/schema";
 import { isSoldOut } from "@/lib/cart/qty";
+import { pickLocalized } from "@/lib/i18n/pick";
 import { formatPriceEGP } from "@/lib/utils";
 import type { CartItem } from "@/store/cart";
 
@@ -32,7 +33,7 @@ export function OrderReview({
           {items.map((item) => {
             const name = locale === "ar" ? item.name_ar : item.name_en;
             const colorLabel =
-              (locale === "ar" ? item.color_ar : item.color_en) ?? null;
+              pickLocalized(item.color_ar, item.color_en, locale === "ar") || null;
             const soldOut = isSoldOut(item.stock);
             return (
               <li key={item.variantId} className="flex justify-between gap-3 py-2 text-sm">
