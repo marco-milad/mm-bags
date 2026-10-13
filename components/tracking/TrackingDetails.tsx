@@ -1,14 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import { Bell, Calendar, MessageCircle, Package, Truck } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { TrackingResult } from "@/lib/tracking/schema";
 import { cn, formatPriceEGP } from "@/lib/utils";
+import { waLink } from "@/lib/whatsapp";
 import { TrackingTimeline } from "./TrackingTimeline";
-
-const STORAGE_KEY_PREFIX = "mm-order-updates:";
 
 export function TrackingDetails({
   tracking,
@@ -17,14 +15,11 @@ export function TrackingDetails({
   tracking: TrackingResult;
   locale: Locale;
 }) {
-  const whatsappNumber = (
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608"
-  ).replace(/\D/g, "");
-  const whatsappHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+  const whatsappHref = waLink(
     locale === "ar"
       ? `أهلاً، عندي استفسار عن طلبي رقم ${tracking.orderNumber}.`
       : `Hi, I have a question about order ${tracking.orderNumber}.`,
-  )}`;
+  );
 
   const createdDate = new Date(tracking.createdAt).toLocaleDateString(
     locale === "ar" ? "ar-EG" : "en-EG",
@@ -127,7 +122,7 @@ export function TrackingDetails({
           </p>
         </Card>
 
-        <WhatsAppSubscribeCard
+        <WhatsAppUpdatesCard
           locale={locale}
           orderNumber={tracking.orderNumber}
         />
@@ -146,77 +141,47 @@ export function TrackingDetails({
   );
 }
 
-function WhatsAppSubscribeCard({
+// M3: a real wa.me deep link — the customer starts the chat with the order
+// number prefilled, and the team replies with the latest status. (There is
+// no automated push, so the copy must not promise one.)
+function WhatsAppUpdatesCard({
   locale,
   orderNumber,
 }: {
   locale: Locale;
   orderNumber: string;
 }) {
-  const storageKey = STORAGE_KEY_PREFIX + orderNumber;
-  const [subscribed, setSubscribed] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setHydrated(true);
-    if (typeof window === "undefined") return;
-    setSubscribed(window.localStorage.getItem(storageKey) === "1");
-  }, [storageKey]);
-
-  const toggle = () => {
-    const next = !subscribed;
-    setSubscribed(next);
-    if (typeof window !== "undefined") {
-      if (next) window.localStorage.setItem(storageKey, "1");
-      else window.localStorage.removeItem(storageKey);
-    }
-  };
+  const href = waLink(
+    locale === "ar"
+      ? `أهلاً، عايز أتابع تحديثات طلب رقم ${orderNumber} على واتساب`
+      : `Hi, I'd like to follow updates for order ${orderNumber} on WhatsApp`,
+  );
 
   return (
-    <Card>
-      <div className="flex items-start gap-3">
-        <Bell className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-primary)]" />
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-[var(--color-text)]">
-            {locale === "ar"
-              ? "تحديثات على واتساب"
-              : "WhatsApp updates"}
-          </p>
-          <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
-            {locale === "ar"
-              ? "هنبعتلك إشعار مع كل تحديث لحالة الطلب."
-              : "We'll message you on every status change."}
-          </p>
-          <button
-            type="button"
-            onClick={toggle}
-            disabled={!hydrated}
-            role="switch"
-            aria-checked={subscribed ? "true" : "false"}
-            className={cn(
-              "mt-3 flex h-6 w-11 items-center rounded-full p-0.5 transition",
-              subscribed
-                ? "bg-[var(--color-success)]"
-                : "bg-[var(--color-border-dark)]",
-            )}
-          >
-            <span
-              className={cn(
-                "h-5 w-5 rounded-full bg-white shadow transition-transform",
-                subscribed && "translate-x-5 rtl:-translate-x-5",
-              )}
-            />
-          </button>
-          {hydrated && subscribed && (
-            <p className="mt-2 text-xs text-[var(--color-success)]">
-              {locale === "ar"
-                ? "هتوصلك تحديثات على الواتساب"
-                : "You'll receive updates on WhatsApp"}
-            </p>
-          )}
-        </div>
-      </div>
-    </Card>
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-start gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5 transition hover:border-[#25D366] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+    >
+      <Bell className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-primary)]" />
+      <span className="flex-1">
+        <span className="block text-sm font-semibold text-[var(--color-text)]">
+          {locale === "ar"
+            ? "تابع طلبك على واتساب"
+            : "Follow your order on WhatsApp"}
+        </span>
+        <span className="mt-0.5 block text-xs text-[var(--color-text-secondary)]">
+          {locale === "ar"
+            ? "ابعتلنا رسالة برقم الطلب، وهنرد عليك بآخر تحديث."
+            : "Send us a message with your order number and we'll reply with the latest update."}
+        </span>
+        <span className="mt-3 inline-flex h-11 items-center gap-2 rounded-full border border-[#25D366] px-4 text-sm font-semibold text-[var(--color-text)] transition group-hover:bg-[#25D366]/10">
+          <MessageCircle className="h-4 w-4 text-[#25D366]" />
+          {locale === "ar" ? "ابعت رسالة" : "Send a message"}
+        </span>
+      </span>
+    </a>
   );
 }
 

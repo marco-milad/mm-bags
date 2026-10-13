@@ -1,6 +1,7 @@
 "use server";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { maskPhone } from "@/lib/mask";
 import {
   isOrderNumber,
   isUuid,
@@ -13,12 +14,6 @@ import {
 export type VerifyResult =
   | { ok: true; tracking: TrackingResult }
   | { ok: false; code: TrackingErrorCode; error: string };
-
-function maskPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 4) return phone;
-  return `${"•".repeat(Math.max(0, digits.length - 4))}${digits.slice(-4)}`;
-}
 
 export async function verifyAndGetTracking(
   raw: VerifyTrackingInput,
