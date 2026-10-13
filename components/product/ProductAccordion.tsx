@@ -85,7 +85,8 @@ export function ProductAccordion({
     {
       title: locale === "ar" ? "وصف المنتج" : "Description",
       content: description ? (
-        <p className="leading-relaxed text-[var(--color-text)]">{description}</p>
+        // dir="auto": the text may be the other language's fallback.
+        <p dir="auto" className="leading-relaxed text-[var(--color-text)]">{description}</p>
       ) : (
         <p className="text-[var(--color-text-secondary)]">
           {locale === "ar" ? "لا يوجد وصف بعد." : "No description yet."}
@@ -97,7 +98,7 @@ export function ProductAccordion({
       content: (
         <div className="flex flex-col gap-5">
           {proseMaterial && (
-            <p className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
+            <p dir="auto" className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
               {proseMaterial}
             </p>
           )}
