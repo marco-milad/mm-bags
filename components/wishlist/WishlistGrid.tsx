@@ -108,9 +108,15 @@ function WishlistCard({
   const isOOS = stock === 0;
   const primaryImage = product.images?.[0];
 
-  const firstInStock = product.product_variants.find(
-    (v) => (v.stock_qty ?? 0) > 0,
-  );
+  const cartItems = useCartStore((s) => s.items);
+  // Prefer a variant that still has room in the cart, so "you already have
+  // all available" is only said when it is true for the whole product.
+  const inStock = product.product_variants.filter((v) => (v.stock_qty ?? 0) > 0);
+  const firstInStock =
+    inStock.find(
+      (v) =>
+        (cartItems.find((i) => i.variantId === v.id)?.qty ?? 0) < (v.stock_qty ?? 0),
+    ) ?? inStock[0];
 
   const onAdd = () => {
     if (!firstInStock) return;

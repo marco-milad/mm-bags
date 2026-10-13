@@ -245,8 +245,11 @@ export function CheckoutFlow({
               </header>
               <OrderReview values={values} items={items} locale={locale} />
               {hasSoldOut && (
+                // role="status": the stock refresh can flip this on after the
+                // shopper reached Review, so it must be announced.
                 <p
                   id={blockedReasonId}
+                  role="status"
                   className="rounded-md border border-[var(--color-error)]/40 bg-[var(--color-error)]/10 px-3 py-2 text-sm text-[var(--color-error)]"
                 >
                   {locale === "ar"
@@ -254,7 +257,7 @@ export function CheckoutFlow({
                     : "Remove sold-out items to continue"}{" "}
                   <Link
                     href={`/${locale}/cart`}
-                    className="font-semibold underline underline-offset-4"
+                    className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4"
                   >
                     {locale === "ar" ? "افتح السلة" : "Open cart"}
                   </Link>
