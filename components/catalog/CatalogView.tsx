@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { preconnect } from "react-dom";
-import { GitCompareArrows, MessageCircle } from "lucide-react";
+import { GitCompareArrows, LayoutGrid, MessageCircle, SearchX } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { Collection } from "@/lib/supabase/types";
 import type {
@@ -17,8 +17,9 @@ import { LoadMoreProducts } from "./LoadMoreProducts";
     "load more" rows are visually continuous with the first ones.
     `auto-rows-fr` makes every row the height of the tallest card in
     that row, and `h-full` on the <li> propagates that height down so
-    the card stretches to fill its grid cell. */
-const GRID_CLASS =
+    the card stretches to fill its grid cell. Also used by the catalog
+    loading.tsx skeletons so the placeholder grid matches the real one. */
+export const GRID_CLASS =
   "mt-8 grid auto-rows-fr grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-3 md:gap-x-6 md:gap-y-8 lg:grid-cols-4 lg:gap-x-6 lg:gap-y-10";
 
 /** Pagination state for the main /catalog page. Absent on collection
@@ -52,6 +53,7 @@ export function CatalogView({
   compareLabel,
   pagination,
   select,
+  q,
 }: {
   locale: Locale;
   collections: Collection[];
@@ -72,6 +74,9 @@ export function CatalogView({
   /** When set (search results only), cards fire `select_item` with this
       attribution so search click-through can be measured. */
   select?: { searchId?: string; listId: string };
+  /** The shopper's search query (main catalog only). When set and nothing
+      matched, a "no results for …" state replaces the empty-catalog one. */
+  q?: string;
 }) {
   // Every card image comes from Supabase's render endpoint on a
   // different origin than the HTML. Warming that connection from <head>
@@ -164,7 +169,11 @@ export function CatalogView({
       </div>
 
       {products.length === 0 ? (
-        <EmptyState locale={locale} hasFilter={!!activeCollection} />
+        q ? (
+          <NoResultsState locale={locale} q={q} collections={collections} />
+        ) : (
+          <EmptyState locale={locale} hasFilter={!!activeCollection} />
+        )
       ) : (
         <>
           <ul className={GRID_CLASS}>
@@ -215,11 +224,106 @@ function EmptyState({ locale, hasFilter }: { locale: Locale; hasFilter: boolean 
         href={whatsappHref}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[var(--color-primary-light)]"
+        className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[var(--color-primary-light)]"
       >
         <MessageCircle className="h-4 w-4" />
         {locale === "ar" ? "ابعتلنا على واتساب" : "Message us on WhatsApp"}
       </a>
+    </div>
+  );
+}
+
+/**
+ * A search that matched nothing. Distinct from EmptyState on purpose: telling
+ * a shopper "the catalog is empty" after a typo reads as "this shop sells
+ * nothing". Instead: echo the query, give quick tips, offer the top-level
+ * categories as one-tap exits, and keep the WhatsApp ask — carrying the query
+ * so the owner sees exactly what was wanted.
+ */
+function NoResultsState({
+  locale,
+  q,
+  collections,
+}: {
+  locale: Locale;
+  q: string;
+  collections: Collection[];
+}) {
+  const isAr = locale === "ar";
+  const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+    isAr
+      ? `أهلاً، دوّرت على «${q}» في الموقع ومالقيتش. ممكن تساعدوني؟`
+      : `Hi, I searched the site for “${q}” and couldn't find it. Can you help?`,
+  )}`;
+  const tips = isAr
+    ? [
+        "اتأكد من الإملا",
+        "جرّب كلمة أعمّ، زي «شنطة سفر» أو «شنطة ظهر»",
+        "جرّب تكتبها بالإنجليزي أو بالعربي",
+      ]
+    : [
+        "Check the spelling",
+        "Try a broader word, like “travel bag” or “backpack”",
+        "Try searching in Arabic or English",
+      ];
+
+  return (
+    <div className="mt-8 flex flex-col items-center gap-4 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-10 text-center md:px-6 md:py-14">
+      <SearchX aria-hidden className="h-8 w-8 text-[var(--color-accent-dark)]" />
+      <h2 className="max-w-full break-words font-display text-2xl">
+        {isAr ? "مالقيناش نتايج لـ " : "No results for "}
+        {isAr ? "«" : "“"}
+        <bdi>{q}</bdi>
+        {isAr ? "»" : "”"}
+      </h2>
+
+      <ul className="flex max-w-md flex-col gap-1 text-sm text-[var(--color-text-secondary)]">
+        {tips.map((tip) => (
+          <li key={tip}>{tip}</li>
+        ))}
+      </ul>
+
+      {collections.length > 0 && (
+        <div className="flex w-full flex-col items-center gap-2">
+          <p className="text-xs font-medium text-[var(--color-text-secondary)]">
+            {isAr ? "أو اتفرّج على التشكيلات" : "Or browse a category"}
+          </p>
+          <ul className="flex flex-wrap justify-center gap-2">
+            {collections.map((c) => (
+              <li key={c.slug}>
+                <Link
+                  href={`/${locale}/catalog/${c.slug}`}
+                  // Same reasoning as CollectionFilter: dynamic routes, no
+                  // point prefetching every chip.
+                  prefetch={false}
+                  className="inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 text-sm font-medium text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
+                >
+                  {isAr ? c.name_ar : c.name_en}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+        <Link
+          href={`/${locale}/catalog`}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-border)] px-5 text-sm font-medium text-[var(--color-text)] transition hover:border-[var(--color-accent)]"
+        >
+          <LayoutGrid className="h-4 w-4" />
+          {isAr ? "شوف كل المنتجات" : "See all products"}
+        </Link>
+        <a
+          href={whatsappHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 text-sm font-medium text-white transition hover:bg-[var(--color-primary-light)]"
+        >
+          <MessageCircle className="h-4 w-4" />
+          {isAr ? "قولّنا بتدوّر على إيه" : "Tell us what you're looking for"}
+        </a>
+      </div>
     </div>
   );
 }
