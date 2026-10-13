@@ -13,8 +13,16 @@ import {
   useWishlistItems,
   useWishlistStore,
 } from "@/store/wishlist";
+import { toast } from "sonner";
 import { useCartStore } from "@/store/cart";
-import { dbWishlistRemove, getWishlistedProducts } from "@/lib/wishlist/actions";
+import {
+  dbWishlistAdd,
+  dbWishlistRemove,
+  getWishlistedProducts,
+} from "@/lib/wishlist/actions";
+import { wishlistSaveErrorText } from "@/lib/wishlist/merge";
+
+const saveErrorText = (locale: Locale) => wishlistSaveErrorText(locale === "ar");
 
 export function WishlistGrid({ locale }: { locale: Locale }) {
   const hydrated = useWishlistHydrated();
@@ -87,6 +95,7 @@ function WishlistCard({
   locale: Locale;
 }) {
   const remove = useWishlistStore((s) => s.remove);
+  const restore = useWishlistStore((s) => s.restore);
   const addToCart = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
   const [pending, setPending] = useState(false);
@@ -119,12 +128,49 @@ function WishlistCard({
       unitPrice: price,
     });
     openDrawer();
+    toast.success(locale === "ar" ? "اتضافت للكارت" : "Added to cart", {
+      id: `wishlist-cart-${product.id}`,
+    });
   };
 
   const onRemove = async () => {
     setPending(true);
+    // Keep the exact row so undo / a failed delete restores its position.
+    const before = useWishlistStore
+      .getState()
+      .items.find((i) => i.productId === product.id);
+    const toastId = `wishlist-${product.id}`;
     remove(product.id);
-    await dbWishlistRemove(product.id);
+    toast(locale === "ar" ? "اتشالت من المفضّلة" : "Removed from wishlist", {
+      id: toastId,
+      action: before
+        ? {
+            label: locale === "ar" ? "رجّعها" : "Undo",
+            onClick: () => {
+              restore(before);
+              dbWishlistAdd(product.id)
+                .catch(() => false)
+                .then((ok) => {
+                  if (ok) return;
+                  useWishlistStore.getState().remove(product.id);
+                  toast.error(saveErrorText(locale), { id: toastId });
+                });
+            },
+          }
+        : undefined,
+    });
+
+    let ok = false;
+    try {
+      ok = await dbWishlistRemove(product.id);
+    } catch {
+      ok = false;
+    }
+    if (ok) return;
+    // The card has unmounted by now; put the item back so the list matches
+    // the account again.
+    if (before) restore(before);
+    toast.error(saveErrorText(locale), { id: toastId });
   };
 
   return (
@@ -174,7 +220,7 @@ function WishlistCard({
             onClick={onAdd}
             disabled={isOOS}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition",
+              "flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-4 text-xs font-semibold transition",
               isOOS
                 ? "cursor-not-allowed bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
                 : "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-light)]",
@@ -188,7 +234,7 @@ function WishlistCard({
             onClick={onRemove}
             disabled={pending}
             aria-label={locale === "ar" ? "إزالة من المفضلة" : "Remove from wishlist"}
-            className="flex items-center justify-center rounded-full border border-[var(--color-border)] px-3 py-2 text-[var(--color-text-secondary)] transition hover:border-[var(--color-error)] hover:text-[var(--color-error)] disabled:opacity-50"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] transition hover:border-[var(--color-error)] hover:text-[var(--color-error)] disabled:opacity-50"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

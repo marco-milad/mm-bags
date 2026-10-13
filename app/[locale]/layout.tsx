@@ -8,7 +8,9 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { WhatsAppFAB } from "@/components/shared/WhatsAppFAB";
 import { SocialBar } from "@/components/shared/SocialBar";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
+import { Toaster } from "sonner";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { WishlistSync } from "@/components/wishlist/WishlistSync";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { ConsentBanner } from "@/components/analytics/ConsentBanner";
 import { SizeGuideFAB } from "@/components/size-guide/SizeGuideFAB";
@@ -170,6 +172,37 @@ export default async function RootLayout({
         <SocialBar locale={locale} />
         <ScrollToTop locale={locale} />
         <CartDrawer locale={locale} />
+        <WishlistSync />
+        {/* top-center keeps toasts clear of MobileBottomNav and the FABs.
+            Sonner's own CSS variables are pointed at the site tokens. */}
+        <Toaster
+          dir={dir}
+          position="top-center"
+          offset={16}
+          mobileOffset={{ top: 12, left: 16, right: 16 }}
+          style={
+            {
+              "--normal-bg": "var(--color-bg)",
+              "--normal-text": "var(--color-text)",
+              "--normal-border": "var(--color-border)",
+              "--border-radius": "12px",
+            } as React.CSSProperties
+          }
+          toastOptions={{
+            style: { fontFamily: "inherit", fontSize: "14px" },
+            actionButtonStyle: {
+              background: "var(--color-primary)",
+              color: "var(--color-text-inverse)",
+              fontFamily: "inherit",
+              fontSize: "12px",
+              fontWeight: 600,
+              // 44px tap target (mobile convention).
+              padding: "0 16px",
+              height: "44px",
+              borderRadius: "9999px",
+            },
+          }}
+        />
         <PageViewTracker />
         {/* Reads its own cookie on the client. Deliberately NOT read here:
             calling cookies() in this layout would opt every route back into
