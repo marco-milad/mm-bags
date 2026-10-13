@@ -132,6 +132,7 @@ export function ProductActions({
       color_en: selectedVariant.color_en,
       size_inches: selectedVariant.size_inches,
       unitPrice: price,
+      stock,
     });
     openDrawer();
   };

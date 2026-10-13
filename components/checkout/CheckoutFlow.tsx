@@ -11,6 +11,7 @@ import { checkoutSchema, type CheckoutValues, calcTotals } from "@/lib/checkout/
 import { checkoutErrorMessage } from "@/lib/checkout/error-messages";
 import { placeOrder } from "@/lib/checkout/actions";
 import {
+  refreshCartStock,
   useCartHydrated,
   useCartItems,
   useCartStore,
@@ -124,6 +125,14 @@ export function CheckoutFlow({
               unitPrice: r.newUnitPrice,
             })),
           );
+          setStep(3);
+        }
+        // INSUFFICIENT_STOCK: placeOrder doesn't return which line or how
+        // many are left, so re-read stock for every line and let the store
+        // clamp qty (sold-out lines stay, flagged in the cart, for the
+        // shopper to remove). Then back to Review with the corrected cart.
+        if (result.code === "INSUFFICIENT_STOCK") {
+          await refreshCartStock();
           setStep(3);
         }
         // Localize every server error from its machine-readable H2 code; the

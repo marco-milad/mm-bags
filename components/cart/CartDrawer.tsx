@@ -16,6 +16,7 @@ import {
   useCartItemCount,
   useCartTotal,
   useCartStore,
+  useSyncCartStock,
 } from "@/store/cart";
 import { CartItem } from "./CartItem";
 
@@ -27,6 +28,10 @@ export function CartDrawer({ locale }: { locale: Locale }) {
   const items = useCartItems();
   const itemCount = useCartItemCount();
   const subtotal = useCartTotal();
+
+  // The drawer stays mounted app-wide, so refresh stock when it OPENS
+  // (persisted lines can be days stale), not on every page load.
+  useSyncCartStock(isOpen && items.length > 0);
 
   // In RTL the cart icon sits on the LEFT of the navbar, so the drawer
   // slides in from the left. LTR is mirrored.
@@ -42,7 +47,7 @@ export function CartDrawer({ locale }: { locale: Locale }) {
           <SheetTitle className="font-display text-xl text-[var(--color-primary)]">
             {locale === "ar" ? "السلة" : "Cart"}
             {itemCount > 0 && (
-              <span className="ml-2 font-mono text-sm font-normal text-[var(--color-text-secondary)]">
+              <span className="ms-2 font-mono text-sm font-normal text-[var(--color-text-secondary)]">
                 · {itemCount}
               </span>
             )}

@@ -9,6 +9,7 @@ import {
   useCartItems,
   useCartItemCount,
   useCartTotal,
+  useSyncCartStock,
 } from "@/store/cart";
 import { CartItem } from "./CartItem";
 import { CartSkeleton } from "./CartSkeleton";
@@ -31,6 +32,10 @@ export function CartPageContent({ locale }: { locale: Locale }) {
   const items = useCartItems();
   const count = useCartItemCount();
   const subtotal = useCartTotal();
+
+  // Persisted lines can be days stale: refresh stock once the store has
+  // hydrated, so qty is clamped and sold-out lines are flagged.
+  useSyncCartStock(hydrated && items.length > 0);
 
   // A one-line "loading" message left the footer inside the viewport, so the
   // real cart pushed it down and the growth counted as layout shift. The

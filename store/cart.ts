@@ -4,6 +4,15 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useEffect, useState } from "react";
 import { track } from "@/lib/analytics/track";
+import {
+  MAX_STOCK_LOOKUP,
+  clampLineQty,
+  qtyAfterAdd,
+  qtyAfterStockSync,
+  qtyCap,
+  type VariantStock,
+} from "@/lib/cart/qty";
+import { getCartStock } from "@/lib/cart/stock-actions";
 
 export type CartItem = {
   variantId: string;
@@ -18,6 +27,9 @@ export type CartItem = {
   size_inches: number | null;
   unitPrice: number;
   qty: number;
+  /** Last known stock for this variant. Optional: lines persisted before
+   *  M6 have none until syncStock fills it (qty then caps at MAX_QTY). */
+  stock?: number;
 };
 
 export type AddItemInput = Omit<CartItem, "qty"> & { qty?: number };
@@ -29,40 +41,47 @@ type CartState = {
   removeItem: (variantId: string) => void;
   updateQty: (variantId: string, qty: number) => void;
   repriceItems: (updates: { variantId: string; unitPrice: number }[]) => void;
+  syncStock: (updates: VariantStock[]) => void;
   clearCart: () => void;
   openDrawer: () => void;
   closeDrawer: () => void;
   setOpen: (open: boolean) => void;
 };
 
-const MAX_QTY = 99;
-
 export const useCartStore = create<CartState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       items: [],
       isOpen: false,
 
       addItem: (input) => {
+        // A variant known to be sold out can't start a new line. Callers
+        // already gate their buttons on stock; this is the backstop, checked
+        // before track() so a no-op add isn't counted.
+        const alreadyInCart = get().items.some((i) => i.variantId === input.variantId);
+        if (!alreadyInCart && qtyCap(input.stock) === 0) return;
         // Analytics: one add_to_cart per add action (covers PDP, quick view,
         // home, and wishlist "move to cart" — every caller funnels here).
         // Fired outside the set() updater so the state updater stays pure;
         // track() no-ops without consent and on the server.
         track({ name: "add_to_cart", productId: input.productId });
         set((state) => {
-          const incoming = Math.max(1, Math.min(MAX_QTY, input.qty ?? 1));
           const existing = state.items.find((i) => i.variantId === input.variantId);
           if (existing) {
+            // Fresh stock from the caller wins over the persisted value.
+            const stock = input.stock ?? existing.stock;
             return {
               items: state.items.map((i) =>
                 i.variantId === input.variantId
-                  ? { ...i, qty: Math.min(MAX_QTY, i.qty + incoming) }
+                  ? { ...i, stock, qty: qtyAfterAdd(i.qty, input.qty, stock) }
                   : i,
               ),
             };
           }
+          const qty = qtyAfterAdd(undefined, input.qty, input.stock);
+          if (qty === 0) return state;
           const { qty: _ignored, ...rest } = input;
-          return { items: [...state.items, { ...rest, qty: incoming }] };
+          return { items: [...state.items, { ...rest, qty }] };
         });
       },
 
@@ -74,10 +93,11 @@ export const useCartStore = create<CartState>()(
           if (qty <= 0) {
             return { items: state.items.filter((i) => i.variantId !== variantId) };
           }
-          const clamped = Math.min(MAX_QTY, qty);
           return {
             items: state.items.map((i) =>
-              i.variantId === variantId ? { ...i, qty: clamped } : i,
+              i.variantId === variantId
+                ? { ...i, qty: clampLineQty(i.qty, qty, i.stock) }
+                : i,
             ),
           };
         }),
@@ -97,6 +117,28 @@ export const useCartStore = create<CartState>()(
               return next != null ? { ...i, unitPrice: next } : i;
             }),
           };
+        }),
+
+      // Apply fresh stock from the server (getCartStock on cart mount, or
+      // after checkout reports INSUFFICIENT_STOCK). Clamps qty down to what's
+      // left; a sold-out line keeps its qty and is flagged by CartItem rather
+      // than silently removed. Unknown variantIds are ignored.
+      syncStock: (updates) =>
+        set((state) => {
+          if (updates.length === 0) return state;
+          const stockById = new Map(
+            updates.map((u) => [u.variantId, u.stock] as const),
+          );
+          let changed = false;
+          const items = state.items.map((i) => {
+            const stock = stockById.get(i.variantId);
+            if (stock == null) return i;
+            const qty = qtyAfterStockSync(i.qty, stock);
+            if (stock === i.stock && qty === i.qty) return i;
+            changed = true;
+            return { ...i, stock, qty };
+          });
+          return changed ? { items } : state;
         }),
 
       clearCart: () => set({ items: [] }),
@@ -120,6 +162,34 @@ export const useCartItemCount = () =>
 export const useCartTotal = () =>
   useCartStore((s) => s.items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0));
 export const useCartIsOpen = () => useCartStore((s) => s.isOpen);
+
+/**
+ * Pull current stock for every cart line from the server and apply it
+ * (clamps qty, flags sold-out lines). Failures leave the cart untouched —
+ * checkout re-validates server-side anyway.
+ */
+export async function refreshCartStock(): Promise<void> {
+  const ids = useCartStore
+    .getState()
+    .items.map((i) => i.variantId)
+    .slice(0, MAX_STOCK_LOOKUP);
+  if (ids.length === 0) return;
+  try {
+    const rows = await getCartStock(ids);
+    if (rows) useCartStore.getState().syncStock(rows);
+  } catch {
+    // Network / action failure: keep the persisted values.
+  }
+}
+
+/** Refresh stock once each time `enabled` turns true (cart drawer opened,
+ *  cart page hydrated with items). Reads lines from the store at call time
+ *  so qty edits while the cart is open don't re-trigger it. */
+export function useSyncCartStock(enabled: boolean) {
+  useEffect(() => {
+    if (enabled) void refreshCartStock();
+  }, [enabled]);
+}
 
 // Hydration guard so SSR markup never disagrees with persisted client state.
 export function useCartHydrated() {
