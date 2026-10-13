@@ -32,7 +32,9 @@ export function ForgotPasswordForm({ locale }: { locale: Locale }) {
       const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
         email.trim(),
         {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/${locale}/account`)}`,
+          // Lands on the set-a-new-password step once the callback has
+          // exchanged the code for a session.
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/${locale}/auth/reset-password`)}`,
         },
       );
       // We surface only network-class errors; "user not found" stays

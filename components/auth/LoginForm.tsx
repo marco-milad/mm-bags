@@ -20,9 +20,12 @@ import { GoogleAuthButton } from "./GoogleAuthButton";
 export function LoginForm({
   locale,
   next,
+  googleEnabled = false,
 }: {
   locale: Locale;
   next?: string;
+  /** From isGoogleAuthEnabled() on the server page. */
+  googleEnabled?: boolean;
 }) {
   const isRTL = locale === "ar";
   const router = useRouter();
@@ -126,16 +129,21 @@ export function LoginForm({
         </button>
       </form>
 
-      {/* Provider divider */}
-      <div className="flex items-center gap-3">
-        <span className="h-px flex-1 bg-[var(--color-border)]" aria-hidden />
-        <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
-          {isRTL ? "أو" : "or"}
-        </span>
-        <span className="h-px flex-1 bg-[var(--color-border)]" aria-hidden />
-      </div>
+      {/* Provider divider + Google — hidden while the provider is off in
+          Supabase, where a click could only end in an error. */}
+      {googleEnabled && (
+        <>
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-[var(--color-border)]" aria-hidden />
+            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
+              {isRTL ? "أو" : "or"}
+            </span>
+            <span className="h-px flex-1 bg-[var(--color-border)]" aria-hidden />
+          </div>
 
-      <GoogleAuthButton locale={locale} next={next} />
+          <GoogleAuthButton locale={locale} next={next} />
+        </>
+      )}
 
       <p className="pt-2 text-center text-sm text-[var(--color-text-secondary)]">
         {isRTL ? "مش عندك حساب؟ " : "Don't have an account? "}

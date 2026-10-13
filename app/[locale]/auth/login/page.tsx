@@ -4,6 +4,7 @@ import { hasLocale } from "@/lib/i18n-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { safeNextPath } from "@/lib/auth/safe-next";
+import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,7 @@ export default async function LoginPage({
         </p>
       </header>
 
-      <LoginForm locale={locale} next={next} />
+      <LoginForm locale={locale} next={next} googleEnabled={await isGoogleAuthEnabled()} />
 
       <p className="text-center text-xs text-[var(--color-text-secondary)]">
         {isRTL ? (

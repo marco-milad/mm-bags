@@ -3,6 +3,7 @@ import { hasLocale } from "@/lib/i18n-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { RegisterForm } from "@/components/auth/RegisterForm";
 import { safeNextPath } from "@/lib/auth/safe-next";
+import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export default async function RegisterPage({
         </p>
       </header>
 
-      <RegisterForm locale={locale} next={next} />
+      <RegisterForm locale={locale} next={next} googleEnabled={await isGoogleAuthEnabled()} />
     </div>
   );
 }
