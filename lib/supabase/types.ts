@@ -1309,6 +1309,14 @@ export type Database = {
           items_restocked: number;
         }>;
       };
+      cancel_order_with_restock: {
+        Args: { p_order_id: string };
+        Returns: Array<{
+          was_cancelled: boolean;
+          items_restocked: number;
+          units_restocked: number;
+        }>;
+      };
       is_cairo_business_hours: {
         Args: { p_at: string };
         Returns: boolean;

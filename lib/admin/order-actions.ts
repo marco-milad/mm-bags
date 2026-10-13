@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin/auth";
+import { revalidateProduct } from "@/lib/cache/revalidate-public";
 import { sendWhatsApp } from "@/lib/twilio";
 import { buildPostDeliveryMessage } from "@/lib/reviews/post-delivery";
 import type { Locale } from "@/lib/i18n-config";
@@ -74,26 +75,27 @@ export async function updateOrderStatus(formData: FormData): Promise<void> {
     }> | null;
   };
 
-  // Manual cancel of an UNPAID InstaPay order is blocked: the expiry
-  // sweep (migration 0014) is the only path that cancels those,
-  // because it restocks atomically in the same transaction. A plain
-  // status write here would strand the deducted stock forever (there
-  // is no app-side restock on cancel yet — Phase B).
+  // Cancelling goes through cancel_order_with_restock (migration 0025):
+  // status flip + putting back exactly the stock this order deducted, in
+  // one transaction. A plain status write used to strand the stock, so
+  // every COD cancellation made products look sold out. Idempotent, and it
+  // refuses delivered orders (those come back through returns). Unpaid
+  // InstaPay orders are now safe to cancel by hand too.
   if (status === "cancelled") {
-    const { data: target } = await admin
-      .from("orders")
-      .select("payment_method, payment_status")
-      .eq("id", id)
-      .maybeSingle();
-    if (
-      target?.payment_method === "instapay" &&
-      target.payment_status === "pending"
-    ) {
-      console.warn(
-        `[orders/${id}] manual cancel of unpaid InstaPay order refused — the expiry sweep cancels + restocks it atomically instead.`,
-      );
+    if (before.status === "delivered") {
+      console.warn(`[orders/${id}] cancel refused — delivered orders are handled as returns.`);
       return;
     }
+    const { error } = await admin.rpc("cancel_order_with_restock", { p_order_id: id });
+    if (error) {
+      // Throw so the admin sees it failed instead of a silently unchanged row.
+      throw new Error(`Cancel failed: ${error.message}`);
+    }
+    revalidateProduct();
+    revalidatePath("/admin/orders");
+    revalidatePath(`/admin/orders/${id}`);
+    revalidatePath("/admin/stock");
+    return;
   }
 
   // Atomic transition: only one writer can flip `pending → delivered`

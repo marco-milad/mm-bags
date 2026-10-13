@@ -5,6 +5,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { deductStock } from "@/lib/inventory/deduct-stock";
 import { revalidateProduct } from "@/lib/cache/revalidate-public";
+import { requireAdmin } from "@/lib/admin/auth";
 import {
   calcTotals,
   completeSaleSchema,
@@ -68,6 +69,16 @@ function generateSaleNumber(): string {
 export async function completeSale(
   raw: CompleteSaleInput,
 ): Promise<CompleteSaleResult> {
+  // Server actions are public POST endpoints — the /admin layout guard does
+  // not protect them. Without this, anyone holding the action id could post
+  // POS sales at any price and deduct stock (audit H1). Same roles as the
+  // POS returns actions.
+  try {
+    await requireAdmin(["admin", "manager", "cashier"]);
+  } catch {
+    return { ok: false, error: "UNAUTHORIZED" };
+  }
+
   const parsed = completeSaleSchema.safeParse(raw);
   if (!parsed.success) {
     return {

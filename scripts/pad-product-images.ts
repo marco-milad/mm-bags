@@ -236,7 +236,9 @@ async function processImage(
     return { status: "failed", error: `fetch: ${(err as Error).message}` };
   }
 
-  let meta: sharp.Metadata;
+  // Inferred: sharp 0.35's typings no longer expose the `sharp` namespace
+  // through the default import.
+  let meta: Awaited<ReturnType<ReturnType<typeof sharp>["metadata"]>>;
   try {
     meta = await sharp(bytes).metadata();
   } catch (err) {

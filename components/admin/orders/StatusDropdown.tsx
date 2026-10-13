@@ -42,11 +42,32 @@ export function StatusDropdown({
       e.target.value = current;
       return;
     }
+    // Cancelling is one-way (a cancelled order can't be reopened) and
+    // puts the stock back — confirm it like the delivered transition.
+    if (
+      next === "cancelled" &&
+      !window.confirm(
+        isAr
+          ? "إلغاء الطلب نهائيًا؟ الكمية هترجع للمخزون، ومش هينفع ترجّع الطلب تاني."
+          : "Cancel this order for good? Its items go back into stock, and it can't be reopened.",
+      )
+    ) {
+      e.target.value = current;
+      return;
+    }
     const formData = new FormData();
     formData.set("id", orderId);
     formData.set("status", next);
     startTransition(async () => {
-      await updateOrderStatus(formData);
+      try {
+        await updateOrderStatus(formData);
+      } catch {
+        window.alert(
+          isAr
+            ? "حصلت مشكلة وماتغيّرتش حالة الطلب. جرّب تاني."
+            : "Something went wrong — the order status was not changed. Please try again.",
+        );
+      }
     });
   }
 

@@ -19,11 +19,30 @@ export const size = { width: 1200, height: 630 };
  * + flex-col with `gap`, no transforms, no background-image with
  * gradients beyond two stops. Stick to known-good primitives.
  */
+function ownStorageImage(raw: string | null): string | null {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!raw || !base) return null;
+  try {
+    const url = new URL(raw);
+    const own = new URL(base);
+    return url.protocol === "https:" &&
+      url.host === own.host &&
+      url.pathname.startsWith("/storage/v1/")
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   const sp = new URL(request.url).searchParams;
   const title = sp.get("title");
   const subtitle = sp.get("subtitle") ?? "";
-  const productImage = sp.get("image");
+  // Only our own Supabase Storage images: the renderer fetches whatever URL
+  // it is given, so an open ?image= turns this route into a fetch proxy and
+  // widens the next/og attack surface (audit H2). Anything else is dropped.
+  const productImage = ownStorageImage(sp.get("image"));
   const price = sp.get("price");
 
   // Brand colors mirror the storefront tokens — written as hex so
