@@ -1,6 +1,8 @@
 import "server-only";
 
 import { revalidatePath } from "next/cache";
+import { notifyIndexNow } from "@/lib/seo/indexnow-submit";
+import { productPaths } from "@/lib/seo/indexnow";
 
 /**
  * Public-route invalidation for mutations that change what shoppers see.
@@ -50,6 +52,10 @@ export function revalidateProduct(slug?: string | null): void {
     revalidatePath(`/${locale}/catalog`);
   }
   if (!slug) revalidatePath(PRODUCT_ROUTE, "page");
+  // A known slug means an admin edited this product (name, price, photos,
+  // stock): announce it to IndexNow engines. Slug-less sweeps come from
+  // checkout/POS stock changes — not worth a ping on every sale.
+  if (slug) notifyIndexNow(productPaths(slug));
 }
 
 /**
