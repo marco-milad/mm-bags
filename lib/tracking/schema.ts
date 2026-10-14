@@ -31,7 +31,7 @@ export type VerifyTrackingInput = z.infer<typeof verifyTrackingSchema>;
  * from this code. NOT_FOUND is used for BOTH "order doesn't exist" and
  * "phone doesn't match" so the two cases stay indistinguishable.
  */
-export type TrackingErrorCode = "INVALID_INPUT" | "NOT_FOUND";
+export type TrackingErrorCode = "INVALID_INPUT" | "NOT_FOUND" | "RATE_LIMITED";
 
 // Public-safe shape returned to the client after verification.
 export type TrackingTimelineStep =

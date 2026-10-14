@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -70,6 +71,7 @@ type AdminUsageRpcRow = {
  * built-in size lookup, both sub-millisecond on Supabase free tier.
  */
 export async function getSupabaseUsage(): Promise<SupabaseUsage> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
 
   // The RPC returns the canonical numbers from inside Postgres so the

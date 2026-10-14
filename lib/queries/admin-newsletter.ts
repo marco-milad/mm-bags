@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -27,6 +28,7 @@ export type NewsletterFilters = {
 export async function listNewsletterSubscribers(
   filters: NewsletterFilters = {},
 ): Promise<NewsletterSubscriberRow[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   let q = admin
     .from("newsletter_subscribers")
@@ -54,6 +56,7 @@ export type NewsletterStats = {
 };
 
 export async function getNewsletterStats(): Promise<NewsletterStats> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const [totalRes, activeRes, arRes, enRes] = await Promise.all([
     admin

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   PRODUCTS_BUCKET,
@@ -47,6 +48,7 @@ type StoragePathRow = {
 export async function findOrphanProductFiles(
   recentCutoffMs: number = DEFAULT_RECENT_CUTOFF_MS,
 ): Promise<OrphanScanResult> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
 
   // 1) Every path currently in the bucket.

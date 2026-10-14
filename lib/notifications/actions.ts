@@ -2,6 +2,8 @@
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { hitLimit, requestIp } from "@/lib/security/rate-limit";
+import { tooManyText } from "@/lib/security/limits";
 import { backInStockSchema, type BackInStockInput } from "./schema";
 
 export type SubscribeResult =
@@ -16,6 +18,12 @@ export async function subscribeBackInStock(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صحيحة" };
   }
   const { productId, variantId, channel, email, phone } = parsed.data;
+
+  // Each subscription can trigger a paid WhatsApp send later: cap per network.
+  const limited = await hitLimit("restockPerIp", await requestIp());
+  if (!limited.ok) {
+    return { ok: false, error: `${tooManyText(true)} / ${tooManyText(false)}` };
+  }
 
   // Capture user_id if logged in (currently nobody is — guest flow is the path).
   const userClient = await createSupabaseServerClient();

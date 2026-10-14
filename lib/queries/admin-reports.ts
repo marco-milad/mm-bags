@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { DailyRevenuePoint } from "./admin-dashboard";
 import { cairoDateOf, cairoMidnightUtcMs } from "./cairo-tz";
@@ -69,6 +70,7 @@ export type DailyReport = {
 };
 
 export async function getDailyReport(iso: string): Promise<DailyReport> {
+  await requireStaff();
   const { from, to } = dayRange(iso);
   const admin = getSupabaseAdminClient();
 
@@ -232,6 +234,7 @@ export type DailyDetailedReport = DailyReport & {
 export async function getDailyDetailedReport(
   iso: string,
 ): Promise<DailyDetailedReport> {
+  await requireStaff();
   const summary = await getDailyReport(iso);
   const { from, to } = dayRange(iso);
   const admin = getSupabaseAdminClient();
@@ -364,6 +367,7 @@ export type MonthlyReport = {
 export async function getMonthlyReport(
   yyyymm: string,
 ): Promise<MonthlyReport> {
+  await requireStaff();
   const { from, to } = monthRange(yyyymm);
   const [y, m] = yyyymm.split("-").map(Number);
   const prevYYYYMM = `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, "0")}`;
@@ -491,6 +495,7 @@ export async function getBestSellers(opts: {
   source: BestSellerSource;
   limit?: number;
 }): Promise<BestSellerRow[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   // Reuse the Cairo-aware day boundary so best-sellers, daily, and
   // monthly all agree on what "this date" means. `opts.to` is exclusive
@@ -624,6 +629,7 @@ export type StockValueRow = {
 };
 
 export async function getStockValueReport(): Promise<StockValueRow[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString();
 
@@ -710,6 +716,7 @@ export type SupplierLedgerRow = {
 };
 
 export async function getSupplierLedger(): Promise<SupplierLedgerRow[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const [suppliersRes, posRes] = await Promise.all([
     admin
@@ -788,6 +795,7 @@ export type ReturnsAnalytics = {
 export async function getReturnsAnalytics(
   yyyymm: string,
 ): Promise<ReturnsAnalytics> {
+  await requireStaff();
   const { from, to } = monthRange(yyyymm);
   const admin = getSupabaseAdminClient();
 

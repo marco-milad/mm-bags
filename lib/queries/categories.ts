@@ -49,29 +49,37 @@ export const getTopLevelCategoriesWithCounts = cache(async (): Promise<TopLevelC
 
   if (!collections) return [];
 
-  // One round-trip pulls every active product's collection + images + order
-  // + price fields. We use the same payload for counts, cover-image lookup,
-  // and per-collection minPrice (min of sale_price ?? base_price).
-  const { data: productRows } = await supabase
+  // One round-trip pulls every active product's collection + first image +
+  // order + price fields. We use the same payload for counts, cover-image
+  // lookup, and per-collection minPrice (min of sale_price ?? base_price).
+  // `images->>0` returns only the first image instead of the whole array:
+  // this runs on every page view, and it cut the payload ~66% (63 KB → 21 KB),
+  // which matters for Supabase Free egress.
+  const { data: rawRows } = await supabase
     .from("products")
-    .select("collection_id, images, sort_order, base_price, sale_price")
+    .select("collection_id, cover:images->>0, sort_order, base_price, sale_price")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
+  const productRows = (rawRows ?? []) as unknown as Array<{
+    collection_id: string | null;
+    cover: string | null;
+    sort_order: number | null;
+    base_price: number | null;
+    sale_price: number | null;
+  }>;
 
   const directCounts = new Map<string, number>();
   const firstImageByCollection = new Map<string, string>();
   const directMinPrice = new Map<string, number>();
-  for (const row of productRows ?? []) {
+  for (const row of productRows) {
     if (!row.collection_id) continue;
     directCounts.set(row.collection_id, (directCounts.get(row.collection_id) ?? 0) + 1);
     if (
       !firstImageByCollection.has(row.collection_id) &&
-      Array.isArray(row.images) &&
-      row.images.length > 0 &&
-      typeof row.images[0] === "string" &&
-      row.images[0].length > 0
+      typeof row.cover === "string" &&
+      row.cover.length > 0
     ) {
-      firstImageByCollection.set(row.collection_id, row.images[0]);
+      firstImageByCollection.set(row.collection_id, row.cover);
     }
     // Effective price = sale_price when set, else base_price. Guard
     // against non-numeric rows (nullable columns per schema).

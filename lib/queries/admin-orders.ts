@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { cairoDayStartISO } from "./cairo-tz";
 import type {
@@ -61,6 +62,7 @@ export type ListOrderFilters = {
 export async function listAdminOrders(
   filters: ListOrderFilters = {},
 ): Promise<AdminOrderRow[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   let q = admin
     .from("orders")
@@ -173,6 +175,7 @@ export type AdminOrderDetail = Order & {
 export async function getAdminOrderDetail(
   id: string,
 ): Promise<AdminOrderDetail | null> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const [orderRes, codRes] = await Promise.all([
     admin

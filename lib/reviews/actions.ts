@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { hitLimit, requestIp } from "@/lib/security/rate-limit";
+import { tooManyText } from "@/lib/security/limits";
 import { reviewSchema, type ReviewInput } from "./schema";
 
 export type SubmitReviewResult =
@@ -18,6 +20,12 @@ export async function submitReview(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صحيحة" };
   }
   const { productId, name, rating, title, body, images } = parsed.data;
+
+  // Reviews go to a moderation queue — cap per network so it can't be flooded.
+  const limited = await hitLimit("reviewPerIp", await requestIp());
+  if (!limited.ok) {
+    return { ok: false, error: `${tooManyText(true)} / ${tooManyText(false)}` };
+  }
 
   // Capture user if logged in (today: nobody). The RLS INSERT policy needs
   // auth.uid() = user_id, so guests must go through the admin client.

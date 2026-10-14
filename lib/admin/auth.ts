@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { StaffRole } from "@/lib/supabase/types";
@@ -35,29 +36,42 @@ export type EffectiveRole = StaffRole | "admin";
 export async function requireAdmin(
   allowed: ReadonlyArray<EffectiveRole> = ["admin", "manager"],
 ): Promise<EffectiveRole> {
-  const userClient = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await userClient.auth.getUser();
-  if (!user) throw new Error("UNAUTHORIZED");
-
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (adminEmail && user.email === adminEmail && allowed.includes("admin")) {
-    return "admin";
-  }
-
-  const admin = getSupabaseAdminClient();
-  const { data: staff } = await admin
-    .from("staff")
-    .select("role, is_active")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (
-    staff &&
-    staff.is_active &&
-    allowed.includes(staff.role as EffectiveRole)
-  ) {
-    return staff.role as EffectiveRole;
-  }
+  const who = await resolveIdentity();
+  if (!who.signedIn) throw new Error("UNAUTHORIZED");
+  if (who.isAdminEmail && allowed.includes("admin")) return "admin";
+  if (who.staffRole && allowed.includes(who.staffRole)) return who.staffRole;
   throw new Error("FORBIDDEN");
 }
+
+/**
+ * Any active staff member (or the bootstrap admin). Used by every
+ * lib/queries/admin-* read as a second gate behind the /admin layout, so a
+ * query reached by some other path (a new route, a leaked server-action id)
+ * still refuses non-staff. Role-specific checks stay with the page/action.
+ */
+export function requireStaff(): Promise<EffectiveRole> {
+  return requireAdmin(["admin", "manager", "cashier"]);
+}
+
+// One auth + staff lookup per request, however many queries call the guard
+// (React's cache() is request-scoped on the server).
+const resolveIdentity = cache(
+  async (): Promise<{ signedIn: boolean; isAdminEmail: boolean; staffRole: EffectiveRole | null }> => {
+    const userClient = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await userClient.auth.getUser();
+    if (!user) return { signedIn: false, isAdminEmail: false, staffRole: null };
+
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const isAdminEmail = !!adminEmail && user.email === adminEmail;
+
+    const { data: staff } = await getSupabaseAdminClient()
+      .from("staff")
+      .select("role, is_active")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const staffRole = staff?.is_active ? (staff.role as EffectiveRole) : null;
+    return { signedIn: true, isAdminEmail, staffRole };
+  },
+);

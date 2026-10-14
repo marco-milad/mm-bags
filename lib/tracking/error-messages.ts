@@ -37,6 +37,11 @@ const SERVER_MESSAGES: Record<TrackingErrorCode, Bilingual> = {
     ar: "البيانات مش متطابقة. تأكد من رقم الطلب والموبايل.",
     en: "The details don't match. Check the order number and phone.",
   },
+  // Too many guesses — the last-4 check must not be brute-forceable.
+  RATE_LIMITED: {
+    ar: "محاولات كتير. استنى ربع ساعة وجرّب تاني، أو كلمنا على واتساب.",
+    en: "Too many attempts. Wait 15 minutes and try again, or message us on WhatsApp.",
+  },
 };
 
 /** Localized message for a tracking server error code. */

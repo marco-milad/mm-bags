@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { ReturnReason, RefundMethod } from "@/lib/supabase/types";
 
@@ -31,6 +32,7 @@ export type ReturnableLine = {
 export async function getReturnableQuantitiesForOrder(
   orderId: string,
 ): Promise<ReturnableLine[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
 
   const { data: itemsRaw } = await admin
@@ -137,6 +139,7 @@ export type OrderReturnSummary = {
 export async function listReturnsForOrder(
   orderId: string,
 ): Promise<OrderReturnSummary[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("order_returns")

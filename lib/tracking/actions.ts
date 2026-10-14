@@ -2,6 +2,7 @@
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { firstName, maskPhone } from "@/lib/mask";
+import { hitLimits, requestIp } from "@/lib/security/rate-limit";
 import {
   isOrderNumber,
   isUuid,
@@ -27,6 +28,16 @@ export async function verifyAndGetTracking(
     };
   }
   const { orderIdOrNumber, phoneLast4 } = parsed.data;
+
+  // The last 4 phone digits are a 10,000-combination secret: cap guesses per
+  // order and per network so they can't be brute-forced (audit M4).
+  const limited = await hitLimits([
+    ["trackPerIp", await requestIp()],
+    ["trackPerOrder", orderIdOrNumber],
+  ]);
+  if (!limited.ok) {
+    return { ok: false, code: "RATE_LIMITED", error: "محاولات كتير. استنى شوية وجرّب تاني." };
+  }
 
   const admin = getSupabaseAdminClient();
   const query = admin

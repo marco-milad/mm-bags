@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { contactFormSchema, CONTACT_SUBJECT_LABELS } from "@/lib/contact-schema";
 import { adminEmail, emailFrom, getResend } from "@/lib/email";
+import { hitLimit, ipFromRequest } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,15 @@ export async function POST(request: Request) {
   // Honeypot — silently 200 so spammers can't differentiate.
   if (parsed.data.hp) {
     return NextResponse.json({ success: true });
+  }
+
+  // Each message is an email to Marco: cap per network (audit M3).
+  const limited = await hitLimit("contactPerIp", ipFromRequest(request));
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
+    );
   }
 
   const { name, email, phone, subject, message, locale } = parsed.data;

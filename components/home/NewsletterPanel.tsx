@@ -49,9 +49,14 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
       if (!res.ok) {
         setStatus({
           kind: "error",
-          message: isRTL
-            ? "في مشكلة، جرب تاني."
-            : "Something went wrong — please try again.",
+          message:
+            res.status === 429
+              ? isRTL
+                ? "محاولات كتير في وقت قصير. استنى شوية وجرّب تاني."
+                : "Too many attempts in a short time. Please wait a bit."
+              : isRTL
+                ? "في مشكلة، جرب تاني."
+                : "Something went wrong — please try again.",
         });
         return;
       }

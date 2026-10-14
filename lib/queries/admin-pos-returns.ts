@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { cairoDayStartISO, cairoMidnightUtcMs } from "@/lib/queries/cairo-tz";
 
@@ -75,6 +76,7 @@ export type PosSaleSearchFilters = {
 export async function findPosSalesForReturn(
   filters: PosSaleSearchFilters,
 ): Promise<PosSaleSearchResult[]> {
+  await requireStaff();
   const trimmedQuery = filters.query?.trim() ?? "";
   const rawDate = filters.date?.trim() ?? "";
   // Validate up-front. An invalid date string is treated as no date
@@ -162,6 +164,7 @@ export async function getReturnableQuantitiesForPosSale(
   };
   lines: ReturnablePosLine[];
 } | null> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
 
   // Sale header — bail if it doesn't exist.

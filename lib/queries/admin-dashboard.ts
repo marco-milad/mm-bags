@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   Order,
@@ -40,6 +41,7 @@ export type TodayStats = {
 };
 
 export async function getTodayStats(): Promise<TodayStats> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   // "Today" = the calendar day in Cairo. With a UTC server, the naïve
   // `new Date().toISOString().slice(0,10)` flips to tomorrow's date at
@@ -102,6 +104,7 @@ export type DailyRevenuePoint = {
 };
 
 export async function getMonthlyRevenue(): Promise<DailyRevenuePoint[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   // Current month boundaries in Cairo time. Without this, around the
   // last-of-month → 1st transition the server (UTC) and the till
@@ -170,6 +173,7 @@ export type RecentPosSale = Pick<
 >;
 
 export async function getRecentOrders(limit = 5): Promise<RecentOrder[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("orders")
@@ -180,6 +184,7 @@ export async function getRecentOrders(limit = 5): Promise<RecentOrder[]> {
 }
 
 export async function getRecentPosSales(limit = 5): Promise<RecentPosSale[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("pos_sales")
@@ -204,6 +209,7 @@ export async function getLowStockVariants(
   threshold = 5,
   limit = 20,
 ): Promise<LowStockVariant[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("product_variants")
@@ -240,6 +246,7 @@ export async function getOverduePurchaseOrders(
   daysOverdue = 30,
   limit = 10,
 ): Promise<OverduePurchaseOrder[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const cutoff = new Date(Date.now() - daysOverdue * 86400_000).toISOString();
   const { data } = await admin
@@ -292,6 +299,7 @@ export async function getHighReturnProducts(
   minUnitsSold = 3,
   limit = 5,
 ): Promise<HighReturnProduct[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const cutoff = new Date(Date.now() - daysWindow * 86400_000).toISOString();
 

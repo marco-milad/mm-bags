@@ -11,6 +11,8 @@ import {
   addOwnedOrder,
   orderCookieSecret,
 } from "@/lib/orders/ownership";
+import { hitLimits, requestIp } from "@/lib/security/rate-limit";
+import { normalizePhone, tooManyText } from "@/lib/security/limits";
 import { EG_GOVERNORATES } from "./governorates";
 import { validateCart, type ValidateCartResult } from "./validate-cart";
 import {
@@ -105,6 +107,22 @@ export async function placeOrder(
       code: "CHECKOUT_FAILED",
       error:
         "الدفع عبر InstaPay غير متاح حالياً — اختار الدفع عند الاستلام. / InstaPay is currently unavailable — please choose Cash on Delivery.",
+    };
+  }
+
+  // ─── Abuse guard (audit M2) ───────────────────────────────────────────
+  // Every COD order reserves real stock, so a script flooding fake orders
+  // could empty the shelves. Cap orders per network and per phone number.
+  // placeOrder doesn't receive the locale, so the message is bilingual.
+  const limited = await hitLimits([
+    ["orderPerIp", await requestIp()],
+    ["orderPerPhone", normalizePhone(checkout.phone)],
+  ]);
+  if (!limited.ok) {
+    return {
+      ok: false,
+      code: "CHECKOUT_FAILED",
+      error: `${tooManyText(true)} / ${tooManyText(false)}`,
     };
   }
 

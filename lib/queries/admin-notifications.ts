@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { NotificationChannel } from "@/lib/supabase/types";
 
@@ -43,6 +44,7 @@ export type WaitlistFilters = {
 export async function listWaitlistGroups(
   filters: WaitlistFilters = {},
 ): Promise<WaitlistGroup[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   let q = admin
     .from("notification_subscriptions")
@@ -150,6 +152,7 @@ export type WaitlistStats = {
 };
 
 export async function getWaitlistStats(): Promise<WaitlistStats> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const [pendingCountRes, productsRes] = await Promise.all([
     admin
@@ -182,6 +185,7 @@ export type WaitlistProductOption = {
 };
 
 export async function listWaitlistProducts(): Promise<WaitlistProductOption[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("notification_subscriptions")

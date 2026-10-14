@@ -33,7 +33,10 @@
 const SUPABASE_PUBLIC_PREFIX = "/storage/v1/object/public/";
 const SUPABASE_RENDER_PREFIX = "/storage/v1/render/image/public/";
 const MAX_WIDTH = 1600;
-const DEFAULT_QUALITY = 82;
+// 75 (Next's own default): measured 21% fewer bytes than 82 on catalog
+// images with no visible difference on phones — image egress is the first
+// Supabase Free limit the store would hit.
+const DEFAULT_QUALITY = 75;
 
 export type SupabaseLoaderInput = {
   src: string;

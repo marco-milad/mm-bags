@@ -5,6 +5,7 @@ import {
 } from "@/lib/newsletter-schema";
 import { adminEmail, emailFrom, getResend } from "@/lib/email";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { hitLimits, ipFromRequest } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -37,6 +38,19 @@ export async function POST(request: Request) {
 
   const email = parsed.data.email.toLowerCase().trim();
   const locale = parsed.data.locale;
+
+  // Each signup emails the address given — without a cap this endpoint could
+  // be used to bomb someone's inbox and burn the email quota (audit M3).
+  const limited = await hitLimits([
+    ["newsletterPerIp", ipFromRequest(request)],
+    ["newsletterPerEmail", email],
+  ]);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
+    );
+  }
 
   // 1) Persist the subscription. Upsert on `email` so a returning subscriber
   // flips back to active without surfacing a unique-violation error.

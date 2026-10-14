@@ -1,5 +1,6 @@
 import "server-only";
 
+import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   Collection,
@@ -49,6 +50,7 @@ export type ListAdminProductFilters = {
 export async function listAdminProducts(
   filters: ListAdminProductFilters = {},
 ): Promise<AdminProductRow[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   let q = admin
     .from("products")
@@ -138,6 +140,7 @@ export type AdminProductDetail = Product & {
 export async function getProductForEdit(
   id: string,
 ): Promise<AdminProductDetail | null> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const [productRes, variantsRes] = await Promise.all([
     admin.from("products").select("*").eq("id", id).maybeSingle(),
@@ -159,6 +162,7 @@ export async function getProductForEdit(
  * the picker easy to scan.
  */
 export async function listAllCollections(): Promise<Collection[]> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("collections")
@@ -197,6 +201,7 @@ const SUGGEST_MAX_PER_FIELD = 50;
  * sub-100-product catalogs.
  */
 export async function getProductFieldSuggestions(): Promise<ProductFieldSuggestions> {
+  await requireStaff();
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("products")

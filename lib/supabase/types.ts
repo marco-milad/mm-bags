@@ -1317,6 +1317,10 @@ export type Database = {
           units_restocked: number;
         }>;
       };
+      rate_limit_hit: {
+        Args: { p_key: string; p_window_seconds: number; p_max: number };
+        Returns: Array<{ allowed: boolean; hits: number; retry_after: number }>;
+      };
       is_cairo_business_hours: {
         Args: { p_at: string };
         Returns: boolean;

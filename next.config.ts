@@ -93,6 +93,30 @@ const nextConfig: NextConfig = {
     // through /_next/image. Bump to 30s.
     imgOptTimeoutInSeconds: 30,
   },
+  // Baseline security headers (audit M7). Deliberately not a full script/style
+  // CSP — that needs nonces for Next's inline scripts and would risk breaking
+  // the storefront. These cover clickjacking, MIME sniffing, referrer leaks
+  // and powerful browser features the store never uses.
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'",
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+          },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       { source: "/products/buy-it-now", destination: "/products/milano-silicone-310", permanent: true },

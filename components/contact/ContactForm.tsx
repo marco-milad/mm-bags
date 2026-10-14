@@ -68,9 +68,14 @@ export function ContactForm({ locale }: { locale: Locale }) {
       if (!res.ok) {
         setStatus({
           kind: "error",
-          message: isRTL
-            ? "حصل خطأ، جرب تاني أو ابعتلنا على WhatsApp."
-            : "Something went wrong — try again or reach us on WhatsApp.",
+          message:
+            res.status === 429
+              ? isRTL
+                ? "بعتّ رسايل كتير في وقت قصير. استنى شوية، أو كلمنا على WhatsApp."
+                : "Too many messages in a short time. Wait a bit, or reach us on WhatsApp."
+              : isRTL
+                ? "حصل خطأ، جرب تاني أو ابعتلنا على WhatsApp."
+                : "Something went wrong — try again or reach us on WhatsApp.",
         });
         return;
       }
