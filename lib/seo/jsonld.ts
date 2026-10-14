@@ -192,6 +192,33 @@ export function faqSchema(
   };
 }
 
+// ─── Article (buying guides) ─────────────────────────────────────────
+// A named author and dates are what answer engines weigh when deciding
+// whether advice is trustworthy and current.
+export function articleSchema(opts: {
+  headline: string;
+  description: string;
+  url: string;
+  locale: Locale;
+  datePublished: string;
+  dateModified: string;
+}): Record<string, unknown> {
+  const url = opts.url.startsWith("http") ? opts.url : absoluteUrl(opts.url);
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: opts.headline,
+    description: opts.description,
+    url,
+    mainEntityOfPage: url,
+    inLanguage: opts.locale === "ar" ? "ar-EG" : "en",
+    datePublished: opts.datePublished,
+    dateModified: opts.dateModified,
+    author: { "@type": "Person", name: SITE_FOUNDER, worksFor: { "@id": `${SITE_URL}/#organization` } },
+    publisher: { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: SITE_NAME, url: SITE_URL },
+  };
+}
+
 // ─── AboutPage + Person ──────────────────────────────────────────────
 export function aboutPageSchema(opts: {
   url: string;

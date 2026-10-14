@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { SITE_URL } from "@/lib/seo/site";
+import { GUIDES } from "@/lib/guides";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -61,7 +62,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   { path: "/refund-policy", priority: 0.5, changeFrequency: "monthly" },
   { path: "/privacy-policy", priority: 0.2, changeFrequency: "yearly" },
   { path: "/terms-of-service", priority: 0.2, changeFrequency: "yearly" },
+  { path: "/guides", priority: 0.6, changeFrequency: "monthly" },
   ];
+
+  // Buying guides: lastModified is the guide's own review date, so a
+  // re-crawl is only suggested when the content actually changed.
+  const guidePages = GUIDES.map((g) => ({
+    path: `/guides/${g.slug}`,
+    updated: new Date(`${g.updated}T00:00:00Z`),
+  }));
 
   for (const locale of localePaths) {
     for (const s of STATIC) {
@@ -76,6 +85,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           languages: {
             ar: `${SITE_URL}/ar${s.path}`,
             en: `${SITE_URL}/en${s.path}`,
+          },
+        },
+      });
+    }
+
+    for (const g of guidePages) {
+      entries.push({
+        url: `${SITE_URL}/${locale}${g.path}`,
+        lastModified: g.updated,
+        changeFrequency: "monthly",
+        priority: 0.7,
+        alternates: {
+          languages: {
+            ar: `${SITE_URL}/ar${g.path}`,
+            en: `${SITE_URL}/en${g.path}`,
           },
         },
       });

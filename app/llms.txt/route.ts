@@ -1,6 +1,7 @@
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 import { SITE_DESCRIPTION_EN, SITE_URL } from "@/lib/seo/site";
 import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE, COD_FEE } from "@/lib/checkout/schema";
+import { GUIDES } from "@/lib/guides";
 
 // Regenerated hourly: collections and their "from" prices come from the DB.
 export const revalidate = 3600;
@@ -39,6 +40,9 @@ export async function GET() {
 
 ## Collections
 ${collectionLines || "- See the catalog."}
+
+## Buying guides
+${GUIDES.map((g) => `- [${g.title.en}](${SITE_URL}/en/guides/${g.slug}) · [العربية](${SITE_URL}/ar/guides/${g.slug}): ${g.summary.en}`).join("\n")}
 
 ## Useful pages
 - [Catalog (Arabic)](${SITE_URL}/ar/catalog) · [Catalog (English)](${SITE_URL}/en/catalog)

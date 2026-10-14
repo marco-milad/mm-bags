@@ -318,6 +318,13 @@ function Result({
           <RotateCcw className="h-3.5 w-3.5" />
           {locale === "ar" ? "إعادة الاختبار" : "Retake"}
         </button>
+        <Link
+          href={`/${locale}/guides/luggage-size-guide`}
+          onClick={onClose}
+          className="text-xs text-[var(--color-accent-dark)] underline-offset-4 hover:underline"
+        >
+          {locale === "ar" ? "جدول المقاسات الكامل بالسنتيمتر واللتر" : "Full size chart in cm and litres"}
+        </Link>
       </div>
     </div>
   );

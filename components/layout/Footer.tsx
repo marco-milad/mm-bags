@@ -130,6 +130,7 @@ export function Footer({
           title={t.help}
           links={[
             { href: `${base}/faq`, label: locale === "ar" ? "الأسئلة الشائعة" : "FAQ" },
+            { href: `${base}/guides`, label: locale === "ar" ? "أدلة الشراء" : "Buying guides" },
             { href: `${base}/contact`, label: locale === "ar" ? "تواصل معنا" : "Contact us" },
             { href: `${base}/track`, label: locale === "ar" ? "تتبع طلبك" : "Track your order" },
             { href: `${base}/account`, label: locale === "ar" ? "حسابي" : "My account" },

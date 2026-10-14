@@ -138,8 +138,9 @@ export const FAQ_ITEMS: ReadonlyArray<FAQItem> = [
     category: "products",
     qAr: "إيه مقاس شنطة الكابينة المسموح في الطيارة؟",
     qEn: "What size cabin bag is allowed on a plane?",
-    aAr: "الإرشاد العام من IATA هو 56 × 45 × 25 سم شامل العجل والمقابض، والوزن بيختلف حسب شركة الطيران (غالبًا من 7 لـ 10 كيلو). اتأكد دايمًا من شروط شركتك قبل السفر.",
-    aEn: "IATA's general guideline is 56 × 45 × 25 cm including wheels and handles; the weight limit varies by airline (often 7–10 kg). Always check your airline's rules before you fly.",
+    // Kept in step with lib/guides/cabin-by-airline.ts (checked 2026-10-14).
+    aAr: "مفيش مقاس واحد لكل الشركات. أغلب الشركات اللي بتطير من مصر بتسمح بحوالي 55 × 40 × 23 سم أو أقل شامل العجل (مصر للطيران 55 × 40 × 23 ولحد 8 كيلو)، والوزن في أغلب شركات الخليج 7 كيلو. القطرية أقصر (50 سم) وطيران ناس أضيق (36 سم). مقاس IATA ‏56 × 45 × 25 مرجع عام مش قاعدة. الجدول الكامل لكل شركة في دليل «مقاس شنطة الكابينة لكل شركة طيران».",
+    aEn: "There's no single size for every airline. Most carriers flying from Egypt allow about 55 × 40 × 23 cm or less including wheels (EgyptAir: 55 × 40 × 23, up to 8 kg), and most Gulf airlines cap the weight at 7 kg. Qatar Airways is shorter (50 cm) and flynas narrower (36 cm). IATA's 56 × 45 × 25 is a general reference, not a rule. The full per-airline table is in our \"Cabin bag size by airline\" guide.",
   },
   {
     category: "products",
