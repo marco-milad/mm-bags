@@ -49,11 +49,14 @@ export async function generateMetadata({
   if (!hasLocale(locale)) return {};
   const isAr = locale === "ar";
   return {
-    title: isAr
-      ? "M.M Bags — شنط سفر بجودة عالية | Cairo, Egypt"
-      : "M.M Bags — Premium travel & everyday bags | Cairo, Egypt",
+    // `absolute`: the layout template would otherwise append the brand twice.
+    title: {
+      absolute: isAr
+        ? "M.M Bags مصر — شنط سفر وشنط ضهر | سوهاج وشحن لكل المحافظات"
+        : "M.M Bags Egypt — Travel bags & backpacks | Sohag, ships nationwide",
+    },
     description: isAr ? SITE_DESCRIPTION_AR : SITE_DESCRIPTION_EN,
-    alternates: localeAlternates("/"),
+    alternates: localeAlternates("/", locale),
     openGraph: {
       title: isAr ? "M.M Bags — شنط سفر بجودة عالية" : "M.M Bags",
       description: isAr ? SITE_DESCRIPTION_AR : SITE_DESCRIPTION_EN,

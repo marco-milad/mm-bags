@@ -230,24 +230,19 @@ export function Footer({
       </div>
 
       {/* Payment-methods strip — sits between the columns and the
-          bottom bar. Text pills (rather than card logos) both because
-          we don't want to license Visa/Mastercard artwork for a
-          footer, and because the pills nicely include the
-          Egyptian-specific "cash on delivery" option which no card
-          logo covers. */}
+          bottom bar. Lists ONLY what checkout actually accepts (COD +
+          InstaPay): answer engines quote footers as fact, and the old
+          Visa/Mastercard pills promised payments that don't exist. */}
       <div className="border-t border-navy-700/60">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-3 px-6 py-4 md:px-12">
           <span className="font-mono text-[10px] uppercase tracking-wider text-navy-300">
             {isRTL ? "طرق الدفع" : "We accept"}
           </span>
           <span className="rounded-md border border-navy-700 bg-navy-800 px-2.5 py-1 text-[11px] font-semibold text-navy-100">
-            Visa
-          </span>
-          <span className="rounded-md border border-navy-700 bg-navy-800 px-2.5 py-1 text-[11px] font-semibold text-navy-100">
-            Mastercard
-          </span>
-          <span className="rounded-md border border-navy-700 bg-navy-800 px-2.5 py-1 text-[11px] font-semibold text-navy-100">
             {isRTL ? "الدفع عند الاستلام" : "Cash on delivery"}
+          </span>
+          <span className="rounded-md border border-navy-700 bg-navy-800 px-2.5 py-1 text-[11px] font-semibold text-navy-100">
+            InstaPay
           </span>
         </div>
       </div>

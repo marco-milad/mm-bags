@@ -16,11 +16,11 @@ export async function generateMetadata({
   const { locale } = await params;
   const isAr = locale === "ar";
   return {
-    title: isAr ? "كل التشكيلات | M.M Bags" : "All collections | M.M Bags",
+    title: isAr ? "كل التشكيلات" : "All collections",
     description: isAr
       ? "اكتشف كل تشكيلات M.M Bags — شنط السفر، الظهر، المدارس، الحريم، اليد، واللاب توب."
       : "Browse every M.M Bags collection — travel, backpacks, school, ladies, handbags, and laptop sleeves.",
-    alternates: localeAlternates("/categories"),
+    alternates: localeAlternates("/categories", isAr ? "ar" : "en"),
   };
 }
 

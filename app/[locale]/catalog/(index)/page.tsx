@@ -18,11 +18,11 @@ export async function generateMetadata({
   if (!hasLocale(locale)) return {};
   const isAr = locale === "ar";
   return {
-    title: isAr ? "كل المنتجات | M.M Bags" : "All products | M.M Bags",
+    title: isAr ? "كل المنتجات" : "All products",
     description: isAr
       ? "تسوق كل منتجات M.M Bags — شنط السفر، الظهر، المدارس، الحريم، اليد، واللاب توب. شحن لكل 27 محافظة."
       : "Shop the full M.M Bags catalog — travel, backpacks, school, ladies, handbags, and laptop sleeves. Ships across Egypt.",
-    alternates: localeAlternates("/catalog"),
+    alternates: localeAlternates("/catalog", locale),
   };
 }
 

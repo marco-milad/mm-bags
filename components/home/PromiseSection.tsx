@@ -31,17 +31,17 @@ const PROMISES: Promise[] = [
   },
   {
     icon: ShieldCheck,
-    ar_title: "ضمان ١٤ يوم",
-    ar_copy: "أي مشكلة في الجودة — استبدال أو استرداد خلال ١٤ يوم.",
-    en_title: "14-day guarantee",
-    en_copy: "Any quality issue — full exchange or refund within 14 days.",
+    ar_title: "إرجاع ١٤ يوم + ضمان سنة",
+    ar_copy: "ترجّع أو تستبدل خلال ١٤ يوم من الاستلام، وضمان سنة كاملة على عيوب التصنيع.",
+    en_title: "14-day returns · 1-year warranty",
+    en_copy: "Return or exchange within 14 days of delivery, plus a full one-year warranty on manufacturing defects.",
   },
   {
     icon: Headphones,
-    ar_title: "دعم ٢٤/٧",
-    ar_copy: "كلّمنا على واتساب أي وقت — بنرد بسرعة وبشكل شخصي.",
-    en_title: "24/7 support",
-    en_copy: "WhatsApp us anytime — we reply quickly and personally.",
+    ar_title: "دعم على واتساب",
+    ar_copy: "ابعتلنا في أي وقت، وبنرد خلال 24 ساعة بشكل شخصي.",
+    en_title: "WhatsApp support",
+    en_copy: "Message us any time — we reply personally within 24 hours.",
   },
 ];
 

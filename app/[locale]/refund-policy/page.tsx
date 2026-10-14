@@ -32,7 +32,7 @@ export async function generateMetadata({
     description: isAr
       ? "اعرف خطوات إرجاع شنطة M.M Bags خلال 14 يوم: الحالات المؤهلة، طريقة الاسترداد، ومتى نتحمل مصاريف الشحن."
       : "Learn how to return an M.M Bags piece within 14 days — eligibility, refund timing, and when we cover the return shipping.",
-    alternates: localeAlternates("/refund-policy"),
+    alternates: localeAlternates("/refund-policy", locale),
   };
 }
 

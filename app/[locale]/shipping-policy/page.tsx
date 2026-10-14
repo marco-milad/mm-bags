@@ -29,9 +29,9 @@ export async function generateMetadata({
       ? "سياسة الشحن والتوصيل | M.M Bags"
       : "Shipping & Delivery Policy | M.M Bags",
     description: isAr
-      ? "تفاصيل الشحن لكل 27 محافظة في مصر — مواعيد التوصيل، تكلفة الشحن، الشحن السريع، وتتبع الطلب."
-      : "How M.M Bags ships across all 27 Egyptian governorates — delivery windows, fees, express options, and order tracking.",
-    alternates: localeAlternates("/shipping-policy"),
+      ? "M.M Bags بتشحن لكل 27 محافظة في مصر خلال 2–5 أيام عمل: مواعيد التوصيل حسب المنطقة، الشحن 50 ج.م ومجاني فوق 1,500 ج.م، وتتبع الطلب."
+      : "M.M Bags ships to all 27 Egyptian governorates in 2–5 business days: delivery windows by region, LE 50 shipping (free over LE 1,500), and order tracking.",
+    alternates: localeAlternates("/shipping-policy", locale),
   };
 }
 
@@ -72,11 +72,6 @@ export default async function ShippingPolicyPage({
               {isAr
                 ? "الشحن بـ 50 ج.م، ومجاني لأي طلب فوق 1,500 ج.م."
                 : "Shipping is LE 50, and free on every order over LE 1,500."}
-            </Bullet>
-            <Bullet isAr={isAr}>
-              {isAr
-                ? "في القاهرة والجيزة، الشحن السريع متاح خلال 24 ساعة."
-                : "Express delivery in Cairo and Giza arrives within 24 hours."}
             </Bullet>
           </ul>
         </Section>
@@ -134,19 +129,6 @@ export default async function ShippingPolicyPage({
             {isAr
               ? "لو اخترت الدفع عند الاستلام، في رسوم إضافية 25 ج.م على الطلب بيغطيها مزود الخدمة الخارجي."
               : "If you choose cash on delivery, an additional LE 25 fee applies — charged by the third-party COD provider."}
-          </Body>
-        </Section>
-
-        <Section title={isAr ? "الشحن السريع — 24 ساعة" : "Express delivery — 24 hours"}>
-          <Body isAr={isAr}>
-            {isAr
-              ? "متاح في القاهرة الكبرى والجيزة. لو طلبت قبل الساعة 4 العصر في يوم عمل، الطلب بيوصل خلال 24 ساعة (يعني تاني يوم على الأكثر)."
-              : "Available throughout Greater Cairo and Giza. Order before 4 PM on a business day and we deliver within 24 hours."}
-          </Body>
-          <Body isAr={isAr}>
-            {isAr
-              ? "الشحن السريع رسوم إضافية 75 ج.م فوق رسوم الشحن العادية. اختار الخدمة من صفحة الـ checkout قبل تأكيد الطلب."
-              : "Express service adds LE 75 on top of standard shipping. Select it at checkout before confirming your order."}
           </Body>
         </Section>
 

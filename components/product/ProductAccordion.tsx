@@ -58,8 +58,8 @@ export function ProductAccordion({
     {
       icon: RefreshCcw,
       text: isAr
-        ? "إرجاع مجاني خلال 14 يوم من الاستلام."
-        : "Free returns within 14 days of delivery.",
+        ? "إرجاع أو استبدال خلال 14 يوم من الاستلام — مجاني لو فيه عيب تصنيع."
+        : "Return or exchange within 14 days of delivery — free if there's a manufacturing defect.",
     },
     {
       icon: ShieldCheck,

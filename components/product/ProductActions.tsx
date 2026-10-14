@@ -152,9 +152,6 @@ export function ProductActions({
     return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
   })();
 
-  // Installment: 6 monthly payments, rounded up to nearest 10 EGP for display.
-  const monthly = Math.ceil(price / 6 / 10) * 10;
-
   return (
     <div className="flex flex-col gap-5">
       {/* Price */}
@@ -174,10 +171,11 @@ export function ProductActions({
         )}
       </div>
 
+      {/* Only payment options checkout really offers (no instalments). */}
       <p className="rounded-lg bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
         {locale === "ar"
-          ? `أو قسّطها على 6 شهور ≈ ${formatPriceEGP(monthly, locale)} / شهر`
-          : `Or pay in 6 monthly installments ≈ ${formatPriceEGP(monthly, locale)} / mo`}
+          ? "الدفع عند الاستلام أو InstaPay · توصيل لكل مصر خلال 2–5 أيام"
+          : "Cash on delivery or InstaPay · Delivered across Egypt in 2–5 days"}
       </p>
 
       {/* Color picker */}
@@ -401,8 +399,8 @@ export function ProductActions({
       {/* Trust badges */}
       <ul className="grid grid-cols-2 gap-3 border-t border-[var(--color-border)] pt-5 text-xs text-[var(--color-text-secondary)] md:grid-cols-4">
         {(locale === "ar"
-          ? ["شحن سريع", "إرجاع خلال 14 يوم", "دفع آمن", "الدفع عند الاستلام"]
-          : ["Fast shipping", "14-day returns", "Secure payment", "Cash on delivery"]
+          ? ["شحن لكل مصر", "إرجاع خلال 14 يوم", "ضمان سنة", "الدفع عند الاستلام"]
+          : ["Ships across Egypt", "14-day returns", "1-year warranty", "Cash on delivery"]
         ).map((label) => (
           <li
             key={label}

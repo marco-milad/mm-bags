@@ -10,7 +10,10 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        // /api/og is the share-preview image: the longer (more specific)
+        // allow wins over the /api disallow, so link-preview bots that obey
+        // robots.txt can fetch it (audit T12).
+        allow: ["/", "/api/og"],
         disallow: [
           "/admin",
           "/admin/",

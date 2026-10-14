@@ -8,19 +8,21 @@ import type { Locale } from "@/lib/i18n-config";
  * doesn't move a purchase decision — trust cues do.
  */
 const PHRASES_AR = [
-  "الدفع عند الاستلام ✓",
-  "شحن خلال ٢٤ ساعة ✓",
-  "ضمان ١٤ يوم ✓",
+  "الدفع عند الاستلام أو InstaPay ✓",
+  "توصيل خلال ٢–٥ أيام ✓",
+  "إرجاع ١٤ يوم + ضمان سنة ✓",
   "٢٧ محافظة ✓",
-  "واتساب ٢٤/٧ ✓",
+  "رد على واتساب خلال ٢٤ ساعة ✓",
 ] as const;
 
+// Every phrase must match checkout and the policies — answer engines quote
+// these strips as facts about the store.
 const PHRASES_EN = [
-  "Cash on delivery ✓",
-  "Ships within 24 hours ✓",
-  "14-day guarantee ✓",
+  "Cash on delivery or InstaPay ✓",
+  "Delivered in 2–5 days ✓",
+  "14-day returns · 1-year warranty ✓",
   "27 governorates ✓",
-  "WhatsApp 24/7 ✓",
+  "WhatsApp replies within 24 hours ✓",
 ] as const;
 
 /**

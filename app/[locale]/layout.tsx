@@ -86,11 +86,14 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_APP_URL ?? "https://mm-bags.vercel.app",
   ),
   title: {
-    default: "M.M Bags — شنط سفر بجودة عالية | Cairo, Egypt",
+    // The store is in Tama, Sohag (two branches, since 1998) and ships to all
+    // 27 governorates — the old "Cairo, Egypt" contradicted every page and
+    // the Organization data, which confuses answer engines.
+    default: "M.M Bags مصر — شنط سفر وشنط ضهر | سوهاج وشحن لكل المحافظات",
     template: "%s · M.M Bags",
   },
   description:
-    "تسوق أفضل شنط السفر والظهر والمدارس في مصر. جودة عالية بسعر معقول. شحن لكل 27 محافظة. الدفع عند الاستلام متاح.",
+    "M.M Bags متجر شنط سفر وضهر ولاب توب من سوهاج من 1998. شحن لكل 27 محافظة خلال 2–5 أيام، الدفع عند الاستلام أو InstaPay، إرجاع خلال 14 يوم وضمان سنة.",
   applicationName: "M.M Bags",
   authors: [{ name: "Marco Milad" }],
   creator: "Marco Milad",
@@ -102,8 +105,9 @@ export const metadata: Metadata = {
     "شنط مدارس",
     "شنط حريم",
     "شنط لاب توب",
+    "شنط سفر سوهاج",
     "travel bags Egypt",
-    "backpacks Cairo",
+    "luggage Egypt cash on delivery",
   ],
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],

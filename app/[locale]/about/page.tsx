@@ -22,11 +22,11 @@ export async function generateMetadata({
   if (!hasLocale(locale)) return {};
   const isAr = locale === "ar";
   return {
-    title: isAr ? "قصتنا | M.M Bags" : "Our story | M.M Bags",
+    title: isAr ? "قصتنا" : "Our story",
     description: isAr
       ? "M.M Bags تأسست في 1998 بمحافظة سوهاج — قصة براند عائلي بيديره ماركو ميلاد، مطور ورائد أعمال، بجودة حقيقية وسعر عادل."
       : "M.M Bags was founded in 1998 in Sohag governorate — the story of a family brand now run by Marco Milad, a developer and entrepreneur, with real quality at a fair price.",
-    alternates: localeAlternates("/about"),
+    alternates: localeAlternates("/about", locale),
   };
 }
 

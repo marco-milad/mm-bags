@@ -20,31 +20,39 @@ export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-/** Path → both-locale alternates map for Next.js metadata.alternates.languages. */
-export function localeAlternates(pathWithinLocale: string): {
+/**
+ * Path → canonical + hreflang alternates for Next.js metadata.alternates.
+ *
+ * Each locale is canonical to ITSELF. The EN pages are real translations,
+ * not duplicates: pointing their canonical at /ar told Google and Bing to
+ * drop every English page and ignore hreflang (audit T1). x-default stays
+ * on Arabic, the storefront default.
+ */
+export function localeAlternates(
+  pathWithinLocale: string,
+  locale: "ar" | "en",
+): {
   canonical: string;
   languages: Record<string, string>;
 } {
   const clean = pathWithinLocale.startsWith("/")
     ? pathWithinLocale
     : `/${pathWithinLocale}`;
-  // Canonical points at the AR version (storefront default) per the
-  // SEO spec. Each locale gets its own hreflang alternate.
+  const at = (l: "ar" | "en") => absoluteUrl(`/${l}${clean === "/" ? "" : clean}`);
   return {
-    canonical: absoluteUrl(`/ar${clean === "/" ? "" : clean}`),
-    languages: {
-      ar: absoluteUrl(`/ar${clean === "/" ? "" : clean}`),
-      en: absoluteUrl(`/en${clean === "/" ? "" : clean}`),
-      "x-default": absoluteUrl(`/ar${clean === "/" ? "" : clean}`),
-    },
+    canonical: at(locale),
+    languages: { ar: at("ar"), en: at("en"), "x-default": at("ar") },
   };
 }
 
 /** Brand description (used by Organization JSON-LD + OG fallbacks). */
+// Written as quotable facts (who, where, since when, how to pay, delivery,
+// returns): answer engines lift these sentences verbatim, so every claim
+// here must match checkout and the policy pages.
 export const SITE_DESCRIPTION_AR =
-  "تسوق أفضل شنط السفر والظهر والمدارس في مصر. جودة عالية بسعر معقول. شحن لكل 27 محافظة. الدفع عند الاستلام متاح.";
+  "M.M Bags متجر مصري لشنط السفر والضهر واللاب توب من سوهاج من 1998. شحن لكل 27 محافظة خلال 2–5 أيام، الدفع عند الاستلام أو InstaPay، إرجاع خلال 14 يوم وضمان سنة.";
 export const SITE_DESCRIPTION_EN =
-  "Premium travel, school, and everyday bags shipped across all 27 Egyptian governorates. Cash on delivery available.";
+  "M.M Bags is an Egyptian travel-bag and backpack store from Sohag, founded in 1998. Delivery to all 27 governorates in 2–5 days, cash on delivery or InstaPay, 14-day returns and a one-year warranty.";
 
 /** Brand social profiles (used by Organization sameAs). */
 export const SOCIAL_LINKS = [

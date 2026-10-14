@@ -55,6 +55,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/faq", priority: 0.5, changeFrequency: "monthly" },
     { path: "/contact", priority: 0.5, changeFrequency: "monthly" },
     { path: "/track", priority: 0.4, changeFrequency: "monthly" },
+  // Policies answer the questions buyers (and answer engines) ask most:
+  // shipping time/cost, returns, payment — they must be discoverable.
+  { path: "/shipping-policy", priority: 0.5, changeFrequency: "monthly" },
+  { path: "/refund-policy", priority: 0.5, changeFrequency: "monthly" },
+  { path: "/privacy-policy", priority: 0.2, changeFrequency: "yearly" },
+  { path: "/terms-of-service", priority: 0.2, changeFrequency: "yearly" },
   ];
 
   for (const locale of localePaths) {

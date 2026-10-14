@@ -8,6 +8,7 @@ import {
   SOCIAL_LINKS,
   absoluteUrl,
 } from "./site";
+import { brandFor, buildOffers, type OfferVariant } from "./offers";
 
 /**
  * JSON-LD builders. Each returns a plain object that the `<JsonLd>`
@@ -21,20 +22,57 @@ import {
  */
 
 // ─── Organization (homepage + global) ────────────────────────────────
+// The store: two physical branches in Tama, Sohag (since 1998) + nationwide
+// online orders. The old data said "Cairo", contradicting every page.
+// Spellings match the footer exactly — consistent name/address/phone
+// across pages is what lets search and answer engines trust a local store.
+const BRANCHES = [
+  { ar: "شارع الشهداء", en: "Shohada Street" },
+  { ar: "شارع العزراء", en: "Al-Ozraa Street" },
+] as const;
+
+function branchAddress(street: string): Record<string, unknown> {
+  return {
+    "@type": "PostalAddress",
+    streetAddress: street,
+    addressLocality: "Tama",
+    addressRegion: "Sohag",
+    addressCountry: "EG",
+  };
+}
+
 export function organizationSchema(): Record<string, unknown> {
+  const phone = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608").replace(/\s+/g, "");
   return {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": "OnlineStore",
+    "@id": `${SITE_URL}/#organization`,
     name: SITE_NAME,
+    alternateName: ["M.M Bags Egypt", "إم إم باجز", "ام ام باجز"],
     url: SITE_URL,
     logo: absoluteUrl("/assets/logos/logo-navbar.svg"),
     description: SITE_DESCRIPTION_EN,
+    foundingDate: "1998",
     founder: { "@type": "Person", name: SITE_FOUNDER },
-    address: {
-      "@type": "PostalAddress",
-      addressCountry: "EG",
-      addressRegion: "Cairo",
+    telephone: phone,
+    address: branchAddress(BRANCHES[0].en),
+    areaServed: { "@type": "Country", name: "Egypt" },
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer service",
+      telephone: phone,
+      availableLanguage: ["Arabic", "English"],
+      areaServed: "EG",
     },
+    department: BRANCHES.map((b) => ({
+      "@type": "Store",
+      name: `${SITE_NAME} — ${b.en}, Tama`,
+      address: branchAddress(b.en),
+      telephone: phone,
+      openingHours: "Mo-Su 11:00-22:00",
+    })),
+    paymentAccepted: "Cash on delivery, InstaPay",
+    currenciesAccepted: "EGP",
     sameAs: SOCIAL_LINKS,
   };
 }
@@ -81,12 +119,11 @@ export type ProductSchemaInput = {
   slug: string;
   locale: Locale;
   images: string[];
-  /** Effective price (sale_price ?? base_price). */
-  price: number;
-  /** Original price; null when no sale. */
-  originalPrice?: number | null;
-  /** Total stock across all variants — drives availability. */
-  totalStock: number;
+  basePrice: number;
+  salePrice: number | null;
+  /** Per-size prices/stock — the offer is built from these (same rule as the buy box). */
+  variants: ReadonlyArray<OfferVariant>;
+  collectionSlug?: string | null;
   sku?: string | null;
   averageRating?: number | null;
   reviewCount?: number;
@@ -94,20 +131,6 @@ export type ProductSchemaInput = {
 
 export function productSchema(p: ProductSchemaInput): Record<string, unknown> {
   const url = absoluteUrl(`/${p.locale}/products/${p.slug}`);
-  const availability =
-    p.totalStock > 0
-      ? "https://schema.org/InStock"
-      : "https://schema.org/OutOfStock";
-  const offers: Record<string, unknown> = {
-    "@type": "Offer",
-    url,
-    priceCurrency: "EGP",
-    price: p.price.toFixed(2),
-    availability,
-    itemCondition: "https://schema.org/NewCondition",
-    seller: { "@type": "Organization", name: SITE_NAME },
-  };
-
   const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -115,8 +138,14 @@ export function productSchema(p: ProductSchemaInput): Record<string, unknown> {
     description: p.description,
     image: p.images.length > 0 ? p.images : undefined,
     sku: p.sku ?? p.slug,
-    brand: { "@type": "Brand", name: SITE_NAME },
-    offers,
+    brand: { "@type": "Brand", name: brandFor(p.collectionSlug, SITE_NAME) },
+    offers: buildOffers({
+      url,
+      variants: p.variants,
+      base: p.basePrice,
+      sale: p.salePrice,
+      sellerName: SITE_NAME,
+    }),
   };
   if (p.averageRating && p.reviewCount && p.reviewCount > 0) {
     schema.aggregateRating = {

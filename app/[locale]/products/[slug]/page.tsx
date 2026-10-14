@@ -11,7 +11,6 @@ import {
 } from "@/lib/seo/jsonld";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { ViewItemTracker } from "@/components/analytics/ViewItemTracker";
-import { effectivePrice, totalStock } from "@/lib/catalog-shared";
 import { getProductBySlug, getRelatedProducts } from "@/lib/queries/catalog";
 import { ProductDetailLayout } from "@/components/product/ProductDetailLayout";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -33,19 +32,15 @@ export async function generateMetadata({
     (locale === "ar" ? product.description_ar : product.description_en) ??
     undefined;
   const isAr = locale === "ar";
-  const price = effectivePrice(product);
-  // Dynamic OG image with product context (title + image + price)
-  // served from the edge route at /api/og.
-  const ogParams = new URLSearchParams({
-    title: name,
-    price: String(Math.round(price)),
-  });
-  if (product.images?.[0]) ogParams.set("image", product.images[0]);
-  const ogUrl = `/api/og?${ogParams.toString()}`;
+  // Share preview = the real product photo. The generated /api/og card
+  // couldn't draw our WebP photos and rendered Arabic as disconnected,
+  // reversed letters with a stale price (audit T5); the photo has none of
+  // those problems. Brand card only when a product has no photo.
+  const ogUrl = product.images?.[0] ?? "/api/og";
   return {
-    title: `${name} | M.M Bags`,
+    title: `${name}`,
     description: description?.slice(0, 155),
-    alternates: localeAlternates(`/products/${slug}`),
+    alternates: localeAlternates(`/products/${slug}`, locale),
     openGraph: {
       title: name,
       description: description?.slice(0, 155),
@@ -53,14 +48,8 @@ export async function generateMetadata({
       type: "website",
       locale: isAr ? "ar_EG" : "en_US",
       alternateLocale: isAr ? "en_US" : "ar_EG",
-      images: [
-        {
-          url: ogUrl,
-          width: 1200,
-          height: 630,
-          alt: name,
-        },
-      ],
+      siteName: "M.M Bags",
+      images: [{ url: ogUrl, alt: name }],
     },
     twitter: {
       card: "summary_large_image",
@@ -129,9 +118,10 @@ export default async function ProductDetailPage({
       slug: product.slug,
       locale,
       images: product.images ?? [],
-      price: effectivePrice(product),
-      originalPrice: product.sale_price ? product.base_price : null,
-      totalStock: totalStock(product),
+      basePrice: product.base_price,
+      salePrice: product.sale_price,
+      variants: product.product_variants ?? [],
+      collectionSlug: product.collection?.slug ?? null,
       averageRating: summary.average,
       reviewCount: summary.total,
     }),

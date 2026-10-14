@@ -31,7 +31,7 @@ export async function generateMetadata({
     description: isAr
       ? "الشروط القانونية لاستخدام موقع M.M Bags والشراء منه — الحساب، الطلبات، الملكية الفكرية، القانون الحاكم، وحدود المسؤولية."
       : "The legal terms for using M.M Bags and shopping with us — account rules, orders, intellectual property, governing law, and liability limits.",
-    alternates: localeAlternates("/terms-of-service"),
+    alternates: localeAlternates("/terms-of-service", locale),
   };
 }
 
@@ -111,8 +111,8 @@ export default async function TermsOfServicePage({
           </Body>
           <Body isAr={isAr}>
             {isAr
-              ? "وسائل الدفع المتاحة: بطاقات الكارت (Visa / Mastercard / Meeza)، التقسيط عن طريق Valu و Sympl، أو الدفع عند الاستلام. كل وسيلة دفع بشروطها زي رسوم الدفع عند الاستلام (25 ج.م إضافية)."
-              : "Accepted payment methods: card payments (Visa / Mastercard / Meeza), instalments via Valu and Sympl, or cash on delivery. Each method has its own terms, such as the LE 25 cash-on-delivery surcharge."}
+              ? "وسائل الدفع المتاحة: الدفع عند الاستلام (برسوم إضافية 25 ج.م)، أو التحويل عن طريق InstaPay بدون رسوم. الدفع بالكارت والتقسيط غير متاحين حاليًا."
+              : "Accepted payment methods: cash on delivery (with an LE 25 surcharge) or an InstaPay transfer with no fee. Card payments and instalments are not currently available."}
           </Body>
         </Section>
 

@@ -273,8 +273,8 @@ export function Hero({
           <span className="inline-flex items-center gap-2 rounded-full border border-brass-400/60 bg-navy-900/60 bg-[linear-gradient(rgba(184,151,90,0.22),rgba(184,151,90,0.22))] px-4 py-1.5 text-sm font-semibold text-brass-50">
             <Rocket className="h-3.5 w-3.5 text-brass-200" aria-hidden />
             {locale === "ar"
-              ? "شحن خلال 24 ساعة"
-              : "Ships within 24 hours"}
+              ? "توصيل لكل مصر خلال ٢–٥ أيام"
+              : "Delivered across Egypt in 2–5 days"}
           </span>
         </div>
 
@@ -331,7 +331,7 @@ export function Hero({
           <li aria-hidden className="text-white/30">·</li>
           <li className="inline-flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5 text-brass-300" />
-            {locale === "ar" ? "ضمان ١٤ يوم" : "14-day guarantee"}
+            {locale === "ar" ? "إرجاع ١٤ يوم + ضمان سنة" : "14-day returns · 1-year warranty"}
           </li>
           <li aria-hidden className="text-white/30">·</li>
           <li className="inline-flex items-center gap-1.5">

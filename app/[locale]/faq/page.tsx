@@ -21,11 +21,11 @@ export async function generateMetadata({
   if (!hasLocale(locale)) return {};
   const isAr = locale === "ar";
   return {
-    title: isAr ? "الأسئلة الشائعة | M.M Bags" : "FAQ | M.M Bags",
+    title: isAr ? "الأسئلة الشائعة" : "FAQ",
     description: isAr
       ? "الأسئلة الشائعة عن M.M Bags: الشحن والتوصيل، الدفع، الإرجاع والضمان، المنتجات، والطلبات."
       : "Frequently asked questions about M.M Bags: shipping, payment, returns, warranty, products, and orders.",
-    alternates: localeAlternates("/faq"),
+    alternates: localeAlternates("/faq", locale),
   };
 }
 

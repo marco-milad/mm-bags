@@ -39,16 +39,19 @@ export async function generateMetadata({
     ? `تسوق ${name} من M.M Bags. ${products.length} منتج متاح. شحن لكل مصر.`
     : `Shop ${name} at M.M Bags. ${products.length} products available. Shipping across Egypt.`;
   return {
-    title: `${name} | M.M Bags`,
+    title: `${name}`,
     description,
-    alternates: localeAlternates(`/catalog/${slug}`),
+    alternates: localeAlternates(`/catalog/${slug}`, locale),
     openGraph: {
       title: `${name} · M.M Bags`,
       description,
       url: absoluteUrl(`/${locale}/catalog/${slug}`),
       type: "website",
       locale: isAr ? "ar_EG" : "en_US",
-      images: [`/api/og?title=${encodeURIComponent(name)}`],
+      siteName: "M.M Bags",
+      // A real product photo from this collection: the generated card
+      // mangled Arabic titles (audit T5). Brand card as the fallback.
+      images: [products.find((p) => p.images?.[0])?.images?.[0] ?? "/api/og"],
     },
   };
 }

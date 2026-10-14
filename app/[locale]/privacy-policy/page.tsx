@@ -31,7 +31,7 @@ export async function generateMetadata({
     description: isAr
       ? "بياناتك في M.M Bags — إيه اللي بنجمعه، ليه، مع مين بنشاركه، وحقوقك تحت قانون حماية البيانات المصري (١٥١ لسنة ٢٠٢٠)."
       : "Your data at M.M Bags — what we collect, why, who we share it with, and your rights under Egypt's Personal Data Protection Law (151/2020).",
-    alternates: localeAlternates("/privacy-policy"),
+    alternates: localeAlternates("/privacy-policy", locale),
   };
 }
 

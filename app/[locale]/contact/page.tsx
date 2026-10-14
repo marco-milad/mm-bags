@@ -19,11 +19,11 @@ export async function generateMetadata({
   if (!hasLocale(locale)) return {};
   const isAr = locale === "ar";
   return {
-    title: isAr ? "تواصل معنا | M.M Bags" : "Contact us | M.M Bags",
+    title: isAr ? "تواصل معنا" : "Contact us",
     description: isAr
       ? "تواصل مع M.M Bags: WhatsApp، البريد الإلكتروني، وحسابات السوشيال ميديا. هنرد عليك خلال 24 ساعة."
       : "Get in touch with M.M Bags via WhatsApp, email, or social. We respond within 24 hours.",
-    alternates: localeAlternates("/contact"),
+    alternates: localeAlternates("/contact", locale),
   };
 }
 
