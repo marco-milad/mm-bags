@@ -123,6 +123,17 @@ export const metadata: Metadata = {
     site: "@mmbags_eg",
     creator: "@mmbags_eg",
   },
+  // Search Console / Bing Webmaster ownership tags (HTML-tag method — the
+  // only one available on the vercel.app host, which has no DNS to edit).
+  // Codes live in Vercel env vars; a redeploy picks them up.
+  verification: {
+    ...(process.env.GOOGLE_SITE_VERIFICATION
+      ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+      : {}),
+    ...(process.env.BING_SITE_VERIFICATION
+      ? { other: { "msvalidate.01": process.env.BING_SITE_VERIFICATION } }
+      : {}),
+  },
 };
 
 export function generateStaticParams() {
