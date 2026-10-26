@@ -11,7 +11,10 @@ import { sanitizeProductIds, type WishlistItem } from "@/lib/wishlist/merge";
 // Writes check-then-insert instead of upsert: the table's
 // unique(user_id, product_id, variant_id) never fires for the NULL
 // variant_id rows we write (NULLs are distinct in Postgres), so an upsert
-// silently inserted a duplicate row on every add.
+// silently inserted a duplicate row on every add. Migration 0028 adds a
+// partial unique index for those rows; PostgREST can't target a partial
+// index with on_conflict, so a 23505 from a concurrent add means "already
+// saved", not failure.
 
 /** Returns false when the DB write failed for a signed-in user. */
 export async function dbWishlistAdd(productId: string): Promise<boolean> {
@@ -35,7 +38,8 @@ export async function dbWishlistAdd(productId: string): Promise<boolean> {
   const { error } = await supabase
     .from("wishlists")
     .insert({ user_id: user.id, product_id: id, variant_id: null });
-  return !error;
+  // 23505 = another device saved it between our check and insert.
+  return !error || error.code === "23505";
 }
 
 /** Returns false when the DB delete failed for a signed-in user. */
@@ -100,7 +104,15 @@ export async function dbWishlistMerge(
   if (rows.length === 0) return true;
 
   const { error } = await supabase.from("wishlists").insert(rows);
-  return !error;
+  if (!error) return true;
+  if (error.code !== "23505") return false;
+
+  // A concurrent add raced one of these rows in, which fails the whole
+  // batch. Fall back to one insert per row, where a duplicate is fine.
+  const results = await Promise.all(
+    rows.map((row) => supabase.from("wishlists").insert(row)),
+  );
+  return results.every((r) => !r.error || r.error.code === "23505");
 }
 
 export async function getWishlistedProducts(
