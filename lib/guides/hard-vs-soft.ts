@@ -2,8 +2,8 @@ import type { Guide } from "./types";
 
 export const hardVsSoft: Guide = {
   slug: "hard-vs-soft-luggage",
-  published: "2026-10-14",
-  updated: "2026-10-14",
+  published: "2026-10-26",
+  updated: "2026-10-26",
   title: {
     ar: "شنطة سفر هارد ولا سوفت؟ الفرق وإزاي تختار",
     en: "Hard-shell vs soft luggage: the differences and how to choose",
@@ -190,6 +190,6 @@ export const hardVsSoft: Guide = {
   related: [
     { href: "/guides/luggage-materials", label: { ar: "الفرق بين خامات شنط السفر", en: "Suitcase materials compared" } },
     { href: "/guides/luggage-size-guide", label: { ar: "دليل مقاسات شنط السفر", en: "Suitcase size guide" } },
-    { href: "/guides/cabin-bag-size-by-airline", label: { ar: "مقاس شنطة الكابينة لكل شركة طيران", en: "Cabin bag size by airline" } },
+    { href: "/guides/cabin-bag-size-by-airline", label: { ar: "مقاس ووزن شنطة الكابينة", en: "Cabin bag size and weight" } },
   ],
 };

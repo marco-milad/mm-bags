@@ -33,12 +33,12 @@ describe("cabin guide data", () => {
   it("our Milano 20 result matches a hand check", () => {
     const milano = OUR_CABIN_BAGS[0].dims;
     const fit = (en: string) => {
-      const a = AIRLINES.find((x) => x.name.en === en)!;
-      return fitsCabin(milano, a.fitLimit ?? a.limit);
+      const a = AIRLINES.find((x) => x.name.en.startsWith(en))!;
+      return fitsCabin(milano, a.limit);
     };
     expect(fit("EgyptAir")).toBe(true);
-    expect(fit("Qatar Airways")).toBe(false);
-    expect(fit("flynas")).toBe(false);
-    expect(fit("Emirates")).toBe(false); // judged on the stricter 20 cm depth
+    expect(fit("Kuwait Airways")).toBe(true);
+    expect(fit("Air Arabia")).toBe(false); // 22 cm deep > 20
+    expect(fit("Royal Jordanian")).toBe(false); // 55 cm long > 51
   });
 });

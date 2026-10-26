@@ -8,8 +8,8 @@ import type { Guide } from "./types";
  */
 export const sizeGuide: Guide = {
   slug: "luggage-size-guide",
-  published: "2026-10-14",
-  updated: "2026-10-14",
+  published: "2026-10-26",
+  updated: "2026-10-26",
   title: {
     ar: "دليل مقاسات شنط السفر: 20 و24 و28 بوصة بالسنتيمتر واللتر",
     en: "Suitcase size guide: 20, 24 and 28 inch in cm and litres",
@@ -153,8 +153,8 @@ export const sizeGuide: Guide = {
           kind: "list",
           items: [
             {
-              ar: "أغلب شركات الطيران بتحدد مجموع أبعاد الشنطة المشحونة (الطول + العرض + العمق) بـ 158 سم شامل العجل. شنط 30 بوصة وأكبر ممكن تعدّي الرقم ده وتتحسب «مقاس زيادة» برسوم.",
-              en: "Most airlines cap a checked bag at 158 cm in total (length + width + depth) including wheels. Cases of 30 inches and up can exceed that and be charged as oversize.",
+              ar: "حد شائع لمجموع أبعاد الشنطة المشحونة (الطول + العرض + العمق) هو 158 سم شامل العجل — زي مصر للطيران. شنط 30 بوصة وأكبر ممكن تعدّي الرقم ده وتتحسب «مقاس زيادة» برسوم.",
+              en: "A common cap on a checked bag's total size (length + width + depth) is 158 cm including wheels — EgyptAir uses it, for example. Cases of 30 inches and up can exceed that and be charged as oversize.",
             },
             {
               ar: "حد الوزن المجاني في تذاكر كتير 23 كيلو للشنطة. كل ما الشنطة تكبر، كل ما توصل للحد ده أسرع — وزّنها في البيت.",
@@ -187,8 +187,8 @@ export const sizeGuide: Guide = {
     {
       q: { ar: "شنطة 24 بوصة تدخل الكابينة؟", en: "Can a 24-inch suitcase go in the cabin?" },
       a: {
-        ar: "لأ. طولها حوالي 61–70 سم، وحد الكابينة في أغلب الشركات 55–56 سم. شنطة الكابينة هي الـ 20 بوصة.",
-        en: "No. It's about 61–70 cm tall, while most airlines' cabin limit is 55–56 cm. The cabin size is 20 inches.",
+        ar: "لأ. طولها حوالي 61–70 سم، وحد الكابينة في الشركات اللي راجعناها من 51 لـ 56 سم. شنطة الكابينة هي الـ 20 بوصة.",
+        en: "No. It's about 61–70 cm tall, while the cabin limits we checked run from 51 to 56 cm. The cabin size is 20 inches.",
       },
     },
     {
@@ -217,7 +217,7 @@ export const sizeGuide: Guide = {
     { label: "IATA — Passenger baggage rules", url: "https://www.iata.org/en/programs/ops-infra/baggage/passenger-baggage-rules/" },
   ],
   related: [
-    { href: "/guides/cabin-bag-size-by-airline", label: { ar: "مقاس شنطة الكابينة لكل شركة طيران", en: "Cabin bag size by airline" } },
+    { href: "/guides/cabin-bag-size-by-airline", label: { ar: "مقاس ووزن شنطة الكابينة", en: "Cabin bag size and weight" } },
     { href: "/guides/hard-vs-soft-luggage", label: { ar: "شنطة هارد ولا سوفت؟", en: "Hard-shell or soft luggage?" } },
     { href: "/guides/luggage-materials", label: { ar: "الفرق بين خامات شنط السفر", en: "Suitcase materials compared" } },
   ],

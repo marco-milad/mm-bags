@@ -2,8 +2,8 @@ import type { Guide } from "./types";
 
 export const materials: Guide = {
   slug: "luggage-materials",
-  published: "2026-10-14",
-  updated: "2026-10-14",
+  published: "2026-10-26",
+  updated: "2026-10-26",
   title: {
     ar: "بولي كربونيت ولا ABS ولا بولي بروبلين؟ خامات شنط السفر",
     en: "Polycarbonate vs ABS vs polypropylene: suitcase materials explained",
