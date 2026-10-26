@@ -13,6 +13,8 @@ import {
 } from "@/lib/orders/ownership";
 import { hitLimits, requestIp } from "@/lib/security/rate-limit";
 import { normalizePhone, tooManyText } from "@/lib/security/limits";
+import { verifyHuman } from "@/lib/security/turnstile";
+import { HUMAN_CHECK_FAILED } from "@/lib/security/turnstile-core";
 import { EG_GOVERNORATES } from "./governorates";
 import { validateCart, type ValidateCartResult } from "./validate-cart";
 import {
@@ -78,6 +80,8 @@ function generateOrderNumber(): string {
 
 export async function placeOrder(
   rawInput: PlaceOrderInput,
+  /** Cloudflare Turnstile token; only required once Turnstile is configured. */
+  turnstileToken?: string | null,
 ): Promise<PlaceOrderResult> {
   const parsed = placeOrderInputSchema.safeParse(rawInput);
   if (!parsed.success) {
@@ -114,8 +118,9 @@ export async function placeOrder(
   // Every COD order reserves real stock, so a script flooding fake orders
   // could empty the shelves. Cap orders per network and per phone number.
   // placeOrder doesn't receive the locale, so the message is bilingual.
+  const ip = await requestIp();
   const limited = await hitLimits([
-    ["orderPerIp", await requestIp()],
+    ["orderPerIp", ip],
     ["orderPerPhone", normalizePhone(checkout.phone)],
   ]);
   if (!limited.ok) {
@@ -123,6 +128,14 @@ export async function placeOrder(
       ok: false,
       code: "CHECKOUT_FAILED",
       error: `${tooManyText(true)} / ${tooManyText(false)}`,
+    };
+  }
+  // Fake COD orders cost a courier trip each: scripts must pass Turnstile.
+  if (!(await verifyHuman(turnstileToken, ip, "placeOrder"))) {
+    return {
+      ok: false,
+      code: "HUMAN_CHECK_FAILED",
+      error: `${HUMAN_CHECK_FAILED.ar} / ${HUMAN_CHECK_FAILED.en}`,
     };
   }
 

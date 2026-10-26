@@ -117,6 +117,8 @@ export type PlaceOrderErrorCode =
   | "INVALID_QUANTITY"
   | "INSUFFICIENT_STOCK"
   | "PRICE_CHANGED"
+  /** Turnstile token missing or rejected — the client resets the widget. */
+  | "HUMAN_CHECK_FAILED"
   | "CHECKOUT_FAILED";
 
 /** The subset of a cart line the validator needs. Full cart lines

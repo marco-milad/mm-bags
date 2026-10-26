@@ -5,6 +5,8 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hitLimit, requestIp } from "@/lib/security/rate-limit";
 import { tooManyText } from "@/lib/security/limits";
+import { verifyHuman } from "@/lib/security/turnstile";
+import { HUMAN_CHECK_FAILED } from "@/lib/security/turnstile-core";
 import { reviewSchema, type ReviewInput } from "./schema";
 
 export type SubmitReviewResult =
@@ -14,6 +16,8 @@ export type SubmitReviewResult =
 export async function submitReview(
   raw: ReviewInput,
   productSlug: string,
+  /** Cloudflare Turnstile token; only required once Turnstile is configured. */
+  turnstileToken?: string | null,
 ): Promise<SubmitReviewResult> {
   const parsed = reviewSchema.safeParse(raw);
   if (!parsed.success) {
@@ -22,9 +26,13 @@ export async function submitReview(
   const { productId, name, rating, title, body, images } = parsed.data;
 
   // Reviews go to a moderation queue — cap per network so it can't be flooded.
-  const limited = await hitLimit("reviewPerIp", await requestIp());
+  const ip = await requestIp();
+  const limited = await hitLimit("reviewPerIp", ip);
   if (!limited.ok) {
     return { ok: false, error: `${tooManyText(true)} / ${tooManyText(false)}` };
+  }
+  if (!(await verifyHuman(turnstileToken, ip, "review"))) {
+    return { ok: false, error: `${HUMAN_CHECK_FAILED.ar} / ${HUMAN_CHECK_FAILED.en}` };
   }
 
   // Capture user if logged in (today: nobody). The RLS INSERT policy needs

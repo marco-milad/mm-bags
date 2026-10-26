@@ -10,6 +10,8 @@ import {
   type ContactSubjectId,
 } from "@/lib/contact-schema";
 import { cn } from "@/lib/utils";
+import { HUMAN_CHECK_FAILED, TURNSTILE_FIELD } from "@/lib/security/turnstile-core";
+import { TurnstileWidget, useTurnstile } from "@/components/security/Turnstile";
 
 type Status =
   | { kind: "idle" }
@@ -35,6 +37,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   const submitting = status.kind === "submitting";
+  const human = useTurnstile();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,12 +62,19 @@ export function ContactForm({ locale }: { locale: Locale }) {
     }
 
     setStatus({ kind: "submitting" });
+    const turnstileToken = await human.getToken();
+    if (human.blocked(turnstileToken)) {
+      human.reset();
+      setStatus({ kind: "error", message: isRTL ? HUMAN_CHECK_FAILED.ar : HUMAN_CHECK_FAILED.en });
+      return;
+    }
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(validated.data),
+        body: JSON.stringify({ ...validated.data, [TURNSTILE_FIELD]: turnstileToken }),
       });
+      human.reset();
       if (!res.ok) {
         setStatus({
           kind: "error",
@@ -73,6 +83,10 @@ export function ContactForm({ locale }: { locale: Locale }) {
               ? isRTL
                 ? "بعتّ رسايل كتير في وقت قصير. استنى شوية، أو كلمنا على WhatsApp."
                 : "Too many messages in a short time. Wait a bit, or reach us on WhatsApp."
+              : res.status === 403
+                ? isRTL
+                  ? HUMAN_CHECK_FAILED.ar
+                  : HUMAN_CHECK_FAILED.en
               : isRTL
                 ? "حصل خطأ، جرب تاني أو ابعتلنا على WhatsApp."
                 : "Something went wrong — try again or reach us on WhatsApp.",
@@ -106,7 +120,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit} onFocusCapture={human.activate} className="space-y-4" noValidate>
       <Field
         id="contact-name"
         label={isRTL ? "الاسم" : "Name"}
@@ -219,6 +233,8 @@ export function ContactForm({ locale }: { locale: Locale }) {
           />
         </label>
       </div>
+
+      <TurnstileWidget locale={locale} control={human} action="contact" />
 
       {status.kind === "error" && (
         <p

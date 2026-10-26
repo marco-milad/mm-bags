@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { contactFormSchema, CONTACT_SUBJECT_LABELS } from "@/lib/contact-schema";
 import { adminEmail, emailFrom, getResend } from "@/lib/email";
 import { hitLimit, ipFromRequest } from "@/lib/security/rate-limit";
+import { verifyHuman } from "@/lib/security/turnstile";
+import { TURNSTILE_FIELD } from "@/lib/security/turnstile-core";
 
 export const runtime = "nodejs";
 
@@ -35,12 +37,17 @@ export async function POST(request: Request) {
   }
 
   // Each message is an email to Marco: cap per network (audit M3).
-  const limited = await hitLimit("contactPerIp", ipFromRequest(request));
+  const ip = ipFromRequest(request);
+  const limited = await hitLimit("contactPerIp", ip);
   if (!limited.ok) {
     return NextResponse.json(
       { error: "rate_limited" },
       { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
     );
+  }
+  const token = (body as Record<string, unknown> | null)?.[TURNSTILE_FIELD];
+  if (!(await verifyHuman(token, ip, "contact"))) {
+    return NextResponse.json({ error: "human_check_failed" }, { status: 403 });
   }
 
   const { name, email, phone, subject, message, locale } = parsed.data;

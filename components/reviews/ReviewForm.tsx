@@ -9,6 +9,8 @@ import type { Locale } from "@/lib/i18n-config";
 import { reviewSchema, type ReviewInput } from "@/lib/reviews/schema";
 import { submitReview } from "@/lib/reviews/actions";
 import { cn } from "@/lib/utils";
+import { TurnstileWidget, useTurnstile } from "@/components/security/Turnstile";
+import { HUMAN_CHECK_FAILED } from "@/lib/security/turnstile-core";
 
 const MAX_PHOTOS = 3;
 
@@ -25,6 +27,7 @@ export function ReviewForm({
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const human = useTurnstile();
   // Photo upload state — array of public URLs returned from the upload
   // endpoint. We keep this OUTSIDE react-hook-form because the inputs
   // are uncontrolled file pickers; rhf would over-serialize them.
@@ -98,12 +101,20 @@ export function ReviewForm({
   const onSubmit = handleSubmit((values) => {
     setServerError(null);
     startTransition(async () => {
+      const turnstileToken = await human.getToken();
+      if (human.blocked(turnstileToken)) {
+        human.reset();
+        setServerError(isRTL ? HUMAN_CHECK_FAILED.ar : HUMAN_CHECK_FAILED.en);
+        return;
+      }
       // Photos are merged here rather than as a controlled rhf field so
       // the form state stays clean even when a user picks → removes → picks.
       const result = await submitReview(
         { ...values, images: photoUrls },
         productSlug,
+        turnstileToken,
       );
+      human.reset();
       if (!result.ok) {
         setServerError(result.error);
         return;
@@ -148,6 +159,7 @@ export function ReviewForm({
   return (
     <form
       onSubmit={onSubmit}
+      onFocusCapture={human.activate}
       noValidate
       className="flex flex-col gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5"
     >
@@ -287,6 +299,8 @@ export function ReviewForm({
           </p>
         )}
       </Field>
+
+      <TurnstileWidget locale={locale} control={human} action="review" />
 
       {serverError && (
         <p role="alert" className="text-sm text-[var(--color-error)]">

@@ -8,6 +8,8 @@ import type { Locale } from "@/lib/i18n-config";
 import { backInStockSchema, type BackInStockInput } from "@/lib/notifications/schema";
 import { subscribeBackInStock } from "@/lib/notifications/actions";
 import { cn } from "@/lib/utils";
+import { TurnstileWidget, useTurnstile } from "@/components/security/Turnstile";
+import { HUMAN_CHECK_FAILED } from "@/lib/security/turnstile-core";
 
 export function BackInStockForm({
   productId,
@@ -21,6 +23,7 @@ export function BackInStockForm({
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const human = useTurnstile();
 
   const {
     register,
@@ -45,13 +48,20 @@ export function BackInStockForm({
   const onSubmit = handleSubmit((values) => {
     setServerError(null);
     startTransition(async () => {
+      const turnstileToken = await human.getToken();
+      if (human.blocked(turnstileToken)) {
+        human.reset();
+        setServerError(locale === "ar" ? HUMAN_CHECK_FAILED.ar : HUMAN_CHECK_FAILED.en);
+        return;
+      }
       const result = await subscribeBackInStock({
         productId,
         variantId,
         channel: values.channel,
         email: values.channel === "email" ? values.email : undefined,
         phone: values.channel === "whatsapp" ? values.phone : undefined,
-      });
+      }, turnstileToken);
+      human.reset();
       if (!result.ok) {
         setServerError(result.error);
         return;
@@ -77,6 +87,7 @@ export function BackInStockForm({
   return (
     <form
       onSubmit={onSubmit}
+      onFocusCapture={human.activate}
       noValidate
       className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
     >
@@ -161,6 +172,8 @@ export function BackInStockForm({
           )}
         </div>
       )}
+
+      <TurnstileWidget locale={locale} control={human} action="back-in-stock" />
 
       {serverError && (
         <p role="alert" className="text-xs text-[var(--color-error)]">

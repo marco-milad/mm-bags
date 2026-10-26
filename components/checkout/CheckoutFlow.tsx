@@ -24,6 +24,7 @@ import { CheckoutSkeleton } from "@/components/cart/CartSkeleton";
 import { ShippingForm } from "./ShippingForm";
 import { PaymentSelector } from "./PaymentSelector";
 import { OrderReview } from "./OrderReview";
+import { TurnstileWidget, useTurnstile } from "@/components/security/Turnstile";
 
 const SHIPPING_FIELDS = [
   "name",
@@ -58,6 +59,8 @@ export function CheckoutFlow({
   const [step, setStep] = useState<CheckoutStep>(1);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Eager: the widget only mounts on the Review step, so the script loads there.
+  const human = useTurnstile({ eager: true });
 
   const form = useForm<CheckoutValues>({
     resolver: zodResolver(checkoutSchema),
@@ -107,6 +110,13 @@ export function CheckoutFlow({
     if (hasSoldOut) return;
     setServerError(null);
     startTransition(async () => {
+      // Waits (spinner showing) if Cloudflare hasn't answered yet.
+      const turnstileToken = await human.getToken();
+      if (human.blocked(turnstileToken)) {
+        human.reset();
+        setServerError(checkoutErrorMessage("HUMAN_CHECK_FAILED", locale));
+        return;
+      }
       const result = await placeOrder({
         checkout: values,
         items: items.map((i) => ({
@@ -122,7 +132,9 @@ export function CheckoutFlow({
           color_hex: i.color_hex,
           size_inches: i.size_inches,
         })),
-      });
+      }, turnstileToken);
+      // The token was spent whatever the outcome; fetch a fresh one.
+      human.reset();
       if (!result.ok) {
         // PRICE_CHANGED: the cart went stale between add-to-cart and checkout;
         // the server re-priced it and refused to charge the old total silently.
@@ -244,6 +256,7 @@ export function CheckoutFlow({
                 </p>
               </header>
               <OrderReview values={values} items={items} locale={locale} />
+              <TurnstileWidget locale={locale} control={human} action="checkout" />
               {hasSoldOut && (
                 // role="status": the stock refresh can flip this on after the
                 // shopper reached Review, so it must be announced.

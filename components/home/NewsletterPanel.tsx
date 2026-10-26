@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Loader2, Wallet } from "lucide-react";
 import { useState } from "react";
 import type { Locale } from "@/lib/i18n-config";
+import { HUMAN_CHECK_FAILED, TURNSTILE_FIELD } from "@/lib/security/turnstile-core";
+import { TurnstileWidget, useTurnstile } from "@/components/security/Turnstile";
 
 // Kept in sync with the code the /api/newsletter → Resend welcome
 // email template emails to new subscribers. Displayed here in the
@@ -34,18 +36,25 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   const submitting = status.kind === "submitting";
+  const human = useTurnstile();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return;
-
     setStatus({ kind: "submitting" });
+    const turnstileToken = await human.getToken();
+    if (human.blocked(turnstileToken)) {
+      human.reset();
+      setStatus({ kind: "error", message: isRTL ? HUMAN_CHECK_FAILED.ar : HUMAN_CHECK_FAILED.en });
+      return;
+    }
     try {
       const res = await fetch("/api/newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), locale }),
+        body: JSON.stringify({ email: email.trim(), locale, [TURNSTILE_FIELD]: turnstileToken }),
       });
+      human.reset();
       if (!res.ok) {
         setStatus({
           kind: "error",
@@ -54,6 +63,10 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
               ? isRTL
                 ? "محاولات كتير في وقت قصير. استنى شوية وجرّب تاني."
                 : "Too many attempts in a short time. Please wait a bit."
+              : res.status === 403
+                ? isRTL
+                  ? HUMAN_CHECK_FAILED.ar
+                  : HUMAN_CHECK_FAILED.en
               : isRTL
                 ? "في مشكلة، جرب تاني."
                 : "Something went wrong — please try again.",
@@ -173,7 +186,7 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <form onSubmit={handleSubmit} onFocusCapture={human.activate} className="flex flex-col gap-3">
               <label className="sr-only" htmlFor="mm-newsletter-email">
                 {isRTL ? "البريد الإلكتروني" : "Email"}
               </label>
@@ -207,6 +220,7 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
                   </>
                 )}
               </button>
+              <TurnstileWidget locale={locale} control={human} action="newsletter" />
               {status.kind === "error" && (
                 <p
                   role="alert"

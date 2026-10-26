@@ -4,6 +4,8 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hitLimit, requestIp } from "@/lib/security/rate-limit";
 import { tooManyText } from "@/lib/security/limits";
+import { verifyHuman } from "@/lib/security/turnstile";
+import { HUMAN_CHECK_FAILED } from "@/lib/security/turnstile-core";
 import { backInStockSchema, type BackInStockInput } from "./schema";
 
 export type SubscribeResult =
@@ -12,6 +14,8 @@ export type SubscribeResult =
 
 export async function subscribeBackInStock(
   raw: BackInStockInput,
+  /** Cloudflare Turnstile token; only required once Turnstile is configured. */
+  turnstileToken?: string | null,
 ): Promise<SubscribeResult> {
   const parsed = backInStockSchema.safeParse(raw);
   if (!parsed.success) {
@@ -20,9 +24,13 @@ export async function subscribeBackInStock(
   const { productId, variantId, channel, email, phone } = parsed.data;
 
   // Each subscription can trigger a paid WhatsApp send later: cap per network.
-  const limited = await hitLimit("restockPerIp", await requestIp());
+  const ip = await requestIp();
+  const limited = await hitLimit("restockPerIp", ip);
   if (!limited.ok) {
     return { ok: false, error: `${tooManyText(true)} / ${tooManyText(false)}` };
+  }
+  if (!(await verifyHuman(turnstileToken, ip, "backInStock"))) {
+    return { ok: false, error: `${HUMAN_CHECK_FAILED.ar} / ${HUMAN_CHECK_FAILED.en}` };
   }
 
   // Capture user_id if logged in (currently nobody is — guest flow is the path).

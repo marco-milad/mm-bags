@@ -6,6 +6,8 @@ import {
 import { adminEmail, emailFrom, getResend } from "@/lib/email";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { hitLimits, ipFromRequest } from "@/lib/security/rate-limit";
+import { verifyHuman } from "@/lib/security/turnstile";
+import { TURNSTILE_FIELD } from "@/lib/security/turnstile-core";
 
 export const runtime = "nodejs";
 
@@ -41,8 +43,9 @@ export async function POST(request: Request) {
 
   // Each signup emails the address given — without a cap this endpoint could
   // be used to bomb someone's inbox and burn the email quota (audit M3).
+  const ip = ipFromRequest(request);
   const limited = await hitLimits([
-    ["newsletterPerIp", ipFromRequest(request)],
+    ["newsletterPerIp", ip],
     ["newsletterPerEmail", email],
   ]);
   if (!limited.ok) {
@@ -50,6 +53,10 @@ export async function POST(request: Request) {
       { error: "rate_limited" },
       { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
     );
+  }
+  const token = (body as Record<string, unknown> | null)?.[TURNSTILE_FIELD];
+  if (!(await verifyHuman(token, ip, "newsletter"))) {
+    return NextResponse.json({ error: "human_check_failed" }, { status: 403 });
   }
 
   // 1) Persist the subscription. Upsert on `email` so a returning subscriber
