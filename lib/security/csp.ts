@@ -25,6 +25,8 @@ export function buildCsp(opts: {
   isDev?: boolean;
   /** Vercel preview deployments inject the Vercel toolbar. */
   isPreview?: boolean;
+  /** Only on HTTPS hosting (Vercel): a local `next start` is plain http. */
+  upgradeInsecure?: boolean;
 }): string {
   const supabase = opts.supabaseOrigin ? [opts.supabaseOrigin] : [];
   const supabaseWs = opts.supabaseOrigin ? [opts.supabaseOrigin.replace(/^https:/, "wss:")] : [];
@@ -59,7 +61,7 @@ export function buildCsp(opts: {
   };
 
   const parts = Object.entries(directives).map(([k, v]) => `${k} ${v.join(" ")}`);
-  if (!opts.isDev) parts.push("upgrade-insecure-requests");
+  if (opts.upgradeInsecure) parts.push("upgrade-insecure-requests");
   parts.push(`report-uri ${CSP_REPORT_PATH}`);
   return parts.join("; ");
 }

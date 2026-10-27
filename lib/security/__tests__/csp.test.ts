@@ -11,7 +11,7 @@ const parse = (csp: string) =>
   );
 
 describe("buildCsp", () => {
-  const prod = parse(buildCsp({ supabaseOrigin: SUPA }));
+  const prod = parse(buildCsp({ supabaseOrigin: SUPA, upgradeInsecure: true }));
 
   it("never allows everything", () => {
     for (const [k, v] of Object.entries(prod)) {
@@ -56,6 +56,8 @@ describe("buildCsp", () => {
     expect(dev["script-src"]).toContain("'unsafe-eval'");
     expect(dev["connect-src"]).toContain("ws:");
     expect(dev).not.toHaveProperty("upgrade-insecure-requests");
+    // A local `next start` (plain http) must not upgrade its own requests.
+    expect(parse(buildCsp({ supabaseOrigin: SUPA }))).not.toHaveProperty("upgrade-insecure-requests");
     const preview = parse(buildCsp({ supabaseOrigin: SUPA, isPreview: true }));
     expect(preview["script-src"]).toContain("https://vercel.live");
     expect(prod["script-src"]).not.toContain("https://vercel.live");

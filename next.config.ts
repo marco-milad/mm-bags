@@ -109,6 +109,7 @@ const nextConfig: NextConfig = {
               supabaseOrigin: supabaseUrl ? new URL(supabaseUrl).origin : undefined,
               isDev: process.env.NODE_ENV === "development",
               isPreview: process.env.VERCEL_ENV === "preview",
+              upgradeInsecure: process.env.VERCEL === "1",
             }),
           },
           { key: "X-Content-Type-Options", value: "nosniff" },
