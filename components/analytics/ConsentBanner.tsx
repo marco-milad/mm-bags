@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { setConsent } from "@/lib/analytics/consent-actions";
+import { trackConsentDecision } from "@/lib/analytics/track";
 import type { ConsentState } from "@/lib/analytics/identity";
 import type { Locale } from "@/lib/i18n-config";
 
@@ -68,6 +69,8 @@ export function ConsentBanner({ locale }: { locale: Locale }) {
     // Optimistic: the answer is recorded server-side, but the banner should
     // close the moment it is clicked rather than after the round trip.
     setAnswered(true);
+    // Counted anonymously (no id) so the dashboard can show the acceptance rate.
+    if (decision === "accepted" || decision === "rejected") trackConsentDecision(decision);
     startTransition(() => {
       void setConsent(decision);
     });
@@ -83,8 +86,8 @@ export function ConsentBanner({ locale }: { locale: Locale }) {
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 shadow-lg md:flex md:items-center md:gap-5">
         <p className="text-xs leading-relaxed text-[var(--color-text)] md:flex-1">
           {isAr
-            ? "بنستخدم كوكيز تحليلات عشان نعرف الصفحات اللي بتتزار والكلمات اللي بتتبحث. مش هنشغّلها غير لما توافق، ومفيش إعلانات ولا مشاركة مع أي طرف تاني."
-            : "We use analytics cookies to see which pages get visited and what people search for. Nothing runs until you agree, and nothing is used for advertising or shared with anyone."}{" "}
+            ? "بنعدّ الزيارات بشكل مجهول من غير كوكيز عشان نحسّن الموقع. لو وافقت، هنستخدم كوكيز تحليلات عشان نعرف لو رجعت تزورنا تاني وإيه اللي بتدوّر عليه. مفيش إعلانات ولا مشاركة مع أي حد."
+            : "We count visits anonymously, without cookies, to improve the shop. If you agree, we'll use analytics cookies to recognise a return visit and what you search for. No ads, and nothing is shared with anyone."}{" "}
           <Link
             href={`/${locale}/privacy-policy`}
             className="underline underline-offset-2 hover:text-[var(--color-primary)]"

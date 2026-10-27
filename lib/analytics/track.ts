@@ -23,7 +23,11 @@ type TrackInput = {
   utmCampaign?: string;
 };
 
-type QueuedEvent = TrackInput & {
+/** Anonymous-only: the banner decision, counted without any id. */
+type ConsentEventName = "consent_accepted" | "consent_rejected";
+
+type QueuedEvent = Omit<TrackInput, "name"> & {
+  name: EventName | ConsentEventName;
   id: string;
   occurredAt: string;
   path: string;
@@ -34,13 +38,15 @@ type QueuedEvent = TrackInput & {
 /**
  * Consent is readable from the client because the decision cookie is
  * deliberately NOT HttpOnly — unlike mm_vid, it carries no identity, and the
- * page needs it to decide whether to render the banner and whether to emit at
- * all.
+ * page needs it to decide whether to render the banner and how to emit.
  *
- * This is a courtesy stop, not the enforcement point. The proxy refuses to
- * mint ids without consent and /api/events refuses to store without it; this
- * only spares the network a beacon that would be discarded anyway, and stops
- * path and referrer leaving the browser after someone has declined.
+ * With consent, events go to /api/events and carry the visitor/session
+ * cookies. Without it (declined OR not answered), events go to
+ * /api/events/anon: no cookies are set or read for identity, nothing is
+ * written to the device, and the only link between events is `visitKey`,
+ * a random id that lives in this tab's memory and dies with it — so one
+ * visit's path is measurable, but a return visit can never be recognised.
+ * The server enforces both rules; this file only routes.
  */
 function consentGranted(): boolean {
   if (typeof document === "undefined") return false;
@@ -49,11 +55,29 @@ function consentGranted(): boolean {
     .some((c) => c === "mm_consent=accepted");
 }
 
+/**
+ * The browser's "do not sell or share" signal. Honoured as a full opt-out:
+ * a visitor sending it is not counted even anonymously.
+ */
+function globalPrivacyControl(): boolean {
+  return typeof navigator !== "undefined" &&
+    (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true;
+}
+
+/** Random per open tab; never persisted. Survives client-side navigation only. */
+let visitKey: string | null = null;
+function currentVisitKey(): string {
+  visitKey ??= crypto.randomUUID();
+  return visitKey;
+}
+
 const ENDPOINT = "/api/events";
+const ANON_ENDPOINT = "/api/events/anon";
 const FLUSH_AT = 10;
 const IDLE_MS = 5_000;
 
 let queue: QueuedEvent[] = [];
+let anonQueue: QueuedEvent[] = [];
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
 let listenersBound = false;
 /** Only one flush in flight at a time; later flushes chain onto this. */
@@ -75,13 +99,14 @@ function referrerDomain(): string | undefined {
   }
 }
 
-function send(events: QueuedEvent[]) {
-  const body = JSON.stringify({ events });
+function send(events: QueuedEvent[], anon = false) {
+  const endpoint = anon ? ANON_ENDPOINT : ENDPOINT;
+  const body = JSON.stringify(anon ? { visitKey: currentVisitKey(), events } : { events });
   // A plain string, never a JSON-typed Blob. Only text/plain,
   // x-www-form-urlencoded and multipart/form-data are CORS-safelisted; a JSON
   // Blob triggers a preflight that may never complete once the page is gone.
-  if (navigator.sendBeacon?.(ENDPOINT, body)) return Promise.resolve();
-  return fetch(ENDPOINT, {
+  if (navigator.sendBeacon?.(endpoint, body)) return Promise.resolve();
+  return fetch(endpoint, {
     method: "POST",
     body,
     keepalive: true,
@@ -96,10 +121,15 @@ export function flush() {
     clearTimeout(idleTimer);
     idleTimer = null;
   }
-  if (queue.length === 0) return inFlight;
+  if (queue.length === 0 && anonQueue.length === 0) return inFlight;
   const batch = queue;
+  const anonBatch = anonQueue;
   queue = [];
-  inFlight = inFlight.then(() => send(batch));
+  anonQueue = [];
+  inFlight = inFlight.then(async () => {
+    if (batch.length) await send(batch);
+    if (anonBatch.length) await send(anonBatch, true);
+  });
   return inFlight;
 }
 
@@ -136,24 +166,49 @@ function bindLifecycle() {
  */
 export function track(input: TrackInput) {
   if (typeof window === "undefined") return;
-  // Unknown and rejected both stop here. Absence of a decision is never a yes.
-  if (!consentGranted()) return;
+  if (globalPrivacyControl()) return;
+  // Unknown and rejected both go anonymous. Absence of a decision is never a yes.
+  const anon = !consentGranted();
   bindLifecycle();
 
   const path = location.pathname;
-  queue.push({
+  const event: QueuedEvent = {
     ...input,
+    // A search id would tie this event to the (consent-only) search log.
+    ...(anon ? { searchId: undefined } : {}),
     id: crypto.randomUUID(),
     occurredAt: new Date().toISOString(),
     path,
     locale: localeFromPath(path),
     referrerDomain: referrerDomain(),
-  });
+  };
+  (anon ? anonQueue : queue).push(event);
 
-  if (queue.length >= FLUSH_AT) {
+  if (queue.length + anonQueue.length >= FLUSH_AT) {
     flush();
     return;
   }
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = setTimeout(flush, IDLE_MS);
+}
+
+/**
+ * Count the banner decision itself, anonymously (no id), so the dashboard
+ * can show the acceptance rate. Sent at once: the page may navigate next.
+ */
+export function trackConsentDecision(decision: "accepted" | "rejected") {
+  if (typeof window === "undefined" || globalPrivacyControl()) return;
+  const path = location.pathname;
+  void send(
+    [
+      {
+        name: decision === "accepted" ? "consent_accepted" : "consent_rejected",
+        id: crypto.randomUUID(),
+        occurredAt: new Date().toISOString(),
+        path,
+        locale: localeFromPath(path),
+      },
+    ],
+    true,
+  );
 }

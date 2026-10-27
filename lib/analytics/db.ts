@@ -62,6 +62,35 @@ export type AnalyticsEventRow = {
   os?: string | null;
 };
 
+/** Cookieless rows (migration 0030): no visitor/session/user id by design. */
+export type AnalyticsAnonEventRow = {
+  id: string;
+  name:
+    | "page_view"
+    | "view_item"
+    | "select_item"
+    | "add_to_cart"
+    | "consent_accepted"
+    | "consent_rejected";
+  occurred_at: string;
+  /** Random per open tab, never stored on the device. */
+  visit_key: string;
+  path: string | null;
+  locale: string | null;
+  referrer_domain: string | null;
+  channel: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  device_type: string | null;
+  browser: string | null;
+  os: string | null;
+  country: string | null;
+  product_id: string | null;
+  list_id: string | null;
+  position: number | null;
+};
+
 export type AnalyticsVisitorRow = {
   id: string;
   first_seen_at: string;
@@ -77,6 +106,7 @@ export type SearchSynonymRow = {
 
 type AnalyticsTables = {
   analytics_events: AnalyticsEventRow;
+  analytics_anon_events: AnalyticsAnonEventRow;
   analytics_visitors: AnalyticsVisitorRow;
   search_synonyms: SearchSynonymRow;
 };

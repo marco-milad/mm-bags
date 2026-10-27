@@ -230,6 +230,97 @@ export async function getAcquisition(range: RangeKey = "30d"): Promise<Acquisiti
   return (data as unknown as Acquisition) ?? empty;
 }
 
+// ─── Reach / paths / retention (migration 0030) ─────────────────────
+// All three degrade to an empty result if the migration hasn't been applied,
+// so the rest of the dashboard keeps working.
+
+export type Reach = {
+  trackedPageViews: number;
+  trackedVisits: number;
+  /** Cookieless counts from visitors who declined or didn't answer. */
+  anonPageViews: number;
+  anonVisits: number;
+  anonProductViews: number;
+  anonAddToCart: number;
+  consentAccepted: number;
+  consentRejected: number;
+  anonChannels: { channel: string; visits: number }[];
+  anonDevices: { device: string; visits: number }[];
+};
+
+export const EMPTY_REACH: Reach = {
+  trackedPageViews: 0,
+  trackedVisits: 0,
+  anonPageViews: 0,
+  anonVisits: 0,
+  anonProductViews: 0,
+  anonAddToCart: 0,
+  consentAccepted: 0,
+  consentRejected: 0,
+  anonChannels: [],
+  anonDevices: [],
+};
+
+export type Paths = {
+  visits: number;
+  singlePage: number;
+  pagesPerVisit: number | null;
+  entries: { page: string; visits: number }[];
+  pages: { page: string; views: number; exits: number }[];
+  moves: { from_page: string; to_page: string; moves: number }[];
+};
+
+const EMPTY_PATHS: Paths = { visits: 0, singlePage: 0, pagesPerVisit: null, entries: [], pages: [], moves: [] };
+
+export type Retention = {
+  cohorts: {
+    week: string;
+    visitors: number;
+    w1: number;
+    w2: number;
+    w3: number;
+    w4: number;
+    /** Whole weeks since the cohort started — later columns haven't happened yet. */
+    weeksElapsed: number;
+  }[];
+  visitors: number;
+  returning: number;
+  purchases: number;
+  returningPurchases: number;
+};
+
+const EMPTY_RETENTION: Retention = { cohorts: [], visitors: 0, returning: 0, purchases: 0, returningPurchases: 0 };
+
+async function rangeRpc<T>(fn: string, range: RangeKey, extra: Record<string, unknown>, empty: T): Promise<T> {
+  await requireAdmin();
+  const { from, to } = rangeToDates(range);
+  const { data, error } = await getSupabaseAdminClient().rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated types predate 0030
+    fn as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    { p_from: from.toISOString(), p_to: to.toISOString(), ...extra } as any,
+  );
+  if (error) {
+    console.warn(`[analytics] ${fn} unavailable:`, error.message);
+    return empty;
+  }
+  return { ...empty, ...((data as unknown as T) ?? {}) };
+}
+
+export const getReach = (range: RangeKey = "30d") => rangeRpc("analytics_reach", range, {}, EMPTY_REACH);
+export const getPaths = (range: RangeKey = "30d") => rangeRpc("analytics_paths", range, { p_limit: 10 }, EMPTY_PATHS);
+export async function getRetention(range: RangeKey = "30d"): Promise<Retention> {
+  const r = await rangeRpc("analytics_retention", range, { p_weeks: 8 }, EMPTY_RETENTION);
+  const now = Date.now();
+  return {
+    ...r,
+    cohorts: r.cohorts.map((c) => ({
+      ...c,
+      weeksElapsed: Math.floor((now - Date.parse(`${c.week}T00:00:00Z`)) / (7 * 86_400_000)),
+    })),
+  };
+}
+
 export async function getFunnel(range: RangeKey = "30d"): Promise<Funnel> {
   await requireAdmin();
   const { from, to } = rangeToDates(range);

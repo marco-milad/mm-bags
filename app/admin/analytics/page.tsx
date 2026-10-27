@@ -5,11 +5,17 @@ import {
   getLive,
   getOverview,
   getPreviousFunnel,
+  getPaths,
   getPreviousOverview,
   getProductDemand,
+  getReach,
+  getRetention,
   getSearchReport,
   type RangeKey,
 } from "@/lib/admin/analytics";
+import { ReachReport } from "@/components/admin/analytics/ReachReport";
+import { PathsReport } from "@/components/admin/analytics/PathsReport";
+import { RetentionReport } from "@/components/admin/analytics/RetentionReport";
 import { THRESHOLDS, buildInsights, deltaPct, deltaPoints } from "@/lib/analytics/insights";
 import { Delta, InsightsPanel, Kpi } from "@/components/admin/analytics/Summary";
 import { getAdminLocale } from "@/lib/admin/locale";
@@ -45,22 +51,38 @@ export default async function AnalyticsPage({
 
   // getOverview/getLive each call requireAdmin() before touching the
   // service-role client.
-  const [overview, live, demand, report, synonyms, acquisition, funnel, prevOverview, prevFunnel] =
-    await Promise.all([
-      getOverview(range),
-      getLive(),
-      getProductDemand(range),
-      getSearchReport(range),
-      listSynonyms(),
-      getAcquisition(range),
-      getFunnel(range),
-      // Same-length window just before this one; null for "all time".
-      getPreviousOverview(range),
-      getPreviousFunnel(range),
-    ]);
+  const [
+    overview,
+    live,
+    demand,
+    report,
+    synonyms,
+    acquisition,
+    funnel,
+    prevOverview,
+    prevFunnel,
+    reach,
+    paths,
+    retention,
+  ] = await Promise.all([
+    getOverview(range),
+    getLive(),
+    getProductDemand(range),
+    getSearchReport(range),
+    listSynonyms(),
+    getAcquisition(range),
+    getFunnel(range),
+    // Same-length window just before this one; null for "all time".
+    getPreviousOverview(range),
+    getPreviousFunnel(range),
+    getReach(range),
+    getPaths(range),
+    getRetention(range),
+  ]);
 
   const n = (v: number) => v.toLocaleString(isAr ? "ar-EG" : "en-US");
-  const hasAnyData = overview.pageViews > 0 || overview.visitors > 0;
+  // Anonymous visits count too: a shop where everyone declined still has data.
+  const hasAnyData = overview.pageViews > 0 || overview.visitors > 0 || reach.anonPageViews > 0;
   const pctText = (v: number | null) => (v === null ? "—" : `${n(v)}%`);
   const zeroRate = overview.searches > 0 ? overview.zeroResultRate : null;
   const prevZeroRate =
@@ -185,12 +207,19 @@ export default async function AnalyticsPage({
             />
           </section>
 
+          {/* Right under the KPIs: those count consented visitors only. */}
+          <ReachReport reach={reach} isAr={isAr} />
+
           <TrafficSeries series={overview.series} isAr={isAr} />
 
           <FunnelReport funnel={funnel} isAr={isAr} />
 
+          <PathsReport paths={paths} isAr={isAr} />
+
           {/* Has a decision attached (add a synonym), so it sits high. */}
           <SearchReport report={report} synonyms={synonyms} isAr={isAr} />
+
+          <RetentionReport retention={retention} isAr={isAr} />
 
           <AcquisitionReport acquisition={acquisition} isAr={isAr} />
 

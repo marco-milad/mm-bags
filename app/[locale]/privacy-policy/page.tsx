@@ -52,7 +52,7 @@ export default async function PrivacyPolicyPage({
             ? "بياناتك ليك. هنا شرح واضح لكل ما نجمعه، ليه، ومع مين بنشاركه."
             : "Your data is yours. Here's a clear breakdown of what we collect, why, and who we share it with."
         }
-        updated={isAr ? "آخر تحديث: يونيو 2026" : "Last updated: June 2026"}
+        updated={isAr ? "آخر تحديث: أكتوبر 2026" : "Last updated: October 2026"}
       />
 
       <div className="mx-auto max-w-3xl space-y-10 px-4 pb-20 md:px-6 md:pb-24">
@@ -338,8 +338,13 @@ export default async function PrivacyPolicyPage({
             </Body>
             <Body isAr={isAr}>
               {isAr
-                ? "وبنستخدم كمان كوكيز تحليلات خاصة بينا إحنا — مش بتشتغل غير لما توافق عليها، وأول ما تفتح الموقع بنسألك. لو مجاوبتش، أو قلت لأ، مش بنسجّل أي حاجة."
-                : "We also use our own analytics cookies. They do not run until you agree, and we ask the first time you visit. If you don't answer, or you decline, nothing at all is recorded."}
+                ? "وبنستخدم كمان كوكيز تحليلات خاصة بينا إحنا — مش بتشتغل غير لما توافق عليها، وأول ما تفتح الموقع بنسألك."
+                : "We also use our own analytics cookies. They do not run until you agree, and we ask the first time you visit."}
+            </Body>
+            <Body isAr={isAr}>
+              {isAr
+                ? "لو مجاوبتش أو قلت لأ، بنعدّ الزيارة بشكل مجهول بس، من غير كوكيز ومن غير ما نخزّن أي حاجة على جهازك: الصفحات اللي اتفتحت، الموقع اللي جيت منه، نوع الجهاز، والدولة. مش بنسجّل عنوان الـ IP، ومفيش أي رقم يربط الزيارة دي بزيارة تانية — الربط الوحيد هو رقم عشوائي بيعيش في الصفحة المفتوحة ويختفي أول ما تقفلها. عشان كده مستحيل نعرف إن نفس الشخص رجع."
+                : "If you don't answer, or you decline, we only count the visit anonymously, with no cookies and nothing stored on your device: which pages were opened, the site you came from, the device type and the country. We do not record your IP address, and nothing links this visit to any other — the only link is a random number that lives in the open page and disappears when you close it, so we can never tell that the same person came back."}
             </Body>
             <Bullet isAr={isAr}>
               {isAr
@@ -368,8 +373,8 @@ export default async function PrivacyPolicyPage({
             </Body>
             <Body isAr={isAr}>
               {isAr
-                ? "تقدر توقفها في أي وقت من رابط «إيقاف التحليلات» الموجود تحت في كل صفحة، أو من هنا:"
-                : "You can turn it off at any time from the “Turn off analytics” link in the footer of every page, or here:"}
+                ? "تقدر توقفها في أي وقت — بما فيها العدّ المجهول — من رابط «إيقاف التحليلات» الموجود تحت في كل صفحة، أو من هنا. وكمان لو متصفحك بيبعت إشارة Global Privacy Control، مش بنعدّ زيارتك خالص."
+                : "You can turn it off at any time — including the anonymous count — from the “Turn off analytics” link in the footer of every page, or here. And if your browser sends the Global Privacy Control signal, your visit is not counted at all."}
             </Body>
             <p className="mt-2">
               {/* Route handler, so a plain anchor. It clears mm_vid and mm_sid

@@ -1,7 +1,7 @@
 // Browser end-to-end suite.
 //
 //   npm run e2e                                   # against http://localhost:3000
-//   npm run e2e -- --only=orders                  # one suite: storefront | orders | auth | coupons
+//   npm run e2e -- --only=orders                  # one suite: storefront | orders | auth | coupons | privacy
 //   npm run e2e -- https://mm-bags.vercel.app --allow-prod
 //
 // Start the app first (`npm run build && npm run start`). The suites create
@@ -13,6 +13,7 @@ import * as storefront from "./storefront.mjs";
 import * as orders from "./orders.mjs";
 import * as auth from "./auth.mjs";
 import * as coupons from "./coupons.mjs";
+import * as privacy from "./privacy.mjs";
 
 const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:\/\//.test(a)) || "http://localhost:3000").replace(/\/+$/, "");
@@ -23,7 +24,7 @@ if (!isLocal && !args.includes("--allow-prod")) {
   process.exit(1);
 }
 
-const suites = { storefront, orders, auth, coupons };
+const suites = { storefront, orders, auth, coupons, privacy };
 const chosen = Object.entries(suites).filter(([name]) => !only.length || only.includes(name));
 
 try {
