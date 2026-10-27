@@ -35,7 +35,8 @@ export async function run(browser, base) {
       await page.waitForSelector('[role="dialog"]', { timeout: 30000 }).catch(() => {});
       await sleep(1500);
       const qv = await page.evaluate(() => {
-        const d = document.querySelector('[role="dialog"]');
+        // The consent banner is a dialog too: pick the quick view itself.
+        const d = [...document.querySelectorAll('[role="dialog"]')].find((x) => x.textContent.includes("عرض سريع للمنتج"));
         const add = d && [...d.querySelectorAll("button")].find((x) => x.textContent.includes("أضف للكارت"));
         const r = add?.getBoundingClientRect();
         return { url: location.pathname, dialog: !!d, addVisible: !!r && r.bottom <= innerHeight && r.top >= 0, w: r?.width ?? 0 };
