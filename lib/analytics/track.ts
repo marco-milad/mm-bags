@@ -83,6 +83,11 @@ let listenersBound = false;
 /** Only one flush in flight at a time; later flushes chain onto this. */
 let inFlight: Promise<void> = Promise.resolve();
 
+/** The private order link's token (/<locale>/o/<token>) works like a password: never send it. */
+function currentPath(): string {
+  return location.pathname.replace(/^(\/(?:ar|en)\/o\/)[^/]+/, "$1-");
+}
+
 function localeFromPath(path: string): string {
   const seg = path.split("/")[1];
   return seg === "en" || seg === "ar" ? seg : "ar";
@@ -171,7 +176,7 @@ export function track(input: TrackInput) {
   const anon = !consentGranted();
   bindLifecycle();
 
-  const path = location.pathname;
+  const path = currentPath();
   const event: QueuedEvent = {
     ...input,
     // A search id would tie this event to the (consent-only) search log.
@@ -198,7 +203,7 @@ export function track(input: TrackInput) {
  */
 export function trackConsentDecision(decision: "accepted" | "rejected") {
   if (typeof window === "undefined" || globalPrivacyControl()) return;
-  const path = location.pathname;
+  const path = currentPath();
   void send(
     [
       {

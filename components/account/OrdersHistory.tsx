@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { orderLinkPath } from "@/lib/orders/share";
 import { ShoppingBag } from "lucide-react";
 import type { AccountOrderRow } from "@/lib/queries/account-orders";
 import type { Locale } from "@/lib/i18n-config";
@@ -27,8 +28,8 @@ const STATUS_CLS: Record<string, string> = {
 
 /**
  * Last-N orders for the signed-in user, rendered as a compact list.
- * Each row links to /track/{order_number} which the storefront's
- * existing order-tracking page handles.
+ * Each row opens the order's private link (/o/<token>); before migration
+ * 0031 it falls back to the /track page.
  */
 export function OrdersHistory({
   locale,
@@ -87,7 +88,7 @@ export function OrdersHistory({
             <li key={o.id} className="flex flex-wrap items-center gap-3 py-3">
               <div className="flex min-w-0 flex-1 flex-col">
                 <Link
-                  href={`/${locale}/track?id=${o.order_number}`}
+                  href={o.view_token ? orderLinkPath(locale, o.view_token) : `/${locale}/track?id=${o.order_number}`}
                   className="font-mono text-[11px] font-semibold text-[var(--color-text)] hover:underline"
                 >
                   {o.order_number}

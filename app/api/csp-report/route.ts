@@ -13,11 +13,14 @@ function clip(v: unknown, n = 200): string {
   return typeof v === "string" ? v.slice(0, n) : "";
 }
 
-/** Path only — never log query strings (they can carry personal data). */
+/**
+ * Path only — never log query strings (they can carry personal data) or the
+ * private order link's token (/<locale>/o/<token> works like a password).
+ */
 function pathOf(u: unknown): string {
   try {
     const url = new URL(String(u));
-    return `${url.origin}${url.pathname}`;
+    return `${url.origin}${url.pathname.replace(/^(\/(?:ar|en)\/o\/)[^/]+/, "$1-")}`;
   } catch {
     return clip(u, 120);
   }

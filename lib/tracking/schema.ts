@@ -65,5 +65,26 @@ export type TrackingResult = {
     name: string;
     qty: number;
     image: string | null;
+    /** Only on the private order link. */
+    unitPrice?: number;
   }[];
+  /**
+   * Set while the order waits for the team to confirm it: the 24-hour
+   * promise, already formatted on the server (Cairo time) so server and
+   * client render the same text.
+   */
+  confirmation: { byLabel: string; overdue: boolean } | null;
+  /**
+   * Only on the private order link (/o/<token>), never after the weak
+   * last-4 check: the full name, street and the price breakdown.
+   */
+  details?: {
+    street: string;
+    building: string | null;
+    subtotal: number;
+    discount: number;
+    couponCode: string | null;
+    shippingFee: number;
+    paymentMethod: string;
+  };
 };

@@ -21,6 +21,11 @@ import {
 } from "@/lib/admin/labels";
 import type { OrderStatus } from "@/lib/supabase/types";
 import { cn, formatPriceEGP } from "@/lib/utils";
+import { CustomerOrderLink } from "@/components/admin/orders/CustomerOrderLink";
+import { LateBadge, TimeLeft } from "@/components/admin/orders/LateConfirmation";
+import { awaitingConfirmation, lateOrderIds } from "@/lib/orders/confirm-window";
+import { orderLinkPath } from "@/lib/orders/share";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +66,12 @@ export default async function OrderDetailPage({
   const cod = order.cod_tracking;
   const customer = order.customer;
   const BackArrow = isAr ? ArrowRight : ArrowLeft;
+  const isLate = lateOrderIds([order]).has(order.id);
+  const waitingOnUs = awaitingConfirmation(order);
+  // Undefined until migration 0031 has run.
+  const customerLink = order.view_token
+    ? `${SITE_URL.replace(/\/+$/, "")}${orderLinkPath("ar", order.view_token)}`
+    : null;
 
   return (
     <div className="space-y-6">
@@ -105,8 +116,24 @@ export default async function OrderDetailPage({
             )}
           >
             {orderStatusLabel(status, locale)}
+            {waitingOnUs && (
+              <span className="ms-2 normal-case">
+                · <TimeLeft createdAt={order.created_at} isAr={isAr} />
+              </span>
+            )}
           </span>
+          {isLate && <LateBadge isAr={isAr} />}
         </header>
+
+        {customerLink && (
+          <CustomerOrderLink
+            link={customerLink}
+            orderNumber={order.order_number}
+            customerName={customer.name ?? null}
+            customerPhone={customer.phone ?? null}
+            isAr={isAr}
+          />
+        )}
 
         {/* Customer + items two-column */}
         <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">

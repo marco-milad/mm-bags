@@ -29,6 +29,8 @@ export default function robots(): MetadataRoute.Robots {
           "/en/checkout",
           "/ar/order-confirmation",
           "/en/order-confirmation",
+          "/ar/o/",
+          "/en/o/",
           "/ar/cart",
           "/en/cart",
         ],

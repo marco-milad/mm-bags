@@ -316,6 +316,8 @@ export type Database = {
           referral_code: string | null;
           /** Subscriber coupon redeemed on this order (0029); amount is discount_amount. */
           coupon_code: string | null;
+          /** Secret for the private order link /[locale]/o/<token> (0031). */
+          view_token: string;
           /** Denormalised flag — true if any order_returns row points
               at this order. Maintained by createOrderReturn(). */
           has_returns: boolean;
@@ -343,6 +345,7 @@ export type Database = {
           shipping_address: ShippingAddress;
           referral_code?: string | null;
           coupon_code?: string | null;
+          view_token?: string;
           has_returns?: boolean;
           returns_total?: number;
           created_at?: string;

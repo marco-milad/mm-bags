@@ -1,9 +1,10 @@
-import { Check, CheckCircle2, MapPin, Package, ShoppingBag, Truck } from "lucide-react";
+import { Check, CheckCircle2, ClipboardCheck, MapPin, Package, ShoppingBag, Truck } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import type { TrackingResult } from "@/lib/tracking/schema";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
+  { key: "pending", icon: ClipboardCheck, ar: "استلمنا طلبك", en: "Order received", emoji: "📝" },
   { key: "confirmed", icon: ShoppingBag, ar: "تم تأكيد الطلب", en: "Order confirmed", emoji: "✅" },
   { key: "processing", icon: Package, ar: "جاري التجهيز", en: "Preparing", emoji: "📦" },
   { key: "shipped", icon: Truck, ar: "تم الشحن", en: "Shipped", emoji: "🚚" },
@@ -14,17 +15,19 @@ const STEPS = [
 type StepKey = typeof STEPS[number]["key"];
 
 function activeIndex(status: TrackingResult["status"]): number {
-  // -1 = nothing started yet (status === pending or cancelled)
-  if (status === "pending" || status === "cancelled") return -1;
+  // -1 = cancelled (handled before the list renders)
+  if (status === "cancelled") return -1;
   return STEPS.findIndex((s) => s.key === (status as StepKey));
 }
 
 export function TrackingTimeline({
   status,
   locale,
+  confirmation = null,
 }: {
   status: TrackingResult["status"];
   locale: Locale;
+  confirmation?: TrackingResult["confirmation"];
 }) {
   if (status === "cancelled") {
     return (
@@ -92,10 +95,22 @@ export function TrackingTimeline({
               >
                 {locale === "ar" ? step.ar : step.en} <span aria-hidden>{step.emoji}</span>
               </p>
-              {isActive && (
+              {isActive && step.key === "pending" && confirmation ? (
                 <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
-                  {locale === "ar" ? "في التقدم الآن" : "In progress"}
+                  {confirmation.overdue
+                    ? locale === "ar"
+                      ? "اتأخرنا عليك في التأكيد — ابعتلنا على واتساب ونأكده فوراً."
+                      : "We're late confirming — message us on WhatsApp and we'll confirm right away."
+                    : locale === "ar"
+                      ? `هنتواصل معاك ونأكد طلبك خلال 24 ساعة — قبل ${confirmation.byLabel}.`
+                      : `We'll contact you to confirm within 24 hours — by ${confirmation.byLabel}.`}
                 </p>
+              ) : (
+                isActive && (
+                  <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
+                    {locale === "ar" ? "في التقدم الآن" : "In progress"}
+                  </p>
+                )
               )}
             </div>
           </li>

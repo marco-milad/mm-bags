@@ -18,6 +18,13 @@ import { instapayExpirationBusinessHours } from "@/lib/orders/instapay-expiry";
 import { logPurchase } from "@/lib/analytics/log-purchase";
 import { SITE_URL } from "@/lib/seo/site";
 import { SaveOrderNumber } from "@/components/order/SaveOrderNumber";
+import { getViewToken } from "@/lib/orders/order-view";
+import { orderLinkPath } from "@/lib/orders/share";
+import {
+  awaitingConfirmation,
+  confirmDeadline,
+  formatDeadline,
+} from "@/lib/orders/confirm-window";
 
 // InstaPay handle read from env so Marco can edit it without a code
 // change. NO fallback: a fake placeholder handle would send customers'
@@ -128,6 +135,12 @@ export default async function OrderConfirmationPage({
   // track-link prefill are shown only to the browser that placed the order
   // (signed cookie set by placeOrder) or the signed-in account holder.
   const viewerIsOwner = await resolveViewerIsOwner(order.id, order.user_id);
+  // The private order link is the buyer's to keep — never shown to a
+  // stranger who only has this page's URL.
+  const viewToken = viewerIsOwner ? await getViewToken(order.id) : null;
+  const confirmBy = awaitingConfirmation(order)
+    ? formatDeadline(confirmDeadline(order.created_at), locale)
+    : null;
 
   const address = (order.shipping_address as ShippingAddressShape) ?? {};
   const phoneDigits = viewerIsOwner
@@ -199,9 +212,13 @@ export default async function OrderConfirmationPage({
               ? locale === "ar"
                 ? "طلبك اتحجز — باقي الدفع"
                 : "Order reserved — payment pending"
-              : locale === "ar"
-                ? "طلبك اتأكد ✅"
-                : "Order confirmed ✅"}
+              : confirmBy
+                ? locale === "ar"
+                  ? "طلبك وصلنا ✅"
+                  : "We've got your order ✅"
+                : locale === "ar"
+                  ? "طلبك اتأكد ✅"
+                  : "Order confirmed ✅"}
         </h1>
         <p className="text-sm text-[var(--color-text-secondary)]">
           {paymentExpired
@@ -212,9 +229,13 @@ export default async function OrderConfirmationPage({
               ? locale === "ar"
                 ? "حوّل المبلغ عبر InstaPay وابعت الإيصال — هنبدأ التجهيز فوراً."
                 : "Transfer via InstaPay and send us the receipt — we start prep the moment it's verified."
-              : locale === "ar"
-                ? "شكراً يا فندم — هنتواصل معاك خلال ساعات للتأكيد."
-                : "Thanks! We'll reach out shortly to confirm details."}
+              : confirmBy
+                ? locale === "ar"
+                  ? `شكراً يا فندم — هنتواصل معاك ونأكد طلبك خلال 24 ساعة، قبل ${confirmBy}.`
+                  : `Thank you! We'll contact you to confirm your order within 24 hours — by ${confirmBy}.`
+                : locale === "ar"
+                  ? "شكراً يا فندم — طلبك اتأكد وبنجهّزه."
+                  : "Thank you! Your order is confirmed and being prepared."}
         </p>
         <div className="mt-2 rounded-lg bg-[var(--color-surface)] px-4 py-3">
           <p className="text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
@@ -227,7 +248,12 @@ export default async function OrderConfirmationPage({
         {/* Only the buyer needs "keep your number" — and only the buyer's
             browser may get a one-tap share of it. */}
         {viewerIsOwner && (
-          <SaveOrderNumber orderNumber={order.order_number} siteUrl={SITE_URL} locale={locale} />
+          <SaveOrderNumber
+            orderNumber={order.order_number}
+            siteUrl={SITE_URL}
+            locale={locale}
+            viewToken={viewToken}
+          />
         )}
       </div>
 
@@ -352,7 +378,11 @@ export default async function OrderConfirmationPage({
               payment, tracking shows the "waiting for transfer" state,
               which is honest and still useful. */}
           <Link
-            href={`/${locale}/track/${order.order_number}${phoneDigits ? `?p=${phoneDigits.slice(-4)}` : ""}`}
+            href={
+              viewToken
+                ? orderLinkPath(locale, viewToken)
+                : `/${locale}/track/${order.order_number}${phoneDigits ? `?p=${phoneDigits.slice(-4)}` : ""}`
+            }
             className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
           >
             <Package className="h-4 w-4" />

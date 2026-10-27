@@ -21,14 +21,15 @@ export function TrackingDetails({
       : `Hi, I have a question about order ${tracking.orderNumber}.`,
   );
 
+  const details = tracking.details;
   const createdDate = new Date(tracking.createdAt).toLocaleDateString(
     locale === "ar" ? "ar-EG" : "en-EG",
-    { year: "numeric", month: "long", day: "numeric" },
+    { year: "numeric", month: "long", day: "numeric", timeZone: "Africa/Cairo" },
   );
   const eta = tracking.estimatedDelivery
     ? new Date(tracking.estimatedDelivery).toLocaleDateString(
         locale === "ar" ? "ar-EG" : "en-EG",
-        { year: "numeric", month: "long", day: "numeric" },
+        { year: "numeric", month: "long", day: "numeric", timeZone: "Africa/Cairo" },
       )
     : null;
 
@@ -44,7 +45,11 @@ export function TrackingDetails({
                 : `Order ${tracking.orderNumber}`
             }
           />
-          <TrackingTimeline status={tracking.status} locale={locale} />
+          <TrackingTimeline
+            status={tracking.status}
+            locale={locale}
+            confirmation={tracking.confirmation}
+          />
         </Card>
 
         {(tracking.courierName || tracking.trackingNumber || eta) && (
@@ -88,20 +93,61 @@ export function TrackingDetails({
                   </span>
                 )}
                 <span className="flex-1 text-sm text-[var(--color-text)]">{item.name}</span>
-                <span className="font-mono text-sm text-[var(--color-text-secondary)]">
+                <span className="text-end font-mono text-sm text-[var(--color-text-secondary)]">
                   × {item.qty}
+                  {item.unitPrice !== undefined && (
+                    <span className="block text-[var(--color-text)]">
+                      {formatPriceEGP(item.unitPrice * item.qty, locale)}
+                    </span>
+                  )}
                 </span>
               </li>
             ))}
           </ul>
-          <div className="mt-3 flex justify-between border-t border-[var(--color-border)] pt-3 text-sm">
-            <span className="text-[var(--color-text-secondary)]">
-              {locale === "ar" ? "الإجمالي" : "Total"}
-            </span>
-            <span className="font-mono font-semibold text-[var(--color-primary)]">
-              {formatPriceEGP(tracking.total, locale)}
-            </span>
-          </div>
+          <dl className="mt-3 space-y-1 border-t border-[var(--color-border)] pt-3 text-sm">
+            {details && (
+              <>
+                <Line
+                  label={locale === "ar" ? "الإجمالي الفرعي" : "Subtotal"}
+                  value={formatPriceEGP(details.subtotal, locale)}
+                />
+                {details.discount > 0 && (
+                  <Line
+                    label={
+                      details.couponCode
+                        ? `${locale === "ar" ? "خصم الكود" : "Code discount"} ${details.couponCode}`
+                        : locale === "ar"
+                          ? "خصم"
+                          : "Discount"
+                    }
+                    value={`− ${formatPriceEGP(details.discount, locale)}`}
+                  />
+                )}
+                <Line
+                  label={locale === "ar" ? "الشحن" : "Shipping"}
+                  value={
+                    details.shippingFee === 0
+                      ? locale === "ar"
+                        ? "مجاناً"
+                        : "Free"
+                      : formatPriceEGP(details.shippingFee, locale)
+                  }
+                />
+                <Line
+                  label={locale === "ar" ? "طريقة الدفع" : "Payment"}
+                  value={paymentLabel(details.paymentMethod, locale)}
+                />
+              </>
+            )}
+            <div className="flex justify-between pt-1">
+              <dt className="text-[var(--color-text-secondary)]">
+                {locale === "ar" ? "الإجمالي" : "Total"}
+              </dt>
+              <dd className="font-mono font-semibold text-[var(--color-primary)]">
+                {formatPriceEGP(tracking.total, locale)}
+              </dd>
+            </div>
+          </dl>
         </Card>
       </div>
 
@@ -114,7 +160,12 @@ export function TrackingDetails({
           <p className="text-sm text-[var(--color-text-secondary)]" dir="ltr">
             {tracking.recipientPhone}
           </p>
-          <p className="mt-1 text-sm text-[var(--color-text)]">
+          {details?.street && (
+            <p className="mt-1 text-sm text-[var(--color-text)]">
+              {[details.street, details.building].filter(Boolean).join("، ")}
+            </p>
+          )}
+          <p className={cn("text-sm text-[var(--color-text)]", !details?.street && "mt-1")}>
             {[tracking.city, tracking.governorate].filter(Boolean).join(" — ")}
           </p>
           <p className="mt-3 font-mono text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
@@ -182,6 +233,21 @@ function WhatsAppUpdatesCard({
         </span>
       </span>
     </a>
+  );
+}
+
+function paymentLabel(method: string, locale: Locale): string {
+  if (method === "instapay") return "InstaPay";
+  if (method === "card") return locale === "ar" ? "بطاقة ائتمان" : "Card";
+  return locale === "ar" ? "الدفع عند الاستلام" : "Cash on delivery";
+}
+
+function Line({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <dt className="text-[var(--color-text-secondary)]">{label}</dt>
+      <dd className="font-mono text-[var(--color-text)]">{value}</dd>
+    </div>
   );
 }
 

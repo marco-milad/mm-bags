@@ -3,6 +3,7 @@ import "server-only";
 import { requireStaff } from "@/lib/admin/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { cairoDayStartISO } from "./cairo-tz";
+import { confirmationLate, lateCutoffISO } from "@/lib/orders/confirm-window";
 import type {
   CodTracking,
   Order,
@@ -152,6 +153,36 @@ export async function listAdminOrders(
   }
 
   return rows;
+}
+
+// ─── Late confirmations ──────────────────────────────────────────────
+export type LateOrder = {
+  id: string;
+  order_number: string;
+  created_at: string;
+};
+
+/**
+ * Pending orders past the "late" mark (LATE_AFTER_HOURS) — the customer was
+ * promised a confirmation within 24 hours of ordering. Oldest first.
+ */
+export async function listLateOrders(): Promise<LateOrder[]> {
+  await requireStaff();
+  const now = Date.now();
+  const { data, error } = await getSupabaseAdminClient()
+    .from("orders")
+    .select("id, order_number, status, payment_method, payment_status, created_at")
+    .eq("status", "pending")
+    .lte("created_at", lateCutoffISO(now))
+    .order("created_at", { ascending: true })
+    .limit(50);
+  if (error) {
+    console.warn("[admin/orders] late orders query failed:", error.message);
+    return [];
+  }
+  return (data ?? [])
+    .filter((o) => confirmationLate(o, now))
+    .map(({ id, order_number, created_at }) => ({ id, order_number, created_at }));
 }
 
 // ─── Detail ──────────────────────────────────────────────────────────

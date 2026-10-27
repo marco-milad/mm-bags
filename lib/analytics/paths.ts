@@ -27,6 +27,8 @@ export function pageLabel(page: string, isAr: boolean): string {
       return t("تأكيد الطلب", "Order confirmed");
     case "track":
       return t("تتبع الطلب", "Order tracking");
+    case "o":
+      return t("لينك الطلب", "Order link");
     case "account":
       return tail === "wishlist" ? t("المفضلة", "Wishlist") : t("حسابي", "Account");
     case "auth":

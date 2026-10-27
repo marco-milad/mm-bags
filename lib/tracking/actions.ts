@@ -1,7 +1,6 @@
 "use server";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import { firstName, maskPhone } from "@/lib/mask";
 import { hitLimits, requestIp } from "@/lib/security/rate-limit";
 import {
   isOrderNumber,
@@ -11,6 +10,12 @@ import {
   type TrackingResult,
   type VerifyTrackingInput,
 } from "./schema";
+import {
+  TRACKING_ORDER_COLUMNS,
+  buildTrackingResult,
+  orderPhoneDigits,
+  type TrackingOrderRow,
+} from "./result";
 
 export type VerifyResult =
   | { ok: true; tracking: TrackingResult }
@@ -18,6 +23,7 @@ export type VerifyResult =
 
 export async function verifyAndGetTracking(
   raw: VerifyTrackingInput,
+  locale: string = "ar",
 ): Promise<VerifyResult> {
   const parsed = verifyTrackingSchema.safeParse(raw);
   if (!parsed.success) {
@@ -40,11 +46,7 @@ export async function verifyAndGetTracking(
   }
 
   const admin = getSupabaseAdminClient();
-  const query = admin
-    .from("orders")
-    .select(
-      "id, order_number, status, payment_method, total, shipping_address, guest_phone, created_at, order_items (qty, snapshot_name, snapshot_image), cod_tracking (courier_name, tracking_number, estimated_delivery, current_status)",
-    );
+  const query = admin.from("orders").select(TRACKING_ORDER_COLUMNS);
 
   if (isUuid(orderIdOrNumber)) {
     query.eq("id", orderIdOrNumber);
@@ -65,18 +67,9 @@ export async function verifyAndGetTracking(
     };
   }
 
-  // Extract phone for verification: prefer shipping_address.phone, fall back to guest_phone.
-  type Addr = {
-    phone?: string;
-    name?: string;
-    governorate?: string;
-    city?: string;
-  };
-  const addr = (order.shipping_address ?? {}) as Addr;
-  const storedPhone = (addr.phone ?? order.guest_phone ?? "").replace(/\D/g, "");
-  const last4 = storedPhone.slice(-4);
-
-  if (last4 !== phoneLast4) {
+  // The phone digits are the shipping_address phone, falling back to guest_phone.
+  const row = order as unknown as TrackingOrderRow;
+  if (orderPhoneDigits(row).slice(-4) !== phoneLast4) {
     // Identical to the not-found branch above — never reveal which failed.
     return {
       ok: false,
@@ -85,32 +78,6 @@ export async function verifyAndGetTracking(
     };
   }
 
-  const codRow = Array.isArray(order.cod_tracking)
-    ? order.cod_tracking[0]
-    : order.cod_tracking;
-
-  const tracking: TrackingResult = {
-    orderNumber: order.order_number,
-    status: order.status as TrackingResult["status"],
-    paymentMethod: order.payment_method as "card" | "cod",
-    total: order.total,
-    createdAt: order.created_at,
-    estimatedDelivery: codRow?.estimated_delivery ?? null,
-    // First name only: the last-4 check is a weak credential (anyone who
-    // saw the order number + those digits passes it), so never hand back
-    // the full name on the strength of it.
-    recipientName: firstName(addr.name),
-    recipientPhone: maskPhone(storedPhone),
-    governorate: addr.governorate ?? "",
-    city: addr.city ?? "",
-    courierName: codRow?.courier_name ?? null,
-    trackingNumber: codRow?.tracking_number ?? null,
-    items: (order.order_items ?? []).map((item) => ({
-      name: item.snapshot_name ?? "",
-      qty: item.qty,
-      image: item.snapshot_image ?? null,
-    })),
-  };
-
+  const tracking = buildTrackingResult(row, { full: false, locale, now: Date.now() });
   return { ok: true, tracking };
 }

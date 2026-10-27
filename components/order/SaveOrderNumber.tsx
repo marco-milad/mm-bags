@@ -3,30 +3,33 @@
 import { useState } from "react";
 import { Check, Copy, Send } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
-import { orderShareText, whatsappShareHref } from "@/lib/orders/share";
+import { orderLinkPath, orderShareText, whatsappShareHref } from "@/lib/orders/share";
 
 /**
- * "Keep your order number" actions under the order number on the
- * confirmation page. Nothing is sent to the shopper automatically yet (no
- * SMS/email until the domain), so this is how they keep the number for
- * tracking from another device: copy it, or send it to themselves on
- * WhatsApp (the share picker includes "Message yourself").
+ * "Keep your order" actions under the order number on the confirmation
+ * page. Nothing is sent to the shopper automatically yet (no SMS/email until
+ * the domain), so this is how they reopen the order from another device:
+ * copy the private order link (or, before 0031, the number), or send it to
+ * themselves on WhatsApp (the share picker includes "Message yourself").
  */
 export function SaveOrderNumber({
   orderNumber,
   siteUrl,
   locale,
+  viewToken = null,
 }: {
   orderNumber: string;
   siteUrl: string;
   locale: Locale;
+  viewToken?: string | null;
 }) {
   const isAr = locale === "ar";
   const [copied, setCopied] = useState(false);
+  const link = viewToken ? `${siteUrl.replace(/\/+$/, "")}${orderLinkPath(locale, viewToken)}` : null;
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(orderNumber);
+      await navigator.clipboard.writeText(link ?? orderNumber);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -35,14 +38,18 @@ export function SaveOrderNumber({
     }
   };
 
-  const shareHref = whatsappShareHref(orderShareText({ orderNumber, siteUrl, isAr }));
+  const shareHref = whatsappShareHref(orderShareText({ orderNumber, siteUrl, isAr, viewToken }));
 
   return (
     <div className="flex w-full max-w-sm flex-col items-center gap-2">
       <p className="text-xs text-[var(--color-text-secondary)]">
-        {isAr
-          ? "احتفظ برقم الطلب — هتحتاجه عشان تتابع طلبك من أي جهاز."
-          : "Keep this number — you'll need it to track your order from any device."}
+        {link
+          ? isAr
+            ? "احفظ لينك طلبك — بيفتح تفاصيله وحالته من أي جهاز من غير تسجيل دخول."
+            : "Keep your order link — it opens the details and status on any device, no sign-in."
+          : isAr
+            ? "احتفظ برقم الطلب — هتحتاجه عشان تتابع طلبك من أي جهاز."
+            : "Keep this number — you'll need it to track your order from any device."}
       </p>
       <div className="flex w-full flex-wrap justify-center gap-2">
         <button
@@ -52,7 +59,17 @@ export function SaveOrderNumber({
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           <span aria-live="polite">
-            {copied ? (isAr ? "اتنسخ" : "Copied") : isAr ? "انسخ رقم الطلب" : "Copy order number"}
+            {copied
+              ? isAr
+                ? "اتنسخ"
+                : "Copied"
+              : link
+                ? isAr
+                  ? "انسخ لينك الطلب"
+                  : "Copy order link"
+                : isAr
+                  ? "انسخ رقم الطلب"
+                  : "Copy order number"}
           </span>
         </button>
         <a

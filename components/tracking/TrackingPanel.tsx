@@ -24,7 +24,7 @@ export function TrackingPanel({
   const runVerify = (values: VerifyTrackingInput) => {
     setServerError(null);
     startTransition(async () => {
-      const result = await verifyAndGetTracking(values);
+      const result = await verifyAndGetTracking(values, locale);
       if (!result.ok) {
         // Localize from the machine-readable code (the server `error` string
         // stays as a fallback only).

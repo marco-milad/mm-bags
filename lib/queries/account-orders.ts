@@ -21,6 +21,8 @@ export type AccountOrderRow = {
   total: number;
   item_count: number;
   created_at: string;
+  /** Private order link token (0031). */
+  view_token: string | null;
 };
 
 export async function getRecentUserOrders(
@@ -30,7 +32,7 @@ export async function getRecentUserOrders(
   const admin = getSupabaseAdminClient();
   const { data } = await admin
     .from("orders")
-    .select("id, order_number, status, payment_method, total, created_at, items:order_items(id)")
+    .select("id, order_number, status, payment_method, total, created_at, view_token, items:order_items(id)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -42,6 +44,7 @@ export async function getRecentUserOrders(
     payment_method: PaymentMethod;
     total: number;
     created_at: string;
+    view_token: string | null;
     items: Array<{ id: string }> | null;
   }>;
   return raw.map((r) => ({
@@ -52,6 +55,7 @@ export async function getRecentUserOrders(
     total: r.total,
     item_count: r.items?.length ?? 0,
     created_at: r.created_at,
+    view_token: r.view_token ?? null,
   }));
 }
 

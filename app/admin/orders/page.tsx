@@ -2,8 +2,11 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import {
   listAdminOrders,
+  listLateOrders,
   type ListOrderFilters,
 } from "@/lib/queries/admin-orders";
+import { lateOrderIds } from "@/lib/orders/confirm-window";
+import { LateBadge, LateBanner } from "@/components/admin/orders/LateConfirmation";
 import { runInstapayExpirySweep } from "@/lib/orders/instapay-expiry";
 import { requireAdmin } from "@/lib/admin/auth";
 import { StatusDropdown } from "@/components/admin/orders/StatusDropdown";
@@ -86,7 +89,8 @@ export default async function OrdersPage({
     to: typeof sp?.to === "string" ? sp.to : undefined,
     q: typeof sp?.q === "string" ? sp.q : undefined,
   };
-  const orders = await listAdminOrders(filters);
+  const [orders, lateOrders] = await Promise.all([listAdminOrders(filters), listLateOrders()]);
+  const late = lateOrderIds(orders);
 
   const exportParams = new URLSearchParams();
   for (const [k, v] of Object.entries(filters)) {
@@ -114,6 +118,12 @@ export default async function OrdersPage({
           {isAr ? "تصدير CSV" : "Export CSV"}
         </a>
       </header>
+
+      {/* Customers are promised a confirmation within 24 hours of
+          ordering; these are the ones running out of time. */}
+      {lateOrders.length > 0 && (
+        <LateBanner orders={lateOrders} isAr={isAr} />
+      )}
 
       {/* Filters */}
       <form
@@ -295,6 +305,7 @@ export default async function OrdersPage({
                     >
                       {orderStatusLabel(status, locale)}
                     </span>
+                    {late.has(o.id) && <LateBadge isAr={isAr} />}
                   </td>
                   <td className="px-3 py-2">
                     <StatusDropdown
