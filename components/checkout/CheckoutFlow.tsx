@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, ArrowRight, Loader2, ShoppingBag } from "lucide-react";
@@ -18,6 +18,13 @@ import {
   useCartStore,
   useSyncCartStock,
 } from "@/store/cart";
+import {
+  refreshBuyNowStock,
+  useBuyNowHasSoldOut,
+  useBuyNowHydrated,
+  useBuyNowItem,
+  useBuyNowStore,
+} from "@/store/buy-now";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { StepIndicator, type CheckoutStep } from "./StepIndicator";
 import { CheckoutSkeleton } from "@/components/cart/CartSkeleton";
@@ -41,21 +48,46 @@ const SHIPPING_FIELDS = [
 export function CheckoutFlow({
   locale,
   instapayEnabled,
+  buyNow = false,
 }: {
   locale: Locale;
   instapayEnabled: boolean;
+  /** /checkout?buy=now — order only the "Order now" product, not the cart. */
+  buyNow?: boolean;
 }) {
   const router = useRouter();
-  const hydrated = useCartHydrated();
-  const items = useCartItems();
+  const cartHydrated = useCartHydrated();
+  const cartItems = useCartItems();
   const clearCart = useCartStore((s) => s.clearCart);
-  const repriceItems = useCartStore((s) => s.repriceItems);
+  const repriceCartItems = useCartStore((s) => s.repriceItems);
+  const cartHasSoldOut = useCartHasSoldOut();
+  const buyNowHydrated = useBuyNowHydrated();
+  const buyNowItem = useBuyNowItem();
+  const buyNowHasSoldOut = useBuyNowHasSoldOut();
+  const clearBuyNow = useBuyNowStore((s) => s.clear);
+  const repriceBuyNow = useBuyNowStore((s) => s.reprice);
+
+  const hydrated = cartHydrated && buyNowHydrated;
+  // A ?buy=now link opened in another tab has no buy-now line (it lives in
+  // this tab's sessionStorage): fall back to the cart.
+  const single = buyNow && buyNowItem !== null;
+  const items = single ? [buyNowItem] : cartItems;
   // UX guard only — placeOrder re-validates stock server-side. Refresh stock
   // on arrival so a line that sold out since it was added is flagged in
   // Review and blocks "Place order" instead of failing at the server.
-  const hasSoldOut = useCartHasSoldOut();
+  const hasSoldOut = single ? buyNowHasSoldOut : cartHasSoldOut;
   const blockedReasonId = useId();
-  useSyncCartStock(hydrated && items.length > 0);
+  useSyncCartStock(hydrated && !single && items.length > 0);
+  useEffect(() => {
+    if (hydrated && single) void refreshBuyNowStock();
+  }, [hydrated, single]);
+
+  const repriceItems = (updates: { variantId: string; unitPrice: number }[]) => {
+    if (!single) return repriceCartItems(updates);
+    const next = updates.find((u) => u.variantId === buyNowItem.variantId);
+    if (next) repriceBuyNow(next.unitPrice);
+  };
+  const refreshStock = single ? refreshBuyNowStock : refreshCartStock;
 
   const [step, setStep] = useState<CheckoutStep>(1);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -157,7 +189,7 @@ export function CheckoutFlow({
         // clamp qty (sold-out lines stay, flagged in the cart, for the
         // shopper to remove). Then back to Review with the corrected cart.
         if (result.code === "INSUFFICIENT_STOCK") {
-          await refreshCartStock();
+          await refreshStock();
           setStep(3);
         }
         // COUPON_INVALID: the code was used/expired since it was applied.
@@ -171,7 +203,9 @@ export function CheckoutFlow({
         setServerError(checkoutErrorMessage(result.code, locale));
         return;
       }
-      clearCart();
+      // Order now leaves the cart as it was; only its one line is done.
+      if (single) clearBuyNow();
+      else clearCart();
       router.push(`/${locale}/order-confirmation/${result.orderId}`);
     });
   });
@@ -288,14 +322,24 @@ export function CheckoutFlow({
                   role="status"
                   className="rounded-md border border-[var(--color-error)]/40 bg-[var(--color-error)]/10 px-3 py-2 text-sm text-[var(--color-error)]"
                 >
-                  {locale === "ar"
-                    ? "شيل المنتجات اللي خلصت عشان تكمل"
-                    : "Remove sold-out items to continue"}{" "}
+                  {single
+                    ? locale === "ar"
+                      ? "المنتج ده خلص للأسف."
+                      : "Sorry, this item just sold out."
+                    : locale === "ar"
+                      ? "شيل المنتجات اللي خلصت عشان تكمل"
+                      : "Remove sold-out items to continue"}{" "}
                   <Link
-                    href={`/${locale}/cart`}
+                    href={single ? `/${locale}/products/${buyNowItem.productSlug}` : `/${locale}/cart`}
                     className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4"
                   >
-                    {locale === "ar" ? "افتح السلة" : "Open cart"}
+                    {single
+                      ? locale === "ar"
+                        ? "ارجع للمنتج"
+                        : "Back to the product"
+                      : locale === "ar"
+                        ? "افتح السلة"
+                        : "Open cart"}
                   </Link>
                 </p>
               )}
@@ -360,11 +404,27 @@ export function CheckoutFlow({
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
             {locale === "ar" ? "ملخص الطلب" : "Order summary"}
           </h3>
-          <p className="text-sm text-[var(--color-text-secondary)]">
-            {locale === "ar"
-              ? `${items.length} منتج · ${items.reduce((s, i) => s + i.qty, 0)} قطعة`
-              : `${items.length} items · ${items.reduce((s, i) => s + i.qty, 0)} units`}
-          </p>
+          {single ? (
+            // Order now: name the one product, and say the cart isn't part of it.
+            <>
+              <p className="text-sm font-medium text-[var(--color-text)]">
+                {locale === "ar" ? buyNowItem.name_ar : buyNowItem.name_en}
+              </p>
+              {cartItems.length > 0 && (
+                <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                  {locale === "ar"
+                    ? "المنتجات اللي في سلتك مش داخلة في الطلب ده، وهتفضل في السلة."
+                    : "Items in your cart aren't part of this order — they stay in your cart."}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              {locale === "ar"
+                ? `${items.length} منتج · ${items.reduce((s, i) => s + i.qty, 0)} قطعة`
+                : `${items.length} items · ${items.reduce((s, i) => s + i.qty, 0)} units`}
+            </p>
+          )}
           <dl className="mt-4 space-y-1.5 text-sm">
             <div className="flex justify-between">
               <dt className="text-[var(--color-text-secondary)]">

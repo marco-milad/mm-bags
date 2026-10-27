@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ShoppingBag } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ArrowRight, ShoppingBag, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useBuyNowStore } from "@/store/buy-now";
 import type { Locale } from "@/lib/i18n-config";
 import type { CatalogCardProduct, CatalogCardVariant } from "@/lib/catalog-shared";
 import { cn, formatPriceEGP } from "@/lib/utils";
@@ -77,6 +79,8 @@ export function QuickViewModal({
 
   const addItem = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
+  const startBuyNow = useBuyNowStore((s) => s.start);
+  const router = useRouter();
 
   const colors: Color[] = useMemo(() => {
     const map = new Map<string, Color>();
@@ -134,24 +138,34 @@ export function QuickViewModal({
   const variantHasStock = (predicate: (v: ProductVariant) => boolean) =>
     variants.some((v) => predicate(v) && (v.stock_qty ?? 0) > 0);
 
+  const lineFor = (variant: ProductVariant) => ({
+    variantId: variant.id,
+    productId: product.id,
+    productSlug: product.slug,
+    name_ar: product.name_ar,
+    name_en: product.name_en,
+    image: product.images?.[0] ?? null,
+    color_hex: variant.color_hex,
+    color_ar: variant.color_ar,
+    color_en: variant.color_en,
+    size_inches: variant.size_inches,
+    unitPrice: price,
+    stock,
+  });
+
   const onAdd = () => {
     if (!selectedVariant || isOOS) return;
-    addItem({
-      variantId: selectedVariant.id,
-      productId: product.id,
-      productSlug: product.slug,
-      name_ar: product.name_ar,
-      name_en: product.name_en,
-      image: product.images?.[0] ?? null,
-      color_hex: selectedVariant.color_hex,
-      color_ar: selectedVariant.color_ar,
-      color_en: selectedVariant.color_en,
-      size_inches: selectedVariant.size_inches,
-      unitPrice: price,
-      stock,
-    });
+    addItem(lineFor(selectedVariant));
     openDrawer();
     onOpenChange(false);
+  };
+
+  // Order now: checkout for this product only; the cart is left alone.
+  const onBuyNow = () => {
+    if (!selectedVariant || isOOS) return;
+    if (!startBuyNow(lineFor(selectedVariant))) return;
+    onOpenChange(false);
+    router.push(`/${locale}/checkout?buy=now`);
   };
 
   const images = product.images ?? [];
@@ -380,14 +394,24 @@ export function QuickViewModal({
                 of the sheet so "Add to cart" is always in reach. */}
             <div className="sticky bottom-0 -mx-4 mt-auto flex flex-col gap-2 border-t border-[var(--color-border)] bg-[var(--color-bg)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 md:static md:mx-0 md:border-0 md:px-0 md:pb-0 md:pt-2">
               {!isOOS && (
-                <button
-                  type="button"
-                  onClick={onAdd}
-                  className="flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
-                >
-                  <ShoppingBag className="h-4 w-4" />
-                  {isRTL ? "أضف للكارت" : "Add to cart"}
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={onBuyNow}
+                    className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
+                  >
+                    <Zap className="h-4 w-4" />
+                    {isRTL ? "اطلب دلوقتي" : "Order now"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onAdd}
+                    className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition hover:bg-[var(--color-primary)]/5"
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    {isRTL ? "أضف للكارت" : "Add to cart"}
+                  </button>
+                </div>
               )}
               <Link
                 href={`/${locale}/products/${product.slug}`}

@@ -95,6 +95,10 @@ export function CartSkeleton() {
  */
 export const CART_STATE_PROBE = `(function(){try{var r=localStorage.getItem("mm-cart");var n=0;if(r){var p=JSON.parse(r);n=(p&&p.state&&p.state.items&&p.state.items.length)||0;}document.documentElement.setAttribute("data-cart",n===0?"empty":"filled");}catch(e){document.documentElement.setAttribute("data-cart","filled");}})();`;
 
+/** Checkout ?buy=now: "filled" when this tab holds an Order-now line;
+ *  otherwise the cart decides, as CheckoutFlow falls back to it. */
+export const BUY_NOW_STATE_PROBE = `(function(){try{var p=JSON.parse(sessionStorage.getItem("mm-buy-now")||"null");if(p&&p.state&&p.state.item){document.documentElement.setAttribute("data-cart","filled");return;}}catch(e){}${CART_STATE_PROBE}})();`;
+
 /**
  * Checkout placeholder. Mirrors `grid gap-8 lg:grid-cols-[1fr_360px]`: the step
  * indicator and the shipping-form card on the left, the order summary rail on

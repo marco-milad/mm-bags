@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { CheckoutFlow } from "@/components/checkout/CheckoutFlow";
-import { CART_STATE_PROBE } from "@/components/cart/CartSkeleton";
+import { BUY_NOW_STATE_PROBE, CART_STATE_PROBE } from "@/components/cart/CartSkeleton";
 
 // Personalized: the cart, the wishlist and the checkout form are all
 // per-visitor. They used to be dynamic only as a side effect of the layout
@@ -15,9 +15,12 @@ export const metadata = {
 
 export default async function CheckoutPage({
   params,
+  searchParams,
 }: PageProps<"/[locale]/checkout">) {
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
+  // "Order now" from a product page: check out that one product only.
+  const buyNow = (await searchParams)?.buy === "now";
 
   // Evaluated server-side at request time — the single source of truth
   // for InstaPay availability, threaded down as a prop so the client
@@ -40,8 +43,8 @@ export default async function CheckoutPage({
           reserves the height of the state the visitor is actually in. Without
           it the empty cart and the shipping form — which differ by roughly
           600px — would share one guess and one of them would always shift. */}
-      <script dangerouslySetInnerHTML={{ __html: CART_STATE_PROBE }} />
-      <CheckoutFlow locale={locale} instapayEnabled={instapayEnabled} />
+      <script dangerouslySetInnerHTML={{ __html: buyNow ? BUY_NOW_STATE_PROBE : CART_STATE_PROBE }} />
+      <CheckoutFlow locale={locale} instapayEnabled={instapayEnabled} buyNow={buyNow} />
     </section>
   );
 }

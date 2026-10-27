@@ -8,6 +8,7 @@ import {
 
 const SLUG = "zz-qa-orders";
 const RACE_SLUG = "zz-qa-race";
+const CART_SLUG = "zz-qa-orders-cart";
 
 export async function run(browser, base) {
   const r = reporter("orders");
@@ -145,6 +146,42 @@ export async function run(browser, base) {
       r.check("delivered order cannot be cancelled", !!error);
     }
 
+    // ── Order now: checks out that product only, cart left alone ───────
+    {
+      const cartQa = await createQaProduct({ slug: CART_SLUG, stock: 5 });
+      const { ctx, page } = await newPage(browser);
+      await page.goto(`${base}/ar/products/${CART_SLUG}`, { waitUntil: "networkidle2", timeout: 120000 });
+      await sleep(1500);
+      await clickByText(page, "button", "أضف للكارت");
+      await sleep(2000);
+      await page.goto(`${base}/ar/products/${SLUG}`, { waitUntil: "networkidle2", timeout: 120000 });
+      await sleep(1500);
+      await clickByText(page, "button", "اطلب دلوقتي");
+      for (let i = 0; i < 30 && !page.url().includes("/checkout"); i++) await sleep(500);
+      await sleep(2500);
+      const atCheckout = new URL(page.url()).pathname + new URL(page.url()).search;
+      const summary = await page.evaluate(() => document.querySelector("form aside")?.innerText ?? "");
+      r.check("Order now goes straight to checkout", atCheckout === "/ar/checkout?buy=now", atCheckout);
+      r.check("Order now checkout says the cart isn't included", summary.includes("مش داخلة في الطلب ده"), summary.slice(0, 120));
+      await page.type("#shipping-name", "BuyNow Qzv");
+      await page.type("#shipping-phone", qaPhone());
+      const gov = await page.$eval("#shipping-governorate", (s) => [...s.options].find((x) => x.value)?.value);
+      await page.select("#shipping-governorate", gov);
+      await page.type("#shipping-city", "QA City");
+      await page.type("#shipping-street", "QA Street 1");
+      await clickByText(page, "form button", "التالي"); await sleep(1500);
+      await clickByText(page, "form button", "التالي"); await sleep(1500);
+      await clickByText(page, 'form button[type="submit"]', "إتمام الطلب");
+      for (let i = 0; i < 40 && !page.url().includes("/order-confirmation/"); i++) await sleep(1000);
+      const bnId = (page.url().match(/order-confirmation\/([0-9a-f-]{36})/) || [])[1] || null;
+      if (bnId) orders.push(bnId);
+      const { data: bnItems } = bnId ? await db.from("order_items").select("variant_id, qty").eq("order_id", bnId) : { data: [] };
+      r.check("Order now orders exactly that one product", bnItems?.length === 1 && bnItems[0].variant_id === qa.variantId && bnItems[0].qty === 1, JSON.stringify(bnItems));
+      const cartAfter = await page.evaluate(() => JSON.parse(localStorage.getItem("mm-cart") || "{}")?.state?.items?.map((i) => i.variantId) ?? []);
+      r.check("Order now leaves the cart as it was", cartAfter.length === 1 && cartAfter[0] === cartQa.variantId, JSON.stringify(cartAfter));
+      await ctx.close();
+    }
+
     // ── A sold-out line blocks checkout ────────────────────────────────
     {
       await db.from("product_variants").update({ stock_qty: 0 }).eq("id", qa.variantId);
@@ -203,6 +240,7 @@ export async function run(browser, base) {
     for (const id of orders) await deleteOrder(id, { restock: false }).catch(() => {});
     await deleteQaProduct(SLUG);
     await deleteQaProduct(RACE_SLUG);
+    await deleteQaProduct(CART_SLUG);
   }
   return r.lines;
 }
