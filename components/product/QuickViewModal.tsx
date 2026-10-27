@@ -165,8 +165,10 @@ export function QuickViewModal({
       {/* Same event as the product page, different surface. active={open}
           starts the dwell timer when the modal opens, not when it mounts. */}
       <ViewItemTracker productId={product.id} active={open} />
+      {/* Phones get a bottom sheet (thumb reach, more height); md+ keeps
+          the centred dialog. */}
       <DialogContent
-        className="max-w-3xl md:w-[90vw] md:max-w-4xl"
+        className="max-w-3xl md:w-[90vw] md:max-w-4xl max-md:bottom-0 max-md:left-0 max-md:top-auto max-md:max-h-[92dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none"
         closeAriaLabel={isRTL ? "إغلاق" : "Close"}
       >
         {/* Accessible labels — visually hidden, announced to screen readers. */}
@@ -177,10 +179,10 @@ export function QuickViewModal({
           {isRTL ? "عرض سريع للمنتج" : "Quick view for the product"}
         </DialogDescription>
 
-        <div className="grid max-h-[88vh] grid-cols-1 overflow-y-auto md:max-h-none md:grid-cols-[1.05fr_1fr] md:overflow-hidden">
+        <div className="grid max-h-[92dvh] grid-cols-1 overflow-y-auto md:max-h-none md:grid-cols-[1.05fr_1fr] md:overflow-hidden">
           {/* ── Gallery ─────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-3 bg-[var(--color-surface)] p-4 md:max-h-[88vh] md:overflow-hidden">
-            <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-[var(--color-surface-2)]">
+          <div className="flex flex-col gap-3 bg-[var(--color-surface)] p-3 md:max-h-[88vh] md:overflow-hidden md:p-4">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-[var(--color-surface-2)] md:aspect-square">
               {mainImage ? (
                 <Image
                   src={mainImage}
@@ -239,13 +241,13 @@ export function QuickViewModal({
           </div>
 
           {/* ── Details ─────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-4 overflow-y-auto p-6 md:max-h-[88vh]">
+          <div className="flex flex-col gap-4 p-4 md:max-h-[88vh] md:overflow-y-auto md:p-6">
             {/* Both languages always visible — the user spec calls this
                 out explicitly, and the secondary language helps customers
                 searching the bilingual catalog confirm they're looking at
                 the right product. */}
             <div>
-              <h2 className="font-serif text-2xl text-[var(--color-text)]">
+              <h2 className="font-serif text-xl text-[var(--color-text)] md:text-2xl">
                 {isRTL ? product.name_ar : product.name_en}
               </h2>
               <p
@@ -374,8 +376,9 @@ export function QuickViewModal({
                 When stock is gone we hide the disabled cart button and
                 show only the link to the PDP (where the back-in-stock
                 form lives — keeping it here would duplicate that form
-                across two places). */}
-            <div className="mt-auto flex flex-col gap-2 pt-2">
+                across two places). On phones the bar sticks to the bottom
+                of the sheet so "Add to cart" is always in reach. */}
+            <div className="sticky bottom-0 -mx-4 mt-auto flex flex-col gap-2 border-t border-[var(--color-border)] bg-[var(--color-bg)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 md:static md:mx-0 md:border-0 md:px-0 md:pb-0 md:pt-2">
               {!isOOS && (
                 <button
                   type="button"

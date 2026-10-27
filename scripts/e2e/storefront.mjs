@@ -22,6 +22,29 @@ export async function run(browser, base) {
       r.check("no horizontal overflow: catalog AR 390px", (await overflowPx(page)) <= 0);
       await ctx.close();
     }
+    // Quick view on a phone: eye button on the card → bottom sheet with
+    // "Add to cart" in reach, without leaving the grid.
+    {
+      const { ctx, page } = await newPage(browser, MOBILE);
+      await page.goto(`${base}/ar/catalog`, { waitUntil: "networkidle2", timeout: 120000 });
+      const tapped = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button[aria-label="عرض سريع"]')].find((x) => x.offsetParent !== null);
+        b?.click();
+        return !!b;
+      });
+      await page.waitForSelector('[role="dialog"]', { timeout: 30000 }).catch(() => {});
+      await sleep(1500);
+      const qv = await page.evaluate(() => {
+        const d = document.querySelector('[role="dialog"]');
+        const add = d && [...d.querySelectorAll("button")].find((x) => x.textContent.includes("أضف للكارت"));
+        const r = add?.getBoundingClientRect();
+        return { url: location.pathname, dialog: !!d, addVisible: !!r && r.bottom <= innerHeight && r.top >= 0, w: r?.width ?? 0 };
+      });
+      r.check("phone quick view opens from the card", tapped && qv.dialog && qv.url === "/ar/catalog", JSON.stringify(qv));
+      r.check("phone quick view keeps Add to cart on screen", qv.addVisible, JSON.stringify(qv));
+      r.check("no horizontal overflow: quick view 390px", (await overflowPx(page)) <= 0);
+      await ctx.close();
+    }
     {
       const { ctx, page } = await newPage(browser, DESKTOP);
       await page.goto(`${base}/en/catalog?q=xyzxyzqa`, { waitUntil: "networkidle2", timeout: 120000 });

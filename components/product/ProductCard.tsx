@@ -136,11 +136,11 @@ export function ProductCard({
               -{savings}%
             </span>
           )}
-          {/* Quick view — hover-revealed pill, desktop only. Still off for
-              OOS cards: the modal states availability and carries an
-              add-to-cart, so opening it would disclose on hover exactly
-              what the card is holding back. Those cards route to the
-              detail page instead. */}
+          {/* Quick view — eye button on phones, hover pill on desktop. Off
+              for OOS cards: the modal states availability and carries an
+              add-to-cart, so opening it would disclose exactly what the
+              card is holding back. Those cards route to the detail page
+              instead. */}
           {!isOOS && <QuickViewTrigger product={product} locale={locale} />}
         </ImageContainer>
       ) : (

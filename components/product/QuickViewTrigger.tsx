@@ -16,13 +16,13 @@ const QuickViewModal = dynamic(
 );
 
 /**
- * Hover-revealed "Quick view" button. Rendered inside ProductCard's image
- * container. Calls preventDefault/stopPropagation so the click doesn't
- * also navigate the surrounding <Link>.
+ * "Quick view" button, rendered inside ProductCard's image container. Calls
+ * preventDefault/stopPropagation so the click doesn't also navigate the
+ * surrounding <Link>.
  *
- * Desktop-only: the design brief calls for `hidden md:flex` here because
- * mobile catalog cards already give one-tap access to the full PDP and a
- * modal on a small screen is a worse UX than the dedicated page.
+ * Phone: an always-visible eye button in the image's bottom corner (no
+ * hover on touch), opening the modal as a bottom sheet — pick colour/size
+ * and add to cart without leaving the grid. Desktop: the hover-revealed pill.
  */
 export function QuickViewTrigger({
   product,
@@ -51,8 +51,16 @@ export function QuickViewTrigger({
         type="button"
         onClick={handleClick}
         aria-label={isRTL ? "عرض سريع" : "Quick view"}
+        className="absolute bottom-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-bg)]/90 text-[var(--color-text)] shadow-sm backdrop-blur transition active:scale-95 ltr:right-3 rtl:left-3 md:hidden"
+      >
+        <Eye className="h-5 w-5" />
+      </button>
+      <button
+        type="button"
+        onClick={handleClick}
+        aria-label={isRTL ? "عرض سريع" : "Quick view"}
         // Positioned over the bottom of the image. Hover-revealed via the
-        // ProductCard's `group` class. Hidden entirely below md.
+        // ProductCard's `group` class. The phone button above replaces it below md.
         className="absolute bottom-3 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-1.5 rounded-full bg-[var(--color-bg)]/95 px-4 py-2 text-xs font-semibold text-[var(--color-text)] shadow-lg backdrop-blur-sm transition-all duration-200 hover:bg-[var(--color-primary)] hover:text-white focus-visible:opacity-100 group-hover:translate-y-0 group-hover:opacity-100 md:inline-flex md:translate-y-2 md:opacity-0"
       >
         <Eye className="h-3.5 w-3.5" />

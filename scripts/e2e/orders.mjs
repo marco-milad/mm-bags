@@ -29,10 +29,30 @@ export async function run(browser, base) {
       const cookie = (await page.cookies()).find((c) => c.name === "mm_orders");
       r.check("ownership cookie is httpOnly + SameSite=Lax", !!cookie && cookie.httpOnly && /lax/i.test(cookie.sameSite || ""));
       const share = await page.evaluate(() => [...document.querySelectorAll('a[href^="https://wa.me/?text="]')].map((a) => decodeURIComponent(a.getAttribute("href"))));
-      r.check("owner can send the order number to themselves (no ?p= credential)", share.some((h) => h.includes("/track/") && !h.includes("?p=")), share[0]);
+      r.check("owner can send the private order link to themselves (no ?p= credential)", share.some((h) => /\/ar\/o\/[0-9a-f]{32}/.test(h) && !h.includes("?p=")), share[0]);
+      r.check("confirmation promises a confirmation within 24 hours", t.includes("خلال 24 ساعة"));
+      const trackHref = await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => a.textContent.includes("تتبع الطلب"))?.getAttribute("href") ?? "");
+      r.check("owner's track button opens the private link", /^\/ar\/o\/[0-9a-f]{32}$/.test(trackHref), trackHref);
       await placed.ctx.close();
     }
-    const { data: o } = await db.from("orders").select("order_number").eq("id", orderId).single();
+    const { data: o } = await db.from("orders").select("order_number, view_token").eq("id", orderId).single();
+
+    // ── Private order link: full order in a fresh browser, no sign-in ──
+    {
+      const { ctx, page } = await newPage(browser);
+      const res = await page.goto(`${base}/ar/o/${o.view_token}`, { waitUntil: "networkidle2", timeout: 120000 });
+      const text = await page.evaluate(() => document.body.innerText);
+      const html = await page.evaluate(() => document.documentElement.outerHTML);
+      r.check("order link opens in a fresh browser", res.status() === 200 && text.includes(o.order_number), `status ${res.status()}`);
+      r.check("order link shows full name, street and price breakdown", text.includes("Owner Qzv") && text.includes("QA Street 1") && text.includes("الإجمالي الفرعي"));
+      r.check("order link shows the 24-hour promise", text.includes("خلال 24 ساعة") && text.includes("استلمنا طلبك"));
+      r.check("order link keeps the phone masked (incl. RSC payload)", !html.includes(QA_PHONE));
+      r.check("order link is noindex", /<meta[^>]+name="robots"[^>]+noindex/.test(html));
+      r.check("no horizontal overflow: order link 390px", (await overflowPx(page)) <= 0);
+      const bogus = await page.goto(`${base}/ar/o/${"0".repeat(32)}`, { waitUntil: "domcontentloaded", timeout: 120000 });
+      r.check("unknown order link is a 404", bogus.status() === 404, `status ${bogus.status()}`);
+      await ctx.close();
+    }
     {
       const { ctx, page } = await newPage(browser);
       await page.goto(`${base}/ar/order-confirmation/${orderId}`, { waitUntil: "networkidle2", timeout: 120000 });
@@ -40,7 +60,8 @@ export async function run(browser, base) {
       const text = await page.evaluate(() => document.body.innerText);
       r.check("stranger: phone hidden (incl. RSC payload)", !html.includes(QA_PHONE));
       r.check("stranger: surname hidden, first name shown", !text.includes("Qzv") && text.includes("Owner"));
-      r.check("stranger: no save-number buttons", !text.includes("انسخ رقم الطلب"));
+      r.check("stranger: no save-number buttons", !text.includes("انسخ رقم الطلب") && !text.includes("انسخ لينك الطلب"));
+      r.check("stranger: private order link not exposed", !html.includes(o.view_token) && !(await page.content()).includes(o.view_token));
 
       // Tracking with order number + last 4 digits
       await page.goto(`${base}/ar/track/${orderId}`, { waitUntil: "networkidle2", timeout: 120000 });
@@ -81,6 +102,20 @@ export async function run(browser, base) {
       await page.setCookie(...(await sessionCookies(env.ADMIN_EMAIL, base)), { name: "admin_locale", value: "ar", domain: host, path: "/" });
       let dialog = "";
       page.on("dialog", async (d) => { dialog = d.message(); await d.accept(); });
+      await page.goto(`${base}/admin/orders/${orderId}`, { waitUntil: "networkidle2", timeout: 120000 });
+      const detail = await page.evaluate(() => document.body.innerText);
+      r.check("admin order page shows the customer's order link", detail.includes(`/ar/o/${o.view_token}`));
+      // Age the order past the late mark and check the flag.
+      const realCreated = (await db.from("orders").select("created_at").eq("id", orderId).single()).data.created_at;
+      await db.from("orders").update({ created_at: new Date(Date.now() - 21 * 3600 * 1000).toISOString() }).eq("id", orderId);
+      await page.goto(`${base}/admin/orders`, { waitUntil: "networkidle2", timeout: 120000 });
+      const lateText = await page.evaluate((num) => {
+        const banner = [...document.querySelectorAll('[role="status"]')].map((e) => e.textContent).find((x) => x.includes("ماتأكدش")) ?? "";
+        const row = [...document.querySelectorAll("tr")].find((x) => x.textContent.includes(num))?.textContent ?? "";
+        return { banner, row };
+      }, o.order_number);
+      r.check("admin flags a pending order 20h+ old as late", lateText.banner.includes(o.order_number) && lateText.row.includes("متأخر"), lateText.banner.slice(0, 80));
+      await db.from("orders").update({ created_at: realCreated }).eq("id", orderId);
       await page.goto(`${base}/admin/orders`, { waitUntil: "networkidle2", timeout: 120000 });
       await sleep(2000);
       const changed = await page.evaluate((num) => {
