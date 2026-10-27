@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { buildCsp } from "./lib/security/csp";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseHostname = supabaseUrl ? new URL(supabaseUrl).hostname : undefined;
@@ -93,10 +94,9 @@ const nextConfig: NextConfig = {
     // through /_next/image. Bump to 30s.
     imgOptTimeoutInSeconds: 30,
   },
-  // Baseline security headers (audit M7). Deliberately not a full script/style
-  // CSP — that needs nonces for Next's inline scripts and would risk breaking
-  // the storefront. These cover clickjacking, MIME sniffing, referrer leaks
-  // and powerful browser features the store never uses.
+  // Security headers. The CSP is an allowlist policy without nonces (nonces
+  // would make every page dynamic and lose ISR caching) — see
+  // lib/security/csp.ts for exactly what it blocks and why.
   async headers() {
     return [
       {
@@ -105,7 +105,11 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'",
+            value: buildCsp({
+              supabaseOrigin: supabaseUrl ? new URL(supabaseUrl).origin : undefined,
+              isDev: process.env.NODE_ENV === "development",
+              isPreview: process.env.VERCEL_ENV === "preview",
+            }),
           },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

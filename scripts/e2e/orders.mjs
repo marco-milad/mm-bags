@@ -54,6 +54,13 @@ export async function run(browser, base) {
       r.check("no horizontal overflow: tracking 390px", (await overflowPx(page)) <= 0);
 
       // Brute-forcing the last 4 digits gets cut off (8 tries / 15 min / order).
+      // The limiter uses fixed 15-minute windows (:00/:15/:30/:45): if the
+      // attempts straddle a boundary they split across two windows and never
+      // reach 9 in one. On a slow connection 10 attempts can take minutes, so
+      // start in a fresh window when less than 6 minutes are left.
+      const WINDOW_MS = 15 * 60 * 1000;
+      const leftMs = WINDOW_MS - (Date.now() % WINDOW_MS);
+      if (leftMs < 6 * 60 * 1000) await sleep(leftMs + 2000);
       let blockedAt = 0;
       for (let attempt = 1; attempt <= 10 && !blockedAt; attempt++) {
         await page.goto(`${base}/ar/track/${orderId}`, { waitUntil: "networkidle2", timeout: 120000 });
