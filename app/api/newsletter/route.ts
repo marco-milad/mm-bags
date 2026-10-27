@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  newsletterSchema,
-  NEWSLETTER_WELCOME_CODE,
-} from "@/lib/newsletter-schema";
+import { newsletterSchema } from "@/lib/newsletter-schema";
 import { adminEmail, emailFrom, getResend } from "@/lib/email";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { hitLimits, ipFromRequest } from "@/lib/security/rate-limit";
@@ -14,7 +11,8 @@ export const runtime = "nodejs";
 /**
  * POST /api/newsletter
  *
- * Subscribes an email address, sends a welcome email with a discount code,
+ * Subscribes an email address, sends a welcome email (no code: the personal
+ * 10% code is issued only after Marco approves the subscriber),
  * and notifies the admin. The Supabase write happens BEFORE the email sends
  * so a Resend outage doesn't drop the subscription. If the welcome email
  * fails we still return success — the subscriber is in the list and Marco
@@ -135,10 +133,9 @@ function buildWelcomeEmail(locale: "ar" | "en"): {
           <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#444">
             شكراً إنك اشتركت معنا. هنبعتلك أحدث التشكيلات والعروض الحصرية، من غير سبام.
           </p>
-          <div style="margin:24px 0;padding:20px;background:#fff8e6;border:1px dashed #b8860b;border-radius:12px;text-align:center">
-            <p style="margin:0 0 6px;font-size:13px;color:#6b5b00">كوبون خصم ١٠٪ على أول طلب</p>
-            <p style="margin:0;font-family:monospace;font-size:24px;font-weight:700;letter-spacing:2px;color:#0d2540">${NEWSLETTER_WELCOME_CODE}</p>
-          </div>
+          <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#444">
+            اشتراكك وصلنا، وهنبعتلك قريب كود خصم ١٠٪ خاص بيك على أول طلب.
+          </p>
           <p style="margin:0;font-size:14px;color:#666">سافر بذكاء. سافر بأناقة.<br/>— ماركو ميلاد</p>
         </div>
       `,
@@ -152,10 +149,9 @@ function buildWelcomeEmail(locale: "ar" | "en"): {
         <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#444">
           Thanks for subscribing — we'll keep you in the loop on new arrivals and subscriber-only offers. No spam, ever.
         </p>
-        <div style="margin:24px 0;padding:20px;background:#fff8e6;border:1px dashed #b8860b;border-radius:12px;text-align:center">
-          <p style="margin:0 0 6px;font-size:13px;color:#6b5b00">10% off your first order</p>
-          <p style="margin:0;font-family:monospace;font-size:24px;font-weight:700;letter-spacing:2px;color:#0d2540">${NEWSLETTER_WELCOME_CODE}</p>
-        </div>
+        <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#444">
+          We've received your subscription and will send you a personal 10% code for your first order soon.
+        </p>
         <p style="margin:0;font-size:14px;color:#666">Travel smart. Travel in style.<br/>— Marco Milad</p>
       </div>
     `,

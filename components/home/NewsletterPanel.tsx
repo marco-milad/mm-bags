@@ -7,12 +7,6 @@ import type { Locale } from "@/lib/i18n-config";
 import { HUMAN_CHECK_FAILED, TURNSTILE_FIELD } from "@/lib/security/turnstile-core";
 import { TurnstileWidget, useTurnstile } from "@/components/security/Turnstile";
 
-// Kept in sync with the code the /api/newsletter → Resend welcome
-// email template emails to new subscribers. Displayed here in the
-// success panel so the code lands the instant they subscribe, not
-// only when they get around to opening their inbox.
-const WELCOME_CODE = "WELCOME10";
-
 type Status =
   | { kind: "idle" }
   | { kind: "submitting" }
@@ -21,8 +15,9 @@ type Status =
 
 /**
  * Newsletter — navy panel, 10% off first order. Subscribes via
- * /api/newsletter which persists to Supabase and sends a welcome email
- * with the WELCOME10 code via Resend.
+ * /api/newsletter which persists to Supabase and sends a welcome email.
+ * The 10% code is personal and single-use: Marco approves each subscriber
+ * from the admin and the code is sent then — never shown here.
  *
  * On success the form swaps to a confirmation message (we don't blank the
  * email immediately — replacing the whole form is the strongest signal
@@ -159,22 +154,10 @@ export function NewsletterPanel({ locale }: { locale: Locale }) {
                 {isRTL ? "تم الاشتراك ✅" : "Subscribed ✅"}
               </p>
 
-              {/* Code plate — big brass-outlined tile with the code
-                  in mono/uppercase so it reads as an identifier the
-                  user can copy into the cart. */}
-              <div className="mt-3 rounded-md border-2 border-dashed border-brass-500 bg-navy-900 px-4 py-3 text-center">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-brass-300">
-                  {isRTL ? "استخدم الكود" : "Use code"}
-                </p>
-                <p className="mt-1 font-mono text-2xl font-bold tracking-wider text-brass-200 md:text-3xl">
-                  {WELCOME_CODE}
-                </p>
-              </div>
-
-              <p className="mt-3 text-navy-200">
+              <p className="mt-3 leading-relaxed text-navy-200">
                 {isRTL
-                  ? "بعتناه كمان على إيميلك للاحتفاظ."
-                  : "We've also emailed it to you for safekeeping."}
+                  ? "اشتراكك وصلنا. هنراجعه ونبعتلك كود خصم ١٠٪ خاص بيك على إيميلك قريب."
+                  : "We've got your subscription. We'll review it and email you a personal 10% code soon."}
               </p>
 
               <Link
