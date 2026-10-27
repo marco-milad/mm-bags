@@ -3,7 +3,7 @@
 // Needs migration 0029. Creates and deletes its own data.
 import {
   DESKTOP, clickByText, createQaProduct, db, deleteOrder, deleteQaProduct, env,
-  newPage, placeOrderUI, reporter, sessionCookies, sleep,
+  newPage, placeOrderUI, qaPhone, reporter, sessionCookies, sleep,
 } from "./lib.mjs";
 
 const SLUG = "zz-qa-coupon";
@@ -50,7 +50,7 @@ export async function run(browser, base) {
 
     // ── Wrong code is refused in the preview ─────────────────────────────
     {
-      const bad = await placeOrderUI(browser, base, { slug: SLUG, name: "Coupon Qzv", coupon: "MM-ZZZZZZ" });
+      const bad = await placeOrderUI(browser, base, { slug: SLUG, name: "Coupon Qzv", phone: qaPhone(), coupon: "MM-ZZZZZZ" });
       r.check("an unknown code is refused", bad.couponText.includes("الكود ده مش صحيح"));
       if (bad.orderId) {
         orders.push(bad.orderId);
@@ -62,7 +62,7 @@ export async function run(browser, base) {
 
     // ── Real redemption ──────────────────────────────────────────────────
     {
-      const p = await placeOrderUI(browser, base, { slug: SLUG, name: "Coupon Qzv", coupon: coupon.code });
+      const p = await placeOrderUI(browser, base, { slug: SLUG, name: "Coupon Qzv", phone: qaPhone(), coupon: coupon.code });
       r.check("checkout shows the code discount before ordering", p.couponText.includes("خصم الكود"), p.couponText.slice(0, 0));
       r.check("order with the code goes through", !!p.orderId, p.page.url());
       if (p.orderId) {
@@ -80,7 +80,7 @@ export async function run(browser, base) {
 
     // ── Same code again ─────────────────────────────────────────────────
     {
-      const again = await placeOrderUI(browser, base, { slug: SLUG, name: "Coupon Qzv", coupon: coupon.code });
+      const again = await placeOrderUI(browser, base, { slug: SLUG, name: "Coupon Qzv", phone: qaPhone(), coupon: coupon.code });
       r.check("a used code is refused", again.couponText.includes("اتستخدم قبل كده"));
       if (again.orderId) {
         orders.push(again.orderId);

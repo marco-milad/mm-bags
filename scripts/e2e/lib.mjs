@@ -142,7 +142,9 @@ export async function deleteOrder(orderId, { restock = true } = {}) {
  * Guest checkout through the real UI. Leaves the page on the confirmation
  * page (the placing browser = owner). Returns { orderId, page, ctx }.
  */
-export async function placeOrderUI(browser, base, { slug, name, email = "", coupon = "" }) {
+// `phone`: pass a fresh qaPhone() when a suite places many orders — the
+// per-phone order limit (4/day) applies even to local runs.
+export async function placeOrderUI(browser, base, { slug, name, email = "", coupon = "", phone = QA_PHONE }) {
   const { ctx, page } = await newPage(browser);
   await page.goto(`${base}/ar/products/${slug}`, { waitUntil: "networkidle2", timeout: 120000 });
   await sleep(1500);
@@ -151,7 +153,7 @@ export async function placeOrderUI(browser, base, { slug, name, email = "", coup
   await page.goto(`${base}/ar/checkout`, { waitUntil: "networkidle2", timeout: 120000 });
   await sleep(2500);
   await page.type("#shipping-name", name);
-  await page.type("#shipping-phone", QA_PHONE);
+  await page.type("#shipping-phone", phone);
   if (email) await page.type("#shipping-email", email);
   const gov = await page.$eval("#shipping-governorate", (s) => [...s.options].find((o) => o.value)?.value);
   await page.select("#shipping-governorate", gov);
