@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { GOVERNORATE_CODES } from "./governorates";
 import { effectiveWebPrice } from "@/lib/catalog-shared";
+import { COUPON_INPUT_MAX, couponDiscount } from "@/lib/coupons/code";
 
 export const FREE_SHIPPING_THRESHOLD = 1500;
 export const SHIPPING_FEE = 50;
@@ -79,6 +80,8 @@ export const cartLineSchema = z.object({
 export const placeOrderInputSchema = z.object({
   checkout: checkoutSchema,
   items: z.array(cartLineSchema).min(1, { message: "السلة فاضية" }),
+  /** Raw code as typed; the server normalises and validates it. */
+  couponCode: z.string().max(COUPON_INPUT_MAX).optional(),
 });
 
 export type PlaceOrderInput = z.infer<typeof placeOrderInputSchema>;
@@ -86,14 +89,19 @@ export type PlaceOrderInput = z.infer<typeof placeOrderInputSchema>;
 export function calcTotals(
   items: { qty: number; unitPrice: number }[],
   paymentMethod: CheckoutPaymentMethod,
+  /** Coupon percentage (0 = none). Applies to the products only. */
+  percentOff = 0,
 ) {
   const subtotal = items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0);
+  const discount = couponDiscount(subtotal, percentOff);
+  // Free shipping is judged on the products before the coupon, so using a
+  // code never costs the shopper their free delivery.
   const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
   // Only COD carries the collection surcharge; InstaPay is a direct
   // bank transfer with no per-order fee we need to pass through.
   const codFee = paymentMethod === "cod" ? COD_FEE : 0;
-  const total = subtotal + shippingFee + codFee;
-  return { subtotal, shippingFee, codFee, total };
+  const total = subtotal - discount + shippingFee + codFee;
+  return { subtotal, discount, shippingFee, codFee, total };
 }
 
 // ============================================================
@@ -119,6 +127,8 @@ export type PlaceOrderErrorCode =
   | "PRICE_CHANGED"
   /** Turnstile token missing or rejected — the client resets the widget. */
   | "HUMAN_CHECK_FAILED"
+  /** Coupon unknown, used or expired — the client removes it and shows why. */
+  | "COUPON_INVALID"
   | "CHECKOUT_FAILED";
 
 /** The subset of a cart line the validator needs. Full cart lines

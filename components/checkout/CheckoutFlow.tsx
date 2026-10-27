@@ -25,6 +25,7 @@ import { ShippingForm } from "./ShippingForm";
 import { PaymentSelector } from "./PaymentSelector";
 import { OrderReview } from "./OrderReview";
 import { TurnstileWidget, useTurnstile } from "@/components/security/Turnstile";
+import { CouponField, type AppliedCoupon } from "./CouponField";
 
 const SHIPPING_FIELDS = [
   "name",
@@ -58,6 +59,7 @@ export function CheckoutFlow({
 
   const [step, setStep] = useState<CheckoutStep>(1);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
   const [isPending, startTransition] = useTransition();
   // Eager: the widget only mounts on the Review step, so the script loads there.
   const human = useTurnstile({ eager: true });
@@ -132,6 +134,7 @@ export function CheckoutFlow({
           color_hex: i.color_hex,
           size_inches: i.size_inches,
         })),
+        couponCode: coupon?.code,
       }, turnstileToken);
       // The token was spent whatever the outcome; fetch a fresh one.
       human.reset();
@@ -155,6 +158,12 @@ export function CheckoutFlow({
         // shopper to remove). Then back to Review with the corrected cart.
         if (result.code === "INSUFFICIENT_STOCK") {
           await refreshCartStock();
+          setStep(3);
+        }
+        // COUPON_INVALID: the code was used/expired since it was applied.
+        // Drop it so the shopper sees the full total before confirming.
+        if (result.code === "COUPON_INVALID") {
+          setCoupon(null);
           setStep(3);
         }
         // Localize every server error from its machine-readable H2 code; the
@@ -199,7 +208,7 @@ export function CheckoutFlow({
   }
 
   const values = form.watch();
-  const totals = calcTotals(items, values.paymentMethod ?? "card");
+  const totals = calcTotals(items, values.paymentMethod ?? "card", coupon?.percentOff ?? 0);
 
   return (
     <form onSubmit={onSubmit} noValidate className="grid gap-8 lg:grid-cols-[1fr_360px]">
@@ -255,7 +264,21 @@ export function CheckoutFlow({
                     : "Confirm everything looks right before placing the order."}
                 </p>
               </header>
-              <OrderReview values={values} items={items} locale={locale} />
+              <OrderReview
+                values={values}
+                items={items}
+                locale={locale}
+                percentOff={coupon?.percentOff ?? 0}
+              />
+              <CouponField
+                locale={locale}
+                applied={coupon}
+                onChange={(c) => {
+                  setCoupon(c);
+                  setServerError(null);
+                }}
+                disabled={isPending}
+              />
               <TurnstileWidget locale={locale} control={human} action="checkout" />
               {hasSoldOut && (
                 // role="status": the stock refresh can flip this on after the
@@ -351,6 +374,12 @@ export function CheckoutFlow({
                 {formatPriceEGP(totals.subtotal, locale)}
               </dd>
             </div>
+            {totals.discount > 0 && (
+              <div className="flex justify-between text-[var(--color-success)]">
+                <dt>{locale === "ar" ? "خصم الكود" : "Code discount"}</dt>
+                <dd className="font-mono">− {formatPriceEGP(totals.discount, locale)}</dd>
+              </div>
+            )}
             <div className="flex justify-between">
               <dt className="text-[var(--color-text-secondary)]">
                 {locale === "ar" ? "الشحن" : "Shipping"}

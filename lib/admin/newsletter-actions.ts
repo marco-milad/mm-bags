@@ -5,6 +5,8 @@ import { z } from "zod";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin/auth";
 import { adminEmail, emailFrom, getResend } from "@/lib/email";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { SUBSCRIBER_PERCENT_OFF, couponExpiry, generateCouponCode } from "@/lib/coupons/code";
 
 /**
  * Admin actions for /admin/newsletter.
@@ -53,6 +55,70 @@ export async function toggleSubscriberActive(
     .from("newsletter_subscribers")
     .update({ is_active: !data.is_active })
     .eq("id", id);
+  revalidatePath("/admin/newsletter");
+}
+
+// ─── Review: approve → personal coupon, or reject ───────────────────
+// Approval issues ONE single-use code per subscriber (unique index on
+// coupons.subscriber_id), so a double click can't mint two codes.
+export async function approveSubscriber(formData: FormData): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
+  const id = formData.get("id");
+  if (typeof id !== "string") return;
+  const admin = getSupabaseAdminClient();
+
+  const { data: sub } = await admin
+    .from("newsletter_subscribers")
+    .select("id, email")
+    .eq("id", id)
+    .maybeSingle();
+  if (!sub) return;
+
+  const userClient = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await userClient.auth.getUser();
+
+  const { data: existing } = await admin
+    .from("coupons")
+    .select("id")
+    .eq("subscriber_id", sub.id)
+    .maybeSingle();
+
+  if (!existing) {
+    // A fresh random code collides ~never; retry on the unique index anyway.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { error } = await admin.from("coupons").insert({
+        code: generateCouponCode(),
+        percent_off: SUBSCRIBER_PERCENT_OFF,
+        subscriber_id: sub.id,
+        email: sub.email,
+        created_by: user?.id ?? null,
+        expires_at: couponExpiry().toISOString(),
+      });
+      if (!error) break;
+      // 23505 on subscriber_id = a parallel approval already made the code.
+      if (error.code === "23505" && error.message.includes("subscriber")) break;
+      if (error.code !== "23505" || attempt === 2) throw new Error(`COUPON_CREATE_FAILED: ${error.message}`);
+    }
+  }
+
+  await admin
+    .from("newsletter_subscribers")
+    .update({ status: "approved", reviewed_at: new Date().toISOString() })
+    .eq("id", sub.id);
+  revalidatePath("/admin/newsletter");
+}
+
+export async function rejectSubscriber(formData: FormData): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
+  const id = formData.get("id");
+  if (typeof id !== "string") return;
+  await getSupabaseAdminClient()
+    .from("newsletter_subscribers")
+    .update({ status: "rejected", reviewed_at: new Date().toISOString() })
+    .eq("id", id)
+    .neq("status", "approved"); // an issued code is never silently orphaned
   revalidatePath("/admin/newsletter");
 }
 

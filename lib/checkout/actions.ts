@@ -14,6 +14,8 @@ import {
 import { hitLimits, requestIp } from "@/lib/security/rate-limit";
 import { normalizePhone, tooManyText } from "@/lib/security/limits";
 import { verifyHuman } from "@/lib/security/turnstile";
+import { couponRejectionText, normalizeCouponCode } from "@/lib/coupons/code";
+import { claimCoupon, findUsableCoupon, releaseCoupon } from "@/lib/coupons/server";
 import { HUMAN_CHECK_FAILED } from "@/lib/security/turnstile-core";
 import { EG_GOVERNORATES } from "./governorates";
 import { validateCart, type ValidateCartResult } from "./validate-cart";
@@ -155,8 +157,25 @@ export async function placeOrder(
     };
   }
 
+  // ─── Subscriber coupon (0029) ────────────────────────────────────────
+  // Checked here so the order is priced with it; actually redeemed (one
+  // atomic UPDATE) right after the order row exists, below.
+  let coupon: { code: string; percentOff: number } | null = null;
+  if (parsed.data.couponCode?.trim()) {
+    const code = normalizeCouponCode(parsed.data.couponCode);
+    const found = code ? await findUsableCoupon(code) : null;
+    if (!found?.ok) {
+      return {
+        ok: false,
+        code: "COUPON_INVALID",
+        error: `${couponRejectionText(found?.reason ?? "invalid", true)} / ${couponRejectionText(found?.reason ?? "invalid", false)}`,
+      };
+    }
+    coupon = found.coupon;
+  }
+
   // Totals are computed from the authoritative DB prices, not the client's.
-  const totals = calcTotals(validation.lines, checkout.paymentMethod);
+  const totals = calcTotals(validation.lines, checkout.paymentMethod, coupon?.percentOff ?? 0);
   // Fast lookup of the authoritative unit price per variant for order_items.
   const authoritativePrice = new Map(
     validation.lines.map((l) => [l.variantId, l.unitPrice]),
@@ -200,10 +219,13 @@ export async function placeOrder(
         payment_status: "pending",
         subtotal: totals.subtotal,
         shipping_fee: totals.shippingFee,
-        discount_amount: 0,
+        discount_amount: totals.discount,
         loyalty_discount: 0,
         total: totals.total,
         shipping_address: shippingAddress,
+        // Only sent with a coupon, so ordinary orders keep working even if
+        // migration 0029 (which adds the column) hasn't been applied yet.
+        ...(coupon ? { coupon_code: coupon.code } : {}),
       })
       .select("id, order_number")
       .single();
@@ -216,6 +238,17 @@ export async function placeOrder(
         ok: false,
         code: "CHECKOUT_FAILED",
         error: messageForError({ ok: false, code: "CHECKOUT_FAILED" }),
+      };
+    }
+
+    // Redeem the coupon now that the order exists. Losing a race (the same
+    // code used a moment ago) rolls this order back before anything else.
+    if (coupon && !(await claimCoupon(coupon.code, order.id))) {
+      await admin.from("orders").delete().eq("id", order.id);
+      return {
+        ok: false,
+        code: "COUPON_INVALID",
+        error: `${couponRejectionText("used", true)} / ${couponRejectionText("used", false)}`,
       };
     }
 
@@ -233,7 +266,8 @@ export async function placeOrder(
     );
 
     if (itemsErr) {
-      // Rollback the order so we don't leave an orphan.
+      // Rollback the order so we don't leave an orphan (and give the code back).
+      if (coupon) await releaseCoupon(order.id);
       await admin.from("orders").delete().eq("id", order.id);
       console.error("[placeOrder] order_items insert failed:", itemsErr.message);
       return {
@@ -261,6 +295,7 @@ export async function placeOrder(
       createdBy: user?.id ?? null,
     });
     if (!deductResult.ok) {
+      if (coupon) await releaseCoupon(order.id);
       await admin.from("order_items").delete().eq("order_id", order.id);
       await admin.from("orders").delete().eq("id", order.id);
       console.error("[placeOrder] bulk stock deduction failed:", deductResult.error);

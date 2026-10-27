@@ -224,7 +224,13 @@ export default async function OrderDetailPage({
               />
               {(order.discount_amount ?? 0) > 0 && (
                 <DL
-                  label={isAr ? "خصم" : "Discount"}
+                  label={
+                    order.coupon_code
+                      ? `${isAr ? "خصم الكود" : "Code discount"} ${order.coupon_code}`
+                      : isAr
+                        ? "خصم"
+                        : "Discount"
+                  }
                   value={`- ${formatPriceEGP(order.discount_amount ?? 0)}`}
                 />
               )}

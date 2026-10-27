@@ -22,6 +22,8 @@ export const LIMITS = {
   newsletterPerEmail: { max: 3, windowSeconds: 24 * 60 * 60 },
   restockPerIp: { max: 10, windowSeconds: 60 * 60 },
   reviewPerIp: { max: 5, windowSeconds: 60 * 60 },
+  /** Coupon look-ups: a shopper tries one or two codes; 10/hour stops guessing. */
+  couponPerIp: { max: 10, windowSeconds: 60 * 60 },
 } as const;
 
 export type LimitName = keyof typeof LIMITS;

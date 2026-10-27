@@ -142,7 +142,7 @@ export async function deleteOrder(orderId, { restock = true } = {}) {
  * Guest checkout through the real UI. Leaves the page on the confirmation
  * page (the placing browser = owner). Returns { orderId, page, ctx }.
  */
-export async function placeOrderUI(browser, base, { slug, name, email = "" }) {
+export async function placeOrderUI(browser, base, { slug, name, email = "", coupon = "" }) {
   const { ctx, page } = await newPage(browser);
   await page.goto(`${base}/ar/products/${slug}`, { waitUntil: "networkidle2", timeout: 120000 });
   await sleep(1500);
@@ -159,10 +159,17 @@ export async function placeOrderUI(browser, base, { slug, name, email = "" }) {
   await page.type("#shipping-street", "QA Street 1");
   await clickByText(page, "form button", "التالي"); await sleep(1500);
   await clickByText(page, "form button", "التالي"); await sleep(1500);
+  let couponText = "";
+  if (coupon) {
+    await page.type('input[placeholder="MM-XXXXXX"]', coupon);
+    await clickByText(page, "form button", "تطبيق");
+    await sleep(3000);
+    couponText = await page.evaluate(() => document.querySelector("form")?.innerText ?? "");
+  }
   await clickByText(page, 'form button[type="submit"]', "إتمام الطلب");
   for (let i = 0; i < 40 && !page.url().includes("/order-confirmation/"); i++) await sleep(1000);
   const orderId = (page.url().match(/order-confirmation\/([0-9a-f-]{36})/) || [])[1] || null;
-  return { orderId, page, ctx };
+  return { orderId, page, ctx, couponText };
 }
 
 /** Session cookies for any confirmed user (magic link verified server-side, no email sent). */

@@ -5,9 +5,18 @@ import {
   listNewsletterSubscribers,
   type NewsletterFilters,
 } from "@/lib/queries/admin-newsletter";
-import { toggleSubscriberActive } from "@/lib/admin/newsletter-actions";
+import {
+  approveSubscriber,
+  rejectSubscriber,
+  toggleSubscriberActive,
+} from "@/lib/admin/newsletter-actions";
 import { BroadcastForm } from "@/components/admin/newsletter/BroadcastForm";
+import { CouponCell } from "@/components/admin/newsletter/CouponCell";
 import { getAdminLocale } from "@/lib/admin/locale";
+import { SUBSCRIBER_PERCENT_OFF } from "@/lib/coupons/code";
+import { couponMessage, gmailComposeUrl } from "@/lib/coupons/share";
+import { SITE_URL } from "@/lib/seo/site";
+import type { NewsletterSubscriberRow } from "@/lib/queries/admin-newsletter";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +46,10 @@ export default async function NewsletterPage({
     locale:
       sp?.locale === "ar" || sp?.locale === "en"
         ? (sp.locale as "ar" | "en")
+        : undefined,
+    review:
+      sp?.review === "pending" || sp?.review === "approved" || sp?.review === "rejected"
+        ? sp.review
         : undefined,
   };
 
@@ -73,7 +86,17 @@ export default async function NewsletterPage({
       </header>
 
       {/* Stats */}
-      <section className="grid gap-3 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <Link
+          href="/admin/newsletter?review=pending"
+          className="rounded-xl transition hover:ring-2 hover:ring-[var(--color-accent)]"
+        >
+          <Stat
+            label={isAr ? "مستني موافقتك" : "Awaiting approval"}
+            value={String(stats.pending)}
+            tone={stats.pending > 0 ? "primary" : undefined}
+          />
+        </Link>
         <Stat label={isAr ? "الإجمالي" : "Total"} value={String(stats.total)} />
         <Stat label={isAr ? "نشط" : "Active"} value={String(stats.active)} tone="primary" />
         <Stat label={isAr ? "عربي" : "Arabic"} value={String(stats.ar)} />
@@ -116,6 +139,21 @@ export default async function NewsletterPage({
         </label>
         <label className="text-xs">
           <span className="mb-1 block uppercase tracking-wider text-[var(--color-text-secondary)]">
+            {isAr ? "المراجعة" : "Review"}
+          </span>
+          <select
+            name="review"
+            defaultValue={filters.review ?? ""}
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          >
+            <option value="">{isAr ? "الكل" : "Any"}</option>
+            <option value="pending">{isAr ? "مستني موافقة" : "Pending"}</option>
+            <option value="approved">{isAr ? "اتوافق عليه" : "Approved"}</option>
+            <option value="rejected">{isAr ? "مرفوض" : "Rejected"}</option>
+          </select>
+        </label>
+        <label className="text-xs">
+          <span className="mb-1 block uppercase tracking-wider text-[var(--color-text-secondary)]">
             {isAr ? "اللغة" : "Locale"}
           </span>
           <select
@@ -149,12 +187,13 @@ export default async function NewsletterPage({
       </p>
 
       <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
-        <table className="w-full min-w-[680px] text-sm">
+        <table className="w-full min-w-[920px] text-sm">
           <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
             <tr>
               <Th>{isAr ? "الإيميل" : "Email"}</Th>
               <Th>{isAr ? "اللغة" : "Locale"}</Th>
               <Th>{isAr ? "تاريخ الاشتراك" : "Subscribed"}</Th>
+              <Th>{isAr ? `كود الخصم ${SUBSCRIBER_PERCENT_OFF}٪` : `${SUBSCRIBER_PERCENT_OFF}% code`}</Th>
               <Th>{isAr ? "الحالة" : "Status"}</Th>
               <Th aria-label={isAr ? "إجراءات" : "Actions"} />
             </tr>
@@ -178,6 +217,9 @@ export default async function NewsletterPage({
                       dateStyle: "medium",
                     },
                   )}
+                </td>
+                <td className="px-3 py-2">
+                  <ReviewCell sub={s} isAr={isAr} />
                 </td>
                 <td className="px-3 py-2">
                   <span
@@ -218,7 +260,7 @@ export default async function NewsletterPage({
             ))}
             {subscribers.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
+                <td colSpan={6} className="px-3 py-10 text-center text-xs text-[var(--color-text-secondary)]">
                   {isAr
                     ? "لا يوجد مشتركين مطابقين للفلاتر."
                     : "No subscribers match the current filters."}
@@ -228,6 +270,76 @@ export default async function NewsletterPage({
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Pending → Approve / Reject. Approved → the personal code, its state and a
+ * pre-filled Gmail message. Rejected → can still be approved later.
+ */
+function ReviewCell({ sub, isAr }: { sub: NewsletterSubscriberRow; isAr: boolean }) {
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString(isAr ? "ar-EG" : "en-GB", { dateStyle: "medium", timeZone: "Africa/Cairo" });
+
+  if (sub.status === "approved" && sub.coupon) {
+    const c = sub.coupon;
+    const expired = !c.used_at && c.expires_at !== null && Date.parse(c.expires_at) <= Date.now();
+    const state = c.used_at
+      ? isAr
+        ? `اتستخدم ${c.order_number ? `في طلب ${c.order_number}` : ""} · ${fmt(c.used_at)}`
+        : `Used ${c.order_number ? `on ${c.order_number}` : ""} · ${fmt(c.used_at)}`
+      : expired
+        ? isAr
+          ? "انتهت صلاحيته"
+          : "Expired"
+        : isAr
+          ? `لسه ماتستخدمش${c.expires_at ? ` · صالح لحد ${fmt(c.expires_at)}` : ""}`
+          : `Unused${c.expires_at ? ` · valid until ${fmt(c.expires_at)}` : ""}`;
+    const msg = couponMessage({
+      locale: sub.locale,
+      code: c.code,
+      percentOff: SUBSCRIBER_PERCENT_OFF,
+      expiresAt: c.expires_at,
+      siteUrl: SITE_URL,
+    });
+    return (
+      <CouponCell
+        code={c.code}
+        gmailUrl={gmailComposeUrl(sub.email, msg.subject, msg.body)}
+        state={state}
+        isAr={isAr}
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {sub.status === "rejected" && (
+        <span className="rounded-full bg-[var(--color-surface-2)] px-2 py-0.5 text-[10px] text-[var(--color-text-secondary)]">
+          {isAr ? "مرفوض" : "Rejected"}
+        </span>
+      )}
+      <form action={approveSubscriber}>
+        <input type="hidden" name="id" value={sub.id} />
+        <button
+          type="submit"
+          className="min-h-9 rounded-full bg-[var(--color-primary)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
+        >
+          {isAr ? "موافقة وإصدار كود" : "Approve & issue code"}
+        </button>
+      </form>
+      {sub.status === "pending" && (
+        <form action={rejectSubscriber}>
+          <input type="hidden" name="id" value={sub.id} />
+          <button
+            type="submit"
+            className="min-h-9 rounded-full border border-[var(--color-border)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-error)] hover:text-[var(--color-error)]"
+          >
+            {isAr ? "رفض" : "Reject"}
+          </button>
+        </form>
+      )}
     </div>
   );
 }

@@ -22,6 +22,7 @@ export type OrderStatus =
 
 export type PaymentMethod = "card" | "cod" | "instapay";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+export type SubscriberStatus = "pending" | "approved" | "rejected";
 export type NotificationChannel = "email" | "whatsapp";
 
 // ─── ERP enums (see supabase/migrations/0003_erp_schema.sql) ──────────────
@@ -313,6 +314,8 @@ export type Database = {
           total: number;
           shipping_address: ShippingAddress;
           referral_code: string | null;
+          /** Subscriber coupon redeemed on this order (0029); amount is discount_amount. */
+          coupon_code: string | null;
           /** Denormalised flag — true if any order_returns row points
               at this order. Maintained by createOrderReturn(). */
           has_returns: boolean;
@@ -339,6 +342,7 @@ export type Database = {
           total: number;
           shipping_address: ShippingAddress;
           referral_code?: string | null;
+          coupon_code?: string | null;
           has_returns?: boolean;
           returns_total?: number;
           created_at?: string;
@@ -361,6 +365,7 @@ export type Database = {
           total?: number;
           shipping_address?: ShippingAddress;
           referral_code?: string | null;
+          coupon_code?: string | null;
           has_returns?: boolean;
           returns_total?: number;
           created_at?: string;
@@ -652,6 +657,9 @@ export type Database = {
           locale: "ar" | "en";
           subscribed_at: string;
           is_active: boolean;
+          /** Owner review (0029): approved subscribers get a personal coupon. */
+          status: SubscriberStatus;
+          reviewed_at: string | null;
         };
         Insert: {
           id?: string;
@@ -659,6 +667,8 @@ export type Database = {
           locale: "ar" | "en";
           subscribed_at?: string;
           is_active?: boolean;
+          status?: SubscriberStatus;
+          reviewed_at?: string | null;
         };
         Update: {
           id?: string;
@@ -666,8 +676,66 @@ export type Database = {
           locale?: "ar" | "en";
           subscribed_at?: string;
           is_active?: boolean;
+          status?: SubscriberStatus;
+          reviewed_at?: string | null;
         };
         Relationships: [];
+      };
+
+      // ─── Subscriber coupons (0029) ──────────────────────────────────
+      coupons: {
+        Row: {
+          id: string;
+          code: string;
+          percent_off: number;
+          subscriber_id: string | null;
+          email: string | null;
+          created_at: string;
+          created_by: string | null;
+          expires_at: string | null;
+          used_at: string | null;
+          order_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          percent_off: number;
+          subscriber_id?: string | null;
+          email?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          expires_at?: string | null;
+          used_at?: string | null;
+          order_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          percent_off?: number;
+          subscriber_id?: string | null;
+          email?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          expires_at?: string | null;
+          used_at?: string | null;
+          order_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "coupons_subscriber_id_fkey";
+            columns: ["subscriber_id"];
+            isOneToOne: true;
+            referencedRelation: "newsletter_subscribers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "coupons_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
       };
 
       // ─── ERP tables (added by 0003_erp_schema.sql) ──────────────────

@@ -95,6 +95,10 @@ const SERVER_MESSAGES: Record<PlaceOrderErrorCode, Bilingual> = {
     ar: "أسعار بعض المنتجات اتغيّرت. حدّثنا سلتك بالأسعار الجديدة — راجِع الإجمالي وأكّد الطلب تاني.",
     en: "Some prices changed. We've updated your cart — please review the new total and place the order again.",
   },
+  COUPON_INVALID: {
+    ar: "كود الخصم مش صالح (يمكن اتستخدم أو انتهت صلاحيته). شيلناه — راجع الإجمالي وأكّد الطلب تاني.",
+    en: "The discount code isn't valid (it may be used or expired). We removed it — review the total and place the order again.",
+  },
   HUMAN_CHECK_FAILED: {
     ar: "معرفناش نتأكد إنك مش روبوت. استنى ثانية واضغط «إتمام الطلب» تاني.",
     en: "We couldn't confirm you're not a robot. Wait a moment and press \"Place order\" again.",

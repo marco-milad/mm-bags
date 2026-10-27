@@ -103,7 +103,7 @@ export default async function OrderConfirmationPage({
   const { data: order } = await admin
     .from("orders")
     .select(
-      "id, order_number, user_id, guest_email, status, payment_method, payment_status, subtotal, shipping_fee, total, shipping_address, created_at, order_items (qty, unit_price, snapshot_name)",
+      "id, order_number, user_id, guest_email, status, payment_method, payment_status, subtotal, discount_amount, shipping_fee, total, shipping_address, created_at, order_items (qty, unit_price, snapshot_name)",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -292,6 +292,12 @@ export default async function OrderConfirmationPage({
               label={locale === "ar" ? "الإجمالي الفرعي" : "Subtotal"}
               value={formatPriceEGP(order.subtotal, locale)}
             />
+            {Number(order.discount_amount) > 0 && (
+              <Row
+                label={locale === "ar" ? "خصم الكود" : "Code discount"}
+                value={`− ${formatPriceEGP(Number(order.discount_amount), locale)}`}
+              />
+            )}
             <Row
               label={locale === "ar" ? "الشحن" : "Shipping"}
               value={

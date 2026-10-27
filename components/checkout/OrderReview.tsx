@@ -13,12 +13,15 @@ export function OrderReview({
   values,
   items,
   locale,
+  percentOff = 0,
 }: {
   values: CheckoutValues;
   items: CartItem[];
   locale: Locale;
+  /** Applied coupon percentage (preview; the server re-prices). */
+  percentOff?: number;
 }) {
-  const totals = calcTotals(items, values.paymentMethod);
+  const totals = calcTotals(items, values.paymentMethod, percentOff);
   const governorate = EG_GOVERNORATES.find((g) => g.code === values.governorate);
   const governorateName = governorate
     ? locale === "ar"
@@ -69,6 +72,12 @@ export function OrderReview({
             label={locale === "ar" ? "الإجمالي الفرعي" : "Subtotal"}
             value={formatPriceEGP(totals.subtotal, locale)}
           />
+          {totals.discount > 0 && (
+            <SummaryRow
+              label={locale === "ar" ? `خصم الكود (${percentOff}٪)` : `Code discount (${percentOff}%)`}
+              value={`− ${formatPriceEGP(totals.discount, locale)}`}
+            />
+          )}
           <SummaryRow
             label={locale === "ar" ? "الشحن" : "Shipping"}
             value={
