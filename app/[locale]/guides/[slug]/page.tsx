@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { hasLocale, locales } from "@/lib/i18n-config";
 import { GUIDES, getGuide } from "@/lib/guides";
 import { articleSchema, breadcrumbSchema, faqSchema } from "@/lib/seo/jsonld";
-import { localeAlternates } from "@/lib/seo/site";
+import { absoluteUrl, localeAlternates } from "@/lib/seo/site";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { GuideArticle } from "@/components/guides/GuideArticle";
 
@@ -28,7 +28,15 @@ export async function generateMetadata({
     title: isAr ? guide.title.ar : guide.title.en,
     description: isAr ? guide.description.ar : guide.description.en,
     alternates: localeAlternates(`/guides/${slug}`, locale),
-    openGraph: { type: "article", modifiedTime: guide.updated, publishedTime: guide.published },
+    // A page-level openGraph replaces the layout's whole object, so the
+    // share image and url have to be restated here or links share bare.
+    openGraph: {
+      type: "article",
+      modifiedTime: guide.updated,
+      publishedTime: guide.published,
+      url: absoluteUrl(`/${locale}/guides/${slug}`),
+      images: ["/api/og"],
+    },
   };
 }
 

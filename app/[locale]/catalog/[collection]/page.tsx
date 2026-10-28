@@ -35,13 +35,20 @@ export async function generateMetadata({
   const products = scope
     ? await getProducts({ collectionIds: scope.collectionIds })
     : [];
+  // The collection's own copy, then the facts every buyer asks about. The
+  // old "N منتج متاح" template was thin, identical across collections and
+  // ungrammatical in Arabic.
+  const own = (isAr ? collection.description_ar : collection.description_en)?.trim();
   const description = isAr
-    ? `تسوق ${name} من M.M Bags. ${products.length} منتج متاح. شحن لكل مصر.`
-    : `Shop ${name} at M.M Bags. ${products.length} products available. Shipping across Egypt.`;
+    ? `${own || `تسوق ${name} من M.M Bags.`} شحن لكل محافظات مصر خلال 2–5 أيام، والدفع عند الاستلام أو InstaPay.`
+    : `${own || `Shop ${name} at M.M Bags.`} Delivery to all of Egypt in 2–5 days, cash on delivery or InstaPay.`;
   return {
     title: `${name}`,
     description,
     alternates: localeAlternates(`/catalog/${slug}`, locale),
+    // Nothing to show yet: keep it out of the index (the sitemap skips it
+    // too) until products are added.
+    ...(products.length === 0 ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title: `${name} · M.M Bags`,
       description,

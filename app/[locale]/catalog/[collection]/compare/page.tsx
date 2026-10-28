@@ -5,6 +5,7 @@ import { hasLocale } from "@/lib/i18n-config";
 import { getProducts } from "@/lib/queries/catalog";
 import { resolveCollectionScope } from "@/lib/queries/categories";
 import { CompareTable } from "@/components/catalog/CompareTable";
+import { localeAlternates } from "@/lib/seo/site";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,11 @@ export async function generateMetadata({
     locale === "ar" ? scope.collection.name_ar : scope.collection.name_en;
   return {
     title: `${locale === "ar" ? "قارن بين" : "Compare"} ${name}`,
+    description:
+      locale === "ar"
+        ? `قارن بين موديلات ${name} من M.M Bags: المقاسات والأسعار والمواصفات جنب بعض.`
+        : `Compare ${name} models from M.M Bags side by side: sizes, prices and specs.`,
+    alternates: localeAlternates(`/catalog/${slug}/compare`, locale),
   };
 }
 

@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Package } from "lucide-react";
 import { hasLocale } from "@/lib/i18n-config";
+import { localeAlternates } from "@/lib/seo/site";
 import { TrackOrderForm } from "@/components/account/TrackOrderForm";
 
 // Static with hourly ISR. These pages fetch nothing of their own; the only
@@ -11,9 +13,21 @@ import { TrackOrderForm } from "@/components/account/TrackOrderForm";
 // catalogue routes rather than the content pages.
 export const revalidate = 3600;
 
-export const metadata = {
-  title: "Track your order — M.M Bags",
-};
+export async function generateMetadata({
+  params,
+}: PageProps<"/[locale]/track">): Promise<Metadata> {
+  const { locale } = await params;
+  if (!hasLocale(locale)) return {};
+  const isAr = locale === "ar";
+  // The layout template appends "· M.M Bags" — the title must not repeat it.
+  return {
+    title: isAr ? "تتبّع طلبك" : "Track your order",
+    description: isAr
+      ? "اعرف حالة طلبك من M.M Bags برقم الطلب (يبدأ بـ MM-): اتأكد، اتشحن، ولا في الطريق ليك."
+      : "Check the status of your M.M Bags order with its order number (starts with MM-): confirmed, shipped or on its way.",
+    alternates: localeAlternates("/track", locale),
+  };
+}
 
 /**
  * /{locale}/track — landing page for the track-order flow.

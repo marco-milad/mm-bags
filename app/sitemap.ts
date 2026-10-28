@@ -26,17 +26,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [productsRes, collectionsRes] = await Promise.all([
     admin
       .from("products")
-      .select("slug, updated_at")
+      .select("slug, updated_at, collection_id")
       .eq("is_active", true)
       .order("updated_at", { ascending: false }),
     admin
       .from("collections")
-      .select("slug, created_at")
+      .select("id, slug, parent_slug, created_at")
       .eq("is_active", true),
   ]);
 
   const products = productsRes.data ?? [];
-  const collections = collectionsRes.data ?? [];
+  // An empty collection page is a thin page (and noindex) — keep it out
+  // until it has products. A parent counts its children's products, the
+  // same scope resolveCollectionScope() lists on the page.
+  const stocked = new Set(products.map((p) => p.collection_id));
+  const allCollections = collectionsRes.data ?? [];
+  const collections = allCollections.filter(
+    (c) =>
+      stocked.has(c.id) ||
+      allCollections.some((child) => child.parent_slug === c.slug && stocked.has(child.id)),
+  );
 
   const now = new Date();
   const entries: MetadataRoute.Sitemap = [];
