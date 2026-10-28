@@ -122,10 +122,12 @@ export const FAQ_ITEMS: ReadonlyArray<FAQItem> = [
   // ─── Products ───────────────────────────────────────────────────────
   {
     category: "products",
-    qAr: "المنتجات أصلية؟",
-    qEn: "Are the products authentic?",
-    aAr: "آه، كل المنتجات أصلية 100% ومضمونة.",
-    aEn: "Yes — every product is 100% authentic and guaranteed.",
+    // Not "100% original": the CK / LV collections are inspired designs
+    // (owner, 2026-10-28), and this answer is also in the FAQPage JSON-LD.
+    qAr: "المنتجات مضمونة؟",
+    qEn: "Are the products guaranteed?",
+    aAr: "آه، كل منتج عليه ضمان سنة ضد عيوب الصناعة، وتقدر ترجعه خلال 14 يوم. منتجات تشكيلتي Calvin Klein و LV تصميمات مستوحاة (inspired)، مش من إنتاج البراندات دي.",
+    aEn: "Yes — every product has a one-year warranty against manufacturing defects and a 14-day return window. The Calvin Klein and LV collections are inspired designs, not made by those brands.",
   },
   {
     category: "products",

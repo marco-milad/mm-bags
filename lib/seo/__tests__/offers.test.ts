@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { brandFor, buildOffers, shippingDetails, variantPrices } from "../offers";
+import { buildOffers, shippingDetails, variantPrices } from "../offers";
 
 const base = { url: "https://x.test/ar/products/p", sellerName: "M.M Bags" };
 
@@ -47,14 +47,5 @@ describe("shippingDetails", () => {
     const rate = (p: number) => ((shippingDetails(p).shippingRate as Record<string, unknown>).value);
     expect(rate(1499)).toBe(50);
     expect(rate(1500)).toBe(0);
-  });
-});
-
-describe("brandFor", () => {
-  it("names third-party brands by collection, otherwise the house brand", () => {
-    expect(brandFor("calvin-klein", "M.M Bags")).toBe("Calvin Klein");
-    expect(brandFor("lv-collection", "M.M Bags")).toBe("Louis Vuitton");
-    expect(brandFor("travel-bags", "M.M Bags")).toBe("M.M Bags");
-    expect(brandFor(null, "M.M Bags")).toBe("M.M Bags");
   });
 });

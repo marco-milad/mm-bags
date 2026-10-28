@@ -121,7 +121,6 @@ export default async function ProductDetailPage({
       basePrice: product.base_price,
       salePrice: product.sale_price,
       variants: product.product_variants ?? [],
-      collectionSlug: product.collection?.slug ?? null,
       averageRating: summary.average,
       reviewCount: summary.total,
     }),

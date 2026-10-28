@@ -87,13 +87,3 @@ export function buildOffers(opts: {
     ...common,
   };
 }
-
-/** Collections whose items are branded third-party goods (authorised, per the owner). */
-const BRAND_BY_COLLECTION: Record<string, string> = {
-  "calvin-klein": "Calvin Klein",
-  "lv-collection": "Louis Vuitton",
-};
-
-export function brandFor(collectionSlug: string | null | undefined, house: string): string {
-  return (collectionSlug && BRAND_BY_COLLECTION[collectionSlug]) || house;
-}

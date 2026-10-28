@@ -8,7 +8,7 @@ import {
   SOCIAL_LINKS,
   absoluteUrl,
 } from "./site";
-import { brandFor, buildOffers, type OfferVariant } from "./offers";
+import { buildOffers, type OfferVariant } from "./offers";
 
 /**
  * JSON-LD builders. Each returns a plain object that the `<JsonLd>`
@@ -123,7 +123,6 @@ export type ProductSchemaInput = {
   salePrice: number | null;
   /** Per-size prices/stock — the offer is built from these (same rule as the buy box). */
   variants: ReadonlyArray<OfferVariant>;
-  collectionSlug?: string | null;
   sku?: string | null;
   averageRating?: number | null;
   reviewCount?: number;
@@ -138,7 +137,9 @@ export function productSchema(p: ProductSchemaInput): Record<string, unknown> {
     description: p.description,
     image: p.images.length > 0 ? p.images : undefined,
     sku: p.sku ?? p.slug,
-    brand: { "@type": "Brand", name: brandFor(p.collectionSlug, SITE_NAME) },
+    // Always the house brand: the CK / LV collections are "inspired" designs
+    // (owner, 2026-10-28), so naming those brands here would be false.
+    brand: { "@type": "Brand", name: SITE_NAME },
     offers: buildOffers({
       url,
       variants: p.variants,
