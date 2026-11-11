@@ -8,20 +8,29 @@ import { isSoldOut } from "@/lib/cart/qty";
 import { pickLocalized } from "@/lib/i18n/pick";
 import { formatPriceEGP } from "@/lib/utils";
 import type { CartItem } from "@/store/cart";
+import {
+  DELIVERY_HOURS_MAX,
+  DELIVERY_HOURS_MIN,
+  type ShippingZone,
+  zoneName,
+} from "@/lib/shipping/shared";
 
 export function OrderReview({
   values,
   items,
   locale,
   percentOff = 0,
+  zone,
 }: {
   values: CheckoutValues;
   items: CartItem[];
   locale: Locale;
   /** Applied coupon percentage (preview; the server re-prices). */
   percentOff?: number;
+  /** The chosen shipping area (preview; the server re-reads its fee). */
+  zone: ShippingZone | null;
 }) {
-  const totals = calcTotals(items, values.paymentMethod, percentOff);
+  const totals = calcTotals(items, values.paymentMethod, percentOff, zone?.fee ?? null);
   const governorate = EG_GOVERNORATES.find((g) => g.code === values.governorate);
   const governorateName = governorate
     ? locale === "ar"
@@ -81,7 +90,7 @@ export function OrderReview({
           <SummaryRow
             label={locale === "ar" ? "الشحن" : "Shipping"}
             value={
-              totals.shippingFee === 0
+              totals.freeShipping
                 ? locale === "ar"
                   ? "مجاناً"
                   : "Free"
@@ -90,7 +99,7 @@ export function OrderReview({
           />
           {totals.codFee > 0 && (
             <SummaryRow
-              label={locale === "ar" ? "رسوم الدفع عند الاستلام" : "Cash-on-delivery fee"}
+              label={locale === "ar" ? "رسوم التحصيل (شركة الشحن)" : "Courier collection fee"}
               value={formatPriceEGP(totals.codFee, locale)}
             />
           )}
@@ -119,7 +128,14 @@ export function OrderReview({
           {[values.street, values.building].filter(Boolean).join(" · ")}
         </p>
         <p className="text-sm text-[var(--color-text)]">
-          {[values.city, governorateName].filter(Boolean).join(" — ")}
+          {[values.city, zone ? zoneName(zone, locale) : null, governorateName]
+            .filter(Boolean)
+            .join(" — ")}
+        </p>
+        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+          {locale === "ar"
+            ? `بيوصلك خلال ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} ساعة من تسليم الطلب لشركة الشحن، بعد ما نأكده معاك.`
+            : `Arrives ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} hours after we hand it to the courier, once we've confirmed it with you.`}
         </p>
         {values.notes && (
           <p className="mt-2 rounded-md bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
@@ -135,8 +151,8 @@ export function OrderReview({
               ? "InstaPay / تحويل بنكي — التفاصيل بعد التأكيد"
               : "InstaPay / Bank transfer — details after confirmation"
             : locale === "ar"
-              ? `الدفع عند الاستلام (+${formatPriceEGP(totals.codFee, locale)})`
-              : `Cash on delivery (+${formatPriceEGP(totals.codFee, locale)})`}
+              ? `الدفع عند الاستلام (+${formatPriceEGP(totals.codFee, locale)} رسوم تحصيل شركة الشحن)`
+              : `Cash on delivery (+${formatPriceEGP(totals.codFee, locale)} courier collection fee)`}
         </p>
       </Section>
     </div>

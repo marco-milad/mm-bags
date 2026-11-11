@@ -9,6 +9,7 @@ import {
   absoluteUrl,
 } from "./site";
 import { buildOffers, type OfferVariant } from "./offers";
+import type { ShippingZone } from "@/lib/shipping/shared";
 
 /**
  * JSON-LD builders. Each returns a plain object that the `<JsonLd>`
@@ -126,6 +127,8 @@ export type ProductSchemaInput = {
   sku?: string | null;
   averageRating?: number | null;
   reviewCount?: number;
+  /** Active shipping areas (prices per governorate for shippingDetails). */
+  shippingZones?: ReadonlyArray<Pick<ShippingZone, "governorate_code" | "fee">>;
 };
 
 export function productSchema(p: ProductSchemaInput): Record<string, unknown> {
@@ -146,6 +149,7 @@ export function productSchema(p: ProductSchemaInput): Record<string, unknown> {
       base: p.basePrice,
       sale: p.salePrice,
       sellerName: SITE_NAME,
+      zones: p.shippingZones ?? [],
     }),
   };
   if (p.averageRating && p.reviewCount && p.reviewCount > 0) {

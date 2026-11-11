@@ -67,9 +67,16 @@ export async function run(browser, base) {
       r.check("order with the code goes through", !!p.orderId, p.page.url());
       if (p.orderId) {
         orders.push(p.orderId);
-        const { data: o } = await db.from("orders").select("subtotal, discount_amount, shipping_fee, total, coupon_code").eq("id", p.orderId).single();
-        // 1000 products − 100 (10%) + 50 shipping + 25 COD
-        r.check("server priced it: 10% off products only", Number(o.subtotal) === 1000 && Number(o.discount_amount) === 100 && Number(o.total) === 975 && o.coupon_code === coupon.code, JSON.stringify(o));
+        const { data: o } = await db.from("orders").select("subtotal, discount_amount, shipping_fee, cod_fee, total, coupon_code").eq("id", p.orderId).single();
+        // 1000 products − 100 (10%) + the area's shipping + the courier COD fee
+        r.check(
+          "server priced it: 10% off products only",
+          Number(o.subtotal) === 1000 && Number(o.discount_amount) === 100 &&
+            Number(o.shipping_fee) > 0 && Number(o.cod_fee) > 0 &&
+            Number(o.total) === 900 + Number(o.shipping_fee) + Number(o.cod_fee) &&
+            o.coupon_code === coupon.code,
+          JSON.stringify(o),
+        );
         const { data: cu } = await db.from("coupons").select("used_at, order_id").eq("code", coupon.code).single();
         r.check("the code is marked used on that order", !!cu.used_at && cu.order_id === p.orderId);
         const txt = await p.page.evaluate(() => document.body.innerText);

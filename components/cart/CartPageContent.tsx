@@ -16,7 +16,7 @@ import {
 import { CartItem } from "./CartItem";
 import { CartSkeleton } from "./CartSkeleton";
 
-import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE } from "@/lib/checkout/schema";
+import { FREE_SHIPPING_THRESHOLD } from "@/lib/checkout/schema";
 
 /**
  * Full-page cart view. Mirrors what CartDrawer renders but as a
@@ -73,8 +73,8 @@ export function CartPageContent({ locale }: { locale: Locale }) {
     );
   }
 
-  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
-  const total = subtotal + shippingFee;
+  // The shipping price depends on the area, picked at checkout.
+  const freeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
   const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
 
   return (
@@ -102,11 +102,13 @@ export function CartPageContent({ locale }: { locale: Locale }) {
           <Row
             label={isRTL ? "الشحن" : "Shipping"}
             value={
-              shippingFee === 0
+              freeShipping
                 ? isRTL
                   ? "مجاني"
                   : "Free"
-                : formatPriceEGP(shippingFee, locale)
+                : isRTL
+                  ? "حسب منطقتك (في صفحة الدفع)"
+                  : "By area, at checkout"
             }
           />
           {remaining > 0 && (
@@ -118,8 +120,8 @@ export function CartPageContent({ locale }: { locale: Locale }) {
           )}
           <div className="border-t border-dashed border-[var(--color-border)] pt-2">
             <Row
-              label={isRTL ? "الإجمالي" : "Total"}
-              value={formatPriceEGP(total, locale)}
+              label={isRTL ? (freeShipping ? "الإجمالي" : "الإجمالي قبل الشحن") : freeShipping ? "Total" : "Total before shipping"}
+              value={formatPriceEGP(subtotal, locale)}
               strong
             />
           </div>

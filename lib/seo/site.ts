@@ -50,9 +50,9 @@ export function localeAlternates(
 // returns): answer engines lift these sentences verbatim, so every claim
 // here must match checkout and the policy pages.
 export const SITE_DESCRIPTION_AR =
-  "M.M Bags متجر مصري لشنط السفر والضهر واللاب توب من سوهاج من 1998. شحن لكل 27 محافظة خلال 2–5 أيام، الدفع عند الاستلام أو InstaPay، إرجاع خلال 14 يوم وضمان سنة.";
+  "M.M Bags متجر مصري لشنط السفر والضهر واللاب توب من سوهاج من 1998. شحن لكل 27 محافظة خلال 2–3 أيام، الدفع عند الاستلام أو InstaPay، إرجاع خلال 14 يوم وضمان سنة.";
 export const SITE_DESCRIPTION_EN =
-  "M.M Bags is an Egyptian travel-bag and backpack store from Sohag, founded in 1998. Delivery to all 27 governorates in 2–5 days, cash on delivery or InstaPay, 14-day returns and a one-year warranty.";
+  "M.M Bags is an Egyptian travel-bag and backpack store from Sohag, founded in 1998. Delivery to all 27 governorates in 2–3 days, cash on delivery or InstaPay, 14-day returns and a one-year warranty.";
 
 /** Brand social profiles (used by Organization sameAs). */
 export const SOCIAL_LINKS = [

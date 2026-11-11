@@ -1,23 +1,59 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { UseFormReturn } from "react-hook-form";
+import { Truck } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
 import { EG_GOVERNORATES } from "@/lib/checkout/governorates";
 import type { CheckoutValues } from "@/lib/checkout/schema";
 import { checkoutFieldMessage } from "@/lib/checkout/error-messages";
-import { cn } from "@/lib/utils";
+import {
+  DELIVERY_HOURS_MAX,
+  DELIVERY_HOURS_MIN,
+  type ShippingZone,
+  zoneName,
+  zonesFor,
+} from "@/lib/shipping/shared";
+import { cn, formatPriceEGP } from "@/lib/utils";
 
 export function ShippingForm({
   form,
   locale,
+  zones,
+  freeShipping,
 }: {
   form: UseFormReturn<CheckoutValues>;
   locale: Locale;
+  /** Active shipping areas (server-read). */
+  zones: ReadonlyArray<ShippingZone>;
+  /** The order already qualifies for free shipping. */
+  freeShipping: boolean;
 }) {
   const {
     register,
+    setValue,
+    watch,
     formState: { errors },
   } = form;
+  const isAr = locale === "ar";
+  const governorate = watch("governorate");
+  const zoneId = watch("shippingZoneId");
+  const govZones = zonesFor(zones, governorate);
+  const zone = govZones.find((z) => z.id === zoneId) ?? null;
+
+  // A new governorate invalidates the area. One-area governorates pick it
+  // for the shopper; the others wait for an explicit choice (prices differ).
+  // Skips the first run so a restored form keeps its area.
+  const lastGov = useRef(governorate);
+  useEffect(() => {
+    if (lastGov.current === governorate) return;
+    lastGov.current = governorate;
+    const options = zonesFor(zones, governorate);
+    setValue("shippingZoneId", options.length === 1 ? options[0].id : "", {
+      shouldValidate: false,
+      shouldDirty: true,
+    });
+  }, [governorate, zones, setValue]);
 
   const labels =
     locale === "ar"
@@ -109,6 +145,63 @@ export function ShippingForm({
           ))}
         </select>
       </Field>
+
+      {governorate && govZones.length > 1 && (
+        <Field
+          id="shipping-zone"
+          label={isAr ? "المنطقة" : "Area"}
+          error={errors.shippingZoneId ? checkoutFieldMessage("shippingZoneId", locale) : undefined}
+          className="md:col-span-2"
+        >
+          <select
+            {...fieldA11y("shipping-zone", !!errors.shippingZoneId)}
+            {...register("shippingZoneId")}
+            className={inputClass(!!errors.shippingZoneId)}
+          >
+            <option value="" disabled>
+              {isAr ? "اختار منطقتك" : "Select your area"}
+            </option>
+            {govZones.map((z) => (
+              <option key={z.id} value={z.id}>
+                {zoneName(z, locale)}
+                {freeShipping ? "" : ` · ${formatPriceEGP(z.fee, locale)}`}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+
+      {/* One-area governorates: the area is set for the shopper, but it still
+          needs a registered input to travel with the form. */}
+      {govZones.length <= 1 && <input type="hidden" {...register("shippingZoneId")} />}
+
+      {governorate && govZones.length === 0 && (
+        <p role="alert" className="text-sm text-[var(--color-error)] md:col-span-2">
+          {isAr
+            ? "مش قادرين نحسب الشحن للمحافظة دي دلوقتي. كلّمنا على واتساب ونكمّل معاك الطلب."
+            : "We can't price shipping to this governorate right now. Message us on WhatsApp and we'll complete your order."}
+        </p>
+      )}
+
+      {zone && (
+        <p
+          aria-live="polite"
+          className="flex items-start gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text)] md:col-span-2"
+        >
+          <Truck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" aria-hidden />
+          <span>
+            <span className="font-semibold">
+              {isAr ? "الشحن لـ" : "Shipping to"} {zoneName(zone, locale)}:{" "}
+              {freeShipping ? (isAr ? "مجاني" : "free") : formatPriceEGP(zone.fee, locale)}
+            </span>
+            <span className="block text-xs text-[var(--color-text-secondary)]">
+              {isAr
+                ? `بيوصلك خلال ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} ساعة من تسليم الطلب لشركة الشحن، بعد ما نأكده معاك.`
+                : `Arrives ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} hours after we hand it to the courier, once we've confirmed it with you.`}
+            </span>
+          </span>
+        </p>
+      )}
 
       <Field id="shipping-city" label={labels.city} error={errors.city ? checkoutFieldMessage("city", locale) : undefined}>
         <input

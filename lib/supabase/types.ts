@@ -57,6 +57,8 @@ export interface ShippingAddress {
   email?: string | null;
   governorate: string;
   governorate_code?: string;
+  /** Arabic name of the shipping area that was charged (0032). */
+  shipping_zone?: string;
   city: string;
   street: string;
   building?: string | null;
@@ -318,6 +320,12 @@ export type Database = {
           coupon_code: string | null;
           /** Secret for the private order link /[locale]/o/<token> (0031). */
           view_token: string;
+          /** Area the shipping fee was charged for (0032); null on old/POS orders. */
+          shipping_zone_id: string | null;
+          /** Courier COD collection fee passed to the customer (0032). */
+          cod_fee: number;
+          /** Handed to the courier — the delivery clock starts here (0032). */
+          shipped_at: string | null;
           /** Denormalised flag — true if any order_returns row points
               at this order. Maintained by createOrderReturn(). */
           has_returns: boolean;
@@ -346,6 +354,9 @@ export type Database = {
           referral_code?: string | null;
           coupon_code?: string | null;
           view_token?: string;
+          shipping_zone_id?: string | null;
+          cod_fee?: number;
+          shipped_at?: string | null;
           has_returns?: boolean;
           returns_total?: number;
           created_at?: string;
@@ -369,6 +380,9 @@ export type Database = {
           shipping_address?: ShippingAddress;
           referral_code?: string | null;
           coupon_code?: string | null;
+          shipping_zone_id?: string | null;
+          cod_fee?: number;
+          shipped_at?: string | null;
           has_returns?: boolean;
           returns_total?: number;
           created_at?: string;
@@ -439,6 +453,46 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+
+      shipping_zones: {
+        Row: {
+          id: string;
+          code: string;
+          governorate_code: string;
+          name_ar: string;
+          name_en: string;
+          fee: number;
+          sort_order: number;
+          is_active: boolean;
+          needs_review: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          governorate_code: string;
+          name_ar: string;
+          name_en: string;
+          fee: number;
+          sort_order?: number;
+          is_active?: boolean;
+          needs_review?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          governorate_code?: string;
+          name_ar?: string;
+          name_en?: string;
+          fee?: number;
+          sort_order?: number;
+          is_active?: boolean;
+          needs_review?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
 
       cod_tracking: {

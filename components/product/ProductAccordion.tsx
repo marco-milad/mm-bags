@@ -46,14 +46,14 @@ export function ProductAccordion({
     {
       icon: Truck,
       text: isAr
-        ? "شحن لكل الـ 27 محافظة خلال 2–5 أيام عمل."
-        : "Ships to all 27 governorates within 2–5 business days.",
+        ? "شحن لكل الـ 27 محافظة، وبيوصل خلال 28–36 ساعة من تسليمه لشركة الشحن."
+        : "Ships to all 27 governorates, arriving 28–36 hours after we hand it to the courier.",
     },
     {
       icon: Wallet,
       text: isAr
-        ? "الشحن مجاني للطلبات فوق 4,000 جنيه."
-        : "Free shipping on orders over EGP 4,000.",
+        ? "سعر الشحن حسب منطقتك ويظهر في صفحة الدفع، ومجاني للطلبات من 4,000 جنيه."
+        : "Shipping is priced by area at checkout, and free on orders from EGP 4,000.",
     },
     {
       icon: RefreshCcw,
@@ -64,8 +64,8 @@ export function ProductAccordion({
     {
       icon: ShieldCheck,
       text: isAr
-        ? "الدفع عند الاستلام متاح (+25 جنيه رسوم)، أو ادفع InstaPay ووفّرها."
-        : "Cash on delivery available (+EGP 25 fee), or pay with InstaPay and save it.",
+        ? "الدفع عند الاستلام متاح (برسوم تحصيل لشركة الشحن من 30 جنيه)، أو ادفع InstaPay ووفّرها."
+        : "Cash on delivery available (courier collection fee from EGP 30), or pay with InstaPay and save it.",
     },
   ];
   // Falls back to the other language's copy rather than "No description"

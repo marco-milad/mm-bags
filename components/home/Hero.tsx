@@ -273,8 +273,8 @@ export function Hero({
           <span className="inline-flex items-center gap-2 rounded-full border border-brass-400/60 bg-navy-900/60 bg-[linear-gradient(rgba(184,151,90,0.22),rgba(184,151,90,0.22))] px-4 py-1.5 text-sm font-semibold text-brass-50">
             <Rocket className="h-3.5 w-3.5 text-brass-200" aria-hidden />
             {locale === "ar"
-              ? "توصيل لكل مصر خلال ٢–٥ أيام"
-              : "Delivered across Egypt in 2–5 days"}
+              ? "توصيل لكل مصر خلال ٢–٣ أيام"
+              : "Delivered across Egypt in 2–3 days"}
           </span>
         </div>
 

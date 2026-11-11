@@ -111,8 +111,8 @@ export default async function TermsOfServicePage({
           </Body>
           <Body isAr={isAr}>
             {isAr
-              ? "وسائل الدفع المتاحة: الدفع عند الاستلام (برسوم إضافية 25 ج.م)، أو التحويل عن طريق InstaPay بدون رسوم. الدفع بالكارت والتقسيط غير متاحين حاليًا."
-              : "Accepted payment methods: cash on delivery (with an LE 25 surcharge) or an InstaPay transfer with no fee. Card payments and instalments are not currently available."}
+              ? "وسائل الدفع المتاحة: الدفع عند الاستلام (برسوم تحصيل بتاخدها شركة الشحن: 30 ج.م لحد 1,000 ج.م و5 ج.م لكل 1,000 ج.م بعدها)، أو التحويل عن طريق InstaPay بدون رسوم. الدفع بالكارت والتقسيط غير متاحين حاليًا."
+              : "Accepted payment methods: cash on delivery (with the courier's collection fee: LE 30 up to LE 1,000, plus LE 5 per further LE 1,000) or an InstaPay transfer with no fee. Card payments and instalments are not currently available."}
           </Body>
         </Section>
 

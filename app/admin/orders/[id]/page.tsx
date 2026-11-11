@@ -7,7 +7,18 @@ import {
   getReturnableQuantitiesForOrder,
   listReturnsForOrder,
 } from "@/lib/queries/admin-returns";
-import { markInstapayPaid, saveCodTracking } from "@/lib/admin/order-actions";
+import {
+  markHandedToCourier,
+  markInstapayPaid,
+  saveCodTracking,
+} from "@/lib/admin/order-actions";
+import {
+  COURIER_NAME,
+  DELIVERY_HOURS_MAX,
+  DELIVERY_HOURS_MIN,
+  deliveryDeadline,
+} from "@/lib/shipping/shared";
+import { formatDeadline } from "@/lib/orders/confirm-window";
 import { StatusDropdown } from "@/components/admin/orders/StatusDropdown";
 import { PrintInvoiceButton } from "@/components/admin/orders/PrintButton";
 import { ReturnOrderDialog } from "@/components/admin/orders/ReturnOrderDialog";
@@ -161,6 +172,12 @@ export default async function OrderDetailPage({
                 label={isAr ? "المحافظة" : "Governorate"}
                 value={customer.governorate ?? "—"}
               />
+              {customer.shipping_zone && (
+                <DL
+                  label={isAr ? "منطقة الشحن" : "Shipping area"}
+                  value={customer.shipping_zone}
+                />
+              )}
               <DL
                 label={isAr ? "المدينة" : "City"}
                 value={customer.city ?? "—"}
@@ -249,6 +266,12 @@ export default async function OrderDetailPage({
                 label={isAr ? "الشحن" : "Shipping"}
                 value={formatPriceEGP(order.shipping_fee ?? 0)}
               />
+              {Number(order.cod_fee ?? 0) > 0 && (
+                <DL
+                  label={isAr ? "رسوم التحصيل (لشركة الشحن)" : "Courier COD fee"}
+                  value={formatPriceEGP(Number(order.cod_fee))}
+                />
+              )}
               {(order.discount_amount ?? 0) > 0 && (
                 <DL
                   label={
@@ -482,6 +505,50 @@ export default async function OrderDetailPage({
             )}
           </section>
         )}
+
+        {/* Courier handover — starts the customer's delivery clock. */}
+        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5 print:hidden">
+          <p className="mb-3 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
+            {isAr ? `التسليم لشركة الشحن (${COURIER_NAME})` : `Courier handover (${COURIER_NAME})`}
+          </p>
+          {order.shipped_at ? (
+            <p className="text-sm text-[var(--color-text)]">
+              {isAr ? "اتسلّم للمندوب: " : "Handed over: "}
+              <span className="font-semibold">{formatDeadline(new Date(order.shipped_at), locale)}</span>
+              <span className="block text-xs text-[var(--color-text-secondary)]">
+                {isAr ? "المفروض يوصل للعميل لحد: " : "Should reach the customer by: "}
+                {formatDeadline(deliveryDeadline(order.shipped_at), locale)}
+              </span>
+            </p>
+          ) : status === "confirmed" || status === "processing" ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                {isAr
+                  ? `اضغط أول ما المندوب يستلم الطلب. العميل هيشوف إن طلبه هيوصل خلال ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} ساعة، بتاريخ متوقع.`
+                  : `Press when the courier picks the order up. The customer then sees delivery within ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} hours, with a date.`}
+              </p>
+              <form action={markHandedToCourier}>
+                <input type="hidden" name="id" value={order.id} />
+                <button
+                  type="submit"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-light)]"
+                >
+                  {isAr ? "اتسلّم للمندوب" : "Handed to courier"}
+                </button>
+              </form>
+            </div>
+          ) : (
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              {status === "pending"
+                ? isAr
+                  ? "أكّد الطلب مع العميل الأول، وبعدها سلّمه للمندوب."
+                  : "Confirm the order with the customer first, then hand it to the courier."
+                : isAr
+                  ? "الطلب ده مش في مرحلة التسليم للمندوب."
+                  : "This order isn't at the courier-handover stage."}
+            </p>
+          )}
+        </section>
 
         {/* COD tracking */}
         <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-5 print:hidden">

@@ -6,6 +6,7 @@ import type { Locale } from "@/lib/i18n-config";
 import type { TrackingResult } from "@/lib/tracking/schema";
 import { cn, formatPriceEGP } from "@/lib/utils";
 import { waLink } from "@/lib/whatsapp";
+import { DELIVERY_HOURS_MAX, DELIVERY_HOURS_MIN } from "@/lib/shipping/shared";
 import { TrackingTimeline } from "./TrackingTimeline";
 
 export function TrackingDetails({
@@ -27,11 +28,13 @@ export function TrackingDetails({
     { year: "numeric", month: "long", day: "numeric", timeZone: "Africa/Cairo" },
   );
   const eta = tracking.estimatedDelivery
-    ? new Date(tracking.estimatedDelivery).toLocaleDateString(
+    ? new Date(`${tracking.estimatedDelivery}T12:00:00Z`).toLocaleDateString(
         locale === "ar" ? "ar-EG" : "en-EG",
-        { year: "numeric", month: "long", day: "numeric", timeZone: "Africa/Cairo" },
+        { weekday: "long", month: "long", day: "numeric", timeZone: "Africa/Cairo" },
       )
     : null;
+  // Before the courier has it, say when the clock starts instead of a date.
+  const notShippedYet = ["pending", "confirmed", "processing"].includes(tracking.status);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -50,6 +53,14 @@ export function TrackingDetails({
             locale={locale}
             confirmation={tracking.confirmation}
           />
+          {notShippedYet && (
+            <p className="mt-4 flex items-start gap-2 rounded-lg bg-[var(--color-surface)] px-3 py-2.5 text-xs text-[var(--color-text-secondary)]">
+              <Truck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" aria-hidden />
+              {locale === "ar"
+                ? `أول ما نسلّم طلبك لشركة الشحن، بيوصلك خلال ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} ساعة، وهيظهرلك هنا التاريخ المتوقع.`
+                : `Once we hand your order to the courier it arrives within ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} hours; the expected date will show here.`}
+            </p>
+          )}
         </Card>
 
         {(tracking.courierName || tracking.trackingNumber || eta) && (
@@ -74,7 +85,7 @@ export function TrackingDetails({
               {eta && (
                 <Row
                   icon={<Calendar className="h-4 w-4" />}
-                  label={locale === "ar" ? "موعد التسليم المتوقع" : "Estimated delivery"}
+                  label={locale === "ar" ? "يوصلك لحد" : "Arrives by"}
                   value={eta}
                 />
               )}
@@ -133,6 +144,12 @@ export function TrackingDetails({
                       : formatPriceEGP(details.shippingFee, locale)
                   }
                 />
+                {details.codFee > 0 && (
+                  <Line
+                    label={locale === "ar" ? "رسوم التحصيل (شركة الشحن)" : "Courier collection fee"}
+                    value={formatPriceEGP(details.codFee, locale)}
+                  />
+                )}
                 <Line
                   label={locale === "ar" ? "طريقة الدفع" : "Payment"}
                   value={paymentLabel(details.paymentMethod, locale)}

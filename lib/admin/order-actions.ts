@@ -9,6 +9,7 @@ import { sendWhatsApp } from "@/lib/twilio";
 import { buildPostDeliveryMessage } from "@/lib/reviews/post-delivery";
 import type { Locale } from "@/lib/i18n-config";
 import type { OrderStatus } from "@/lib/supabase/types";
+import { COURIER_NAME, cairoDateISO, deliveryDeadline } from "@/lib/shipping/shared";
 
 const ORDER_STATUSES: ReadonlyArray<OrderStatus> = [
   "pending",
@@ -124,6 +125,7 @@ export async function updateOrderStatus(formData: FormData): Promise<void> {
       .update({ status })
       .eq("id", id)
       .neq("status", "cancelled");
+    if (status === "shipped") await recordCourierHandover(id);
   }
 
   if (transitionedToDelivered) {
@@ -133,6 +135,65 @@ export async function updateOrderStatus(formData: FormData): Promise<void> {
     });
   }
 
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${id}`);
+  revalidatePath("/admin");
+}
+
+/**
+ * "Handed to the courier": the delivery clock (28–36 h) starts now. Stamps
+ * orders.shipped_at once (a repeat click keeps the first time) and writes the
+ * customer-facing expected date + courier name into cod_tracking, keeping
+ * any courier/tracking number the admin already typed.
+ */
+async function recordCourierHandover(id: string): Promise<void> {
+  const admin = getSupabaseAdminClient();
+  const now = new Date().toISOString();
+  await admin
+    .from("orders")
+    .update({ shipped_at: now })
+    .eq("id", id)
+    .is("shipped_at", null)
+    .neq("status", "cancelled");
+  const { data: order } = await admin
+    .from("orders")
+    .select("shipped_at, status")
+    .eq("id", id)
+    .maybeSingle();
+  if (!order?.shipped_at || order.status === "cancelled") return;
+  const { data: existing } = await admin
+    .from("cod_tracking")
+    .select("courier_name")
+    .eq("order_id", id)
+    .maybeSingle();
+  await admin.from("cod_tracking").upsert(
+    {
+      order_id: id,
+      courier_name: existing?.courier_name || COURIER_NAME,
+      estimated_delivery: cairoDateISO(deliveryDeadline(order.shipped_at)),
+      last_updated: now,
+    },
+    { onConflict: "order_id" },
+  );
+}
+
+/** One-click "handed to the courier" from the order page. */
+export async function markHandedToCourier(formData: FormData): Promise<void> {
+  await requireAdmin(["admin", "manager"]);
+  const parsed = z.object({ id: z.uuid() }).safeParse({ id: formData.get("id") });
+  if (!parsed.success) return;
+  const { id } = parsed.data;
+  const admin = getSupabaseAdminClient();
+  // Only from the pre-shipping states: never resurrects a cancelled order or
+  // moves a delivered one backwards.
+  const { data: moved } = await admin
+    .from("orders")
+    .update({ status: "shipped" })
+    .eq("id", id)
+    .in("status", ["confirmed", "processing"])
+    .select("id")
+    .maybeSingle();
+  if (moved) await recordCourierHandover(id);
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${id}`);
   revalidatePath("/admin");

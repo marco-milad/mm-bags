@@ -157,6 +157,12 @@ export async function placeOrderUI(browser, base, { slug, name, email = "", coup
   if (email) await page.type("#shipping-email", email);
   const gov = await page.$eval("#shipping-governorate", (s) => [...s.options].find((o) => o.value)?.value);
   await page.select("#shipping-governorate", gov);
+  await sleep(300);
+  // Governorates with several shipping areas (0032) ask for one.
+  if (await page.$("#shipping-zone")) {
+    const zone = await page.$eval("#shipping-zone", (s) => [...s.options].find((o) => o.value)?.value);
+    await page.select("#shipping-zone", zone);
+  }
   await page.type("#shipping-city", "QA City");
   await page.type("#shipping-street", "QA Street 1");
   await clickByText(page, "form button", "التالي"); await sleep(1500);

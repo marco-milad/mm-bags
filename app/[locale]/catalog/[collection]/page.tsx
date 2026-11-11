@@ -40,8 +40,8 @@ export async function generateMetadata({
   // ungrammatical in Arabic.
   const own = (isAr ? collection.description_ar : collection.description_en)?.trim();
   const description = isAr
-    ? `${own || `تسوق ${name} من M.M Bags.`} شحن لكل محافظات مصر خلال 2–5 أيام، والدفع عند الاستلام أو InstaPay.`
-    : `${own || `Shop ${name} at M.M Bags.`} Delivery to all of Egypt in 2–5 days, cash on delivery or InstaPay.`;
+    ? `${own || `تسوق ${name} من M.M Bags.`} شحن لكل محافظات مصر خلال 2–3 أيام، والدفع عند الاستلام أو InstaPay.`
+    : `${own || `Shop ${name} at M.M Bags.`} Delivery to all of Egypt in 2–3 days, cash on delivery or InstaPay.`;
   return {
     title: `${name}`,
     description,

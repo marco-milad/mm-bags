@@ -93,7 +93,7 @@ export const metadata: Metadata = {
     template: "%s · M.M Bags",
   },
   description:
-    "M.M Bags متجر شنط سفر وضهر ولاب توب من سوهاج من 1998. شحن لكل 27 محافظة خلال 2–5 أيام، الدفع عند الاستلام أو InstaPay، إرجاع خلال 14 يوم وضمان سنة.",
+    "M.M Bags متجر شنط سفر وضهر ولاب توب من سوهاج من 1998. شحن لكل 27 محافظة خلال 2–3 أيام، الدفع عند الاستلام أو InstaPay، إرجاع خلال 14 يوم وضمان سنة.",
   applicationName: "M.M Bags",
   authors: [{ name: "Marco Milad" }],
   creator: "Marco Milad",

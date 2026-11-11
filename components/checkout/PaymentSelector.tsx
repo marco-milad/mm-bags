@@ -3,11 +3,8 @@
 import type { UseFormReturn } from "react-hook-form";
 import { Banknote, Smartphone } from "lucide-react";
 import type { Locale } from "@/lib/i18n-config";
-import {
-  COD_FEE,
-  type CheckoutPaymentMethod,
-  type CheckoutValues,
-} from "@/lib/checkout/schema";
+import type { CheckoutPaymentMethod, CheckoutValues } from "@/lib/checkout/schema";
+import { COD_FEE_BAND, COD_FEE_BASE, COD_FEE_STEP } from "@/lib/shipping/shared";
 import { cn, formatPriceEGP } from "@/lib/utils";
 
 /**
@@ -39,14 +36,18 @@ export function PaymentSelector({
   form,
   locale,
   instapayEnabled,
+  codFee,
 }: {
   form: UseFormReturn<CheckoutValues>;
   locale: Locale;
   instapayEnabled: boolean;
+  /** The courier's collection fee this order would carry with COD. */
+  codFee: number;
 }) {
   const { register, watch, setValue } = form;
   const selected = watch("paymentMethod");
-  const saving = formatPriceEGP(COD_FEE, locale);
+  const saving = formatPriceEGP(codFee, locale);
+  const isAr = locale === "ar";
 
   return (
     <div className="flex flex-col gap-4">
@@ -63,9 +64,9 @@ export function PaymentSelector({
           icon={<Banknote className="h-5 w-5" />}
           title={locale === "ar" ? "الدفع عند الاستلام" : "Cash on delivery"}
           subtitle={
-            locale === "ar"
-              ? `يضاف ${formatPriceEGP(COD_FEE, locale)} رسوم تحصيل`
-              : `${formatPriceEGP(COD_FEE, locale)} collection fee added`
+            isAr
+              ? `يضاف ${saving} رسوم تحصيل لشركة الشحن`
+              : `${saving} courier collection fee added`
           }
         />
 
@@ -104,6 +105,11 @@ export function PaymentSelector({
               </p>
             </>
           )}
+          <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+            {isAr
+              ? `رسوم التحصيل دي بتاخدها شركة الشحن مش إحنا: ${COD_FEE_BASE} ج.م لحد ${COD_FEE_BAND.toLocaleString("en-US")} ج.م، و${COD_FEE_STEP} ج.م لكل ${COD_FEE_BAND.toLocaleString("en-US")} ج.م بعدها.`
+              : `This fee goes to the courier, not to us: LE ${COD_FEE_BASE} up to LE ${COD_FEE_BAND.toLocaleString("en-US")}, then LE ${COD_FEE_STEP} for every LE ${COD_FEE_BAND.toLocaleString("en-US")} above that.`}
+          </p>
           {instapayEnabled && (
             <button
               type="button"

@@ -60,13 +60,13 @@ describe("couponExpiry", () => {
 describe("calcTotals with a coupon", () => {
   const items = [{ qty: 1, unitPrice: 3900 }, { qty: 2, unitPrice: 50 }]; // 4000
 
-  it("takes 10% off the products only, keeps shipping/COD fees", () => {
-    const t = calcTotals([{ qty: 1, unitPrice: 899 }], "cod", 10);
-    expect(t).toEqual({ subtotal: 899, discount: 90, shippingFee: 50, codFee: 25, total: 899 - 90 + 50 + 25 });
+  it("takes 10% off the products only, keeps the area shipping and COD fee", () => {
+    const t = calcTotals([{ qty: 1, unitPrice: 899 }], "cod", 10, 155);
+    expect(t).toMatchObject({ subtotal: 899, discount: 90, shippingFee: 155, codFee: 30, total: 899 - 90 + 155 + 30 });
   });
 
   it("keeps free shipping when the coupon takes the total under the threshold", () => {
-    const t = calcTotals(items, "instapay", 10);
+    const t = calcTotals(items, "instapay", 10, 155);
     expect(t.subtotal).toBe(4000);
     expect(t.discount).toBe(400);
     expect(t.shippingFee).toBe(0);
@@ -74,6 +74,25 @@ describe("calcTotals with a coupon", () => {
   });
 
   it("is unchanged without a coupon", () => {
-    expect(calcTotals(items, "cod")).toEqual({ subtotal: 4000, discount: 0, shippingFee: 0, codFee: 25, total: 4025 });
+    // 4,000 collected → 30 + 3×5 = 45, which pushes it to 4,045 → 50.
+    expect(calcTotals(items, "cod", 0, 155)).toMatchObject({ subtotal: 4000, discount: 0, shippingFee: 0, codFee: 50, total: 4050 });
+  });
+});
+
+describe("calcTotals shipping by area", () => {
+  it("marks shipping pending until an area is chosen", () => {
+    const t = calcTotals([{ qty: 1, unitPrice: 1150 }], "instapay");
+    expect(t.shippingPending).toBe(true);
+    expect(t.shippingFee).toBe(0);
+    expect(t.total).toBe(1150);
+  });
+
+  it("charges the area price and the COD fee on the collected amount", () => {
+    const t = calcTotals([{ qty: 1, unitPrice: 1150 }], "cod", 0, 155);
+    expect(t).toMatchObject({ shippingFee: 155, shippingPending: false, codFee: 35, total: 1150 + 155 + 35 });
+  });
+
+  it("has no COD fee with InstaPay", () => {
+    expect(calcTotals([{ qty: 1, unitPrice: 1150 }], "instapay", 0, 135).codFee).toBe(0);
   });
 });

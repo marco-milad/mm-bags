@@ -9,7 +9,7 @@ import type { Locale } from "@/lib/i18n-config";
  */
 const PHRASES_AR = [
   "الدفع عند الاستلام أو InstaPay ✓",
-  "توصيل خلال ٢–٥ أيام ✓",
+  "توصيل خلال ٢–٣ أيام ✓",
   "إرجاع ١٤ يوم + ضمان سنة ✓",
   "٢٧ محافظة ✓",
   "رد على واتساب خلال ٢٤ ساعة ✓",
@@ -19,7 +19,7 @@ const PHRASES_AR = [
 // these strips as facts about the store.
 const PHRASES_EN = [
   "Cash on delivery or InstaPay ✓",
-  "Delivered in 2–5 days ✓",
+  "Delivered in 2–3 days ✓",
   "14-day returns · 1-year warranty ✓",
   "27 governorates ✓",
   "WhatsApp replies within 24 hours ✓",

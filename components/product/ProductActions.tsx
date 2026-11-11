@@ -185,8 +185,8 @@ export function ProductActions({
       {/* Only payment options checkout really offers (no instalments). */}
       <p className="rounded-lg bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
         {locale === "ar"
-          ? "الدفع عند الاستلام أو InstaPay · توصيل لكل مصر خلال 2–5 أيام"
-          : "Cash on delivery or InstaPay · Delivered across Egypt in 2–5 days"}
+          ? "الدفع عند الاستلام أو InstaPay · توصيل لكل مصر خلال 2–3 أيام"
+          : "Cash on delivery or InstaPay · Delivered across Egypt in 2–3 days"}
       </p>
 
       {/* Color picker */}

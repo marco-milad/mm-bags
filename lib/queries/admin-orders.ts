@@ -28,6 +28,8 @@ type ShippingAddressShape = {
   phone?: string;
   email?: string | null;
   governorate?: string;
+  /** Shipping area charged at checkout (0032). */
+  shipping_zone?: string;
   city?: string;
   street?: string;
   building?: string | null;

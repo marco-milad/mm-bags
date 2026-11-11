@@ -17,6 +17,7 @@ export type CheckoutField =
   | "phone"
   | "email"
   | "governorate"
+  | "shippingZoneId"
   | "city"
   | "street"
   | "building"
@@ -39,6 +40,10 @@ const FIELD_MESSAGES: Record<CheckoutField, Bilingual> = {
   governorate: {
     ar: "اختار المحافظة",
     en: "Select a governorate",
+  },
+  shippingZoneId: {
+    ar: "اختار منطقتك عشان نحسب الشحن",
+    en: "Select your area so we can price the shipping",
   },
   city: {
     ar: "اكتب اسم المدينة",
@@ -98,6 +103,10 @@ const SERVER_MESSAGES: Record<PlaceOrderErrorCode, Bilingual> = {
   COUPON_INVALID: {
     ar: "كود الخصم مش صالح (يمكن اتستخدم أو انتهت صلاحيته). شيلناه — راجع الإجمالي وأكّد الطلب تاني.",
     en: "The discount code isn't valid (it may be used or expired). We removed it — review the total and place the order again.",
+  },
+  SHIPPING_ZONE_INVALID: {
+    ar: "المنطقة اللي اخترتها مش متاحة دلوقتي. ارجع لبيانات الشحن واختار منطقتك تاني.",
+    en: "The area you picked isn't available right now. Go back to shipping details and choose your area again.",
   },
   HUMAN_CHECK_FAILED: {
     ar: "معرفناش نتأكد إنك مش روبوت. استنى ثانية واضغط «إتمام الطلب» تاني.",

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getActiveShippingZones } from "@/lib/shipping/zones";
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import {
@@ -69,13 +70,14 @@ export default async function ProductDetailPage({
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [related, reviewsForSummary] = await Promise.all([
+  const [related, reviewsForSummary, shippingZones] = await Promise.all([
     getRelatedProducts({
       excludeProductId: product.id,
       collectionId: product.collection?.id ?? null,
       limit: 4,
     }),
     getApprovedReviews(product.id, 200),
+    getActiveShippingZones(),
   ]);
   const summary = summarize(reviewsForSummary);
 
@@ -123,6 +125,7 @@ export default async function ProductDetailPage({
       variants: product.product_variants ?? [],
       averageRating: summary.average,
       reviewCount: summary.total,
+      shippingZones,
     }),
     breadcrumbSchema(breadcrumbItems),
   ];

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { CheckoutFlow } from "@/components/checkout/CheckoutFlow";
 import { BUY_NOW_STATE_PROBE, CART_STATE_PROBE } from "@/components/cart/CartSkeleton";
+import { getActiveShippingZones } from "@/lib/shipping/zones";
 
 // Personalized: the cart, the wishlist and the checkout form are all
 // per-visitor. They used to be dynamic only as a side effect of the layout
@@ -28,6 +29,8 @@ export default async function CheckoutPage({
   // NEXT_PUBLIC_ read in a client component freezes at build time and
   // drifts from runtime env changes).
   const instapayEnabled = !!process.env.NEXT_PUBLIC_INSTAPAY_HANDLE?.trim();
+  // Area prices (0032). placeOrder re-reads the chosen one; this is display.
+  const zones = await getActiveShippingZones();
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
@@ -44,7 +47,7 @@ export default async function CheckoutPage({
           it the empty cart and the shipping form — which differ by roughly
           600px — would share one guess and one of them would always shift. */}
       <script dangerouslySetInnerHTML={{ __html: buyNow ? BUY_NOW_STATE_PROBE : CART_STATE_PROBE }} />
-      <CheckoutFlow locale={locale} instapayEnabled={instapayEnabled} buyNow={buyNow} />
+      <CheckoutFlow locale={locale} instapayEnabled={instapayEnabled} zones={zones} buyNow={buyNow} />
     </section>
   );
 }

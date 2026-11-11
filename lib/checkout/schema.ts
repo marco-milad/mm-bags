@@ -2,10 +2,10 @@ import { z } from "zod";
 import { GOVERNORATE_CODES } from "./governorates";
 import { effectiveWebPrice } from "@/lib/catalog-shared";
 import { COUPON_INPUT_MAX, couponDiscount } from "@/lib/coupons/code";
+import { codFeeFor } from "@/lib/shipping/shared";
 
+/** Orders with products worth this much or more ship free (owner, 2026-11-11). */
 export const FREE_SHIPPING_THRESHOLD = 4000;
-export const SHIPPING_FEE = 50;
-export const COD_FEE = 25;
 
 /** Max units of a single variant per cart line (mirrors the cart store's
  *  MAX_QTY). Centralized so the Zod schema and the server-side validator
@@ -36,6 +36,8 @@ export const shippingSchema = z.object({
   governorate: z.enum(GOVERNORATE_CODES as [string, ...string[]], {
     message: "اختار المحافظة",
   }),
+  /** shipping_zones.id — the server re-reads its fee; the browser's copy is display only. */
+  shippingZoneId: z.string().uuid({ message: "اختار المنطقة" }),
   city: z.string().trim().min(2, { message: "اكتب اسم المدينة" }).max(100),
   street: z.string().trim().min(3, { message: "اكتب عنوان الشارع" }).max(200),
   building: z.string().trim().max(100).optional().or(z.literal("")),
@@ -91,17 +93,23 @@ export function calcTotals(
   paymentMethod: CheckoutPaymentMethod,
   /** Coupon percentage (0 = none). Applies to the products only. */
   percentOff = 0,
+  /** Courier price for the chosen area; null while no area is chosen yet. */
+  zoneFee: number | null = null,
 ) {
   const subtotal = items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0);
   const discount = couponDiscount(subtotal, percentOff);
   // Free shipping is judged on the products before the coupon, so using a
   // code never costs the shopper their free delivery.
-  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
-  // Only COD carries the collection surcharge; InstaPay is a direct
-  // bank transfer with no per-order fee we need to pass through.
-  const codFee = paymentMethod === "cod" ? COD_FEE : 0;
-  const total = subtotal - discount + shippingFee + codFee;
-  return { subtotal, discount, shippingFee, codFee, total };
+  const freeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
+  const shippingFee = freeShipping ? 0 : (zoneFee ?? 0);
+  /** True until an area is picked (and shipping isn't free anyway). */
+  const shippingPending = !freeShipping && zoneFee == null;
+  const beforeCod = subtotal - discount + shippingFee;
+  // Only COD carries the courier's collection fee (passed on as-is);
+  // InstaPay is a direct transfer with nothing to collect.
+  const codFee = paymentMethod === "cod" ? codFeeFor(beforeCod) : 0;
+  const total = beforeCod + codFee;
+  return { subtotal, discount, shippingFee, shippingPending, freeShipping, codFee, total };
 }
 
 // ============================================================
@@ -129,6 +137,8 @@ export type PlaceOrderErrorCode =
   | "HUMAN_CHECK_FAILED"
   /** Coupon unknown, used or expired — the client removes it and shows why. */
   | "COUPON_INVALID"
+  /** Shipping area missing, switched off or not in the chosen governorate. */
+  | "SHIPPING_ZONE_INVALID"
   | "CHECKOUT_FAILED";
 
 /** The subset of a cart line the validator needs. Full cart lines

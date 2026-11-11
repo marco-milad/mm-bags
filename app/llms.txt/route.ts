@@ -1,6 +1,15 @@
 import { getTopLevelCategoriesWithCounts } from "@/lib/queries/categories";
 import { SITE_DESCRIPTION_EN, SITE_URL } from "@/lib/seo/site";
-import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE, COD_FEE } from "@/lib/checkout/schema";
+import { FREE_SHIPPING_THRESHOLD } from "@/lib/checkout/schema";
+import { getActiveShippingZones } from "@/lib/shipping/zones";
+import {
+  COD_FEE_BAND,
+  COD_FEE_BASE,
+  COD_FEE_STEP,
+  DELIVERY_HOURS_MAX,
+  DELIVERY_HOURS_MIN,
+  feeRange,
+} from "@/lib/shipping/shared";
 import { GUIDES } from "@/lib/guides";
 
 // Regenerated hourly: collections and their "from" prices come from the DB.
@@ -12,7 +21,14 @@ export const revalidate = 3600;
  * pages, so a model quoting it can't promise anything the store doesn't do.
  */
 export async function GET() {
-  const collections = await getTopLevelCategoriesWithCounts().catch(() => []);
+  const [collections, zones] = await Promise.all([
+    getTopLevelCategoriesWithCounts().catch(() => []),
+    getActiveShippingZones(),
+  ]);
+  const range = feeRange(zones);
+  const shippingLine = range
+    ? `EGP ${range.min}–${range.max} depending on the area (e.g. Sohag ${zones.find((z) => z.code === "sohag")?.fee ?? range.min}, Cairo ${zones.find((z) => z.code === "cairo")?.fee ?? range.min})`
+    : "priced by area at checkout";
   const phone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+201229749608";
 
   const collectionLines = collections
@@ -30,9 +46,9 @@ export async function GET() {
 ## Key facts
 - Egyptian bag store founded in 1998 in Tama, Sohag; run today by Marco Milad.
 - Two physical branches in Tama, Sohag: Shohada Street and Al-Ozraa Street, open daily 11 AM – 10 PM.
-- Online store ships to all 27 Egyptian governorates in 2–5 business days.
-- Shipping: EGP ${SHIPPING_FEE} flat; free on orders from EGP ${FREE_SHIPPING_THRESHOLD.toLocaleString("en-US")}.
-- Payment: cash on delivery (EGP ${COD_FEE} fee) or InstaPay transfer. No card payments or instalments.
+- Online store ships to all 27 Egyptian governorates. Each order is confirmed with the customer (within 24 hours), then delivered ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} hours after it is handed to the courier.
+- Shipping: ${shippingLine}; free on orders from EGP ${FREE_SHIPPING_THRESHOLD.toLocaleString("en-US")}.
+- Payment: cash on delivery (the courier's collection fee: EGP ${COD_FEE_BASE} up to EGP ${COD_FEE_BAND.toLocaleString("en-US")}, plus EGP ${COD_FEE_STEP} per further EGP ${COD_FEE_BAND.toLocaleString("en-US")}) or InstaPay transfer with no fee. No card payments or instalments.
 - Returns: 14 days from delivery, unused with invoice; the customer pays about EGP 50 return shipping on a change of mind, the store pays for manufacturing defects.
 - Warranty: one year against manufacturing defects (wheels, handles, zippers, shell).
 - Contact: WhatsApp ${phone}. Instagram/Facebook/TikTok: @mmbags.eg.

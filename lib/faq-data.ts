@@ -41,8 +41,8 @@ export const FAQ_ITEMS: ReadonlyArray<FAQItem> = [
     category: "shipping",
     qAr: "كام يوم التوصيل؟",
     qEn: "How long does delivery take?",
-    aAr: "التوصيل بياخد من 2 لـ 5 أيام عمل حسب المحافظة.",
-    aEn: "Delivery takes 2–5 business days depending on the governorate.",
+    aAr: "بعد ما نأكد طلبك معاك (خلال 24 ساعة) ونسلّمه لشركة الشحن، بيوصلك خلال 28–36 ساعة لأي محافظة. يعني في الغالب خلال 2–3 أيام من الطلب.",
+    aEn: "Once we've confirmed your order with you (within 24 hours) and handed it to the courier, it arrives within 28–36 hours anywhere in Egypt, usually 2–3 days from ordering.",
   },
   {
     category: "shipping",
@@ -55,8 +55,8 @@ export const FAQ_ITEMS: ReadonlyArray<FAQItem> = [
     category: "shipping",
     qAr: "الشحن بكام؟",
     qEn: "How much is shipping?",
-    aAr: "الشحن بـ LE 50، ومجاني للطلبات اللي فوق LE 4,000.",
-    aEn: "Shipping is LE 50, and free on orders over LE 4,000.",
+    aAr: "سعر الشحن حسب منطقتك، وبيظهرلك في صفحة الدفع أول ما تختار المحافظة، وكل الأسعار موجودة في صفحة سياسة الشحن. والشحن مجاني للطلبات من LE 4,000.",
+    aEn: "Shipping is priced by area: you see it at checkout as soon as you pick your governorate, and every price is on the shipping policy page. Orders from LE 4,000 ship free.",
   },
   {
     category: "shipping",
@@ -78,8 +78,8 @@ export const FAQ_ITEMS: ReadonlyArray<FAQItem> = [
     category: "payment",
     qAr: "الدفع عند الاستلام بكام رسوم إضافية؟",
     qEn: "Are there extra fees for cash on delivery?",
-    aAr: "في رسوم تحصيل LE 25 على طلبات الدفع عند الاستلام. ادفع بـ InstaPay ووفّرها، التحويل ملوش رسوم.",
-    aEn: "Cash on delivery carries an LE 25 collection fee. Pay with InstaPay and save it: transfers have no fee.",
+    aAr: "شركة الشحن بتاخد رسوم تحصيل على الدفع عند الاستلام: LE 30 لحد LE 1,000، و LE 5 لكل LE 1,000 بعدها (مثلًا طلب بـ LE 1,500 رسومه LE 35). الرسوم دي للشركة مش لينا، وتقدر توفّرها لو دفعت بـ InstaPay.",
+    aEn: "The courier charges a collection fee on cash on delivery: LE 30 up to LE 1,000, plus LE 5 for every LE 1,000 above that (an LE 1,500 order pays LE 35). It goes to the courier, not to us, and you save it by paying with InstaPay.",
   },
   {
     category: "payment",

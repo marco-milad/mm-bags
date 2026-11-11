@@ -33,12 +33,14 @@ import { PaymentSelector } from "./PaymentSelector";
 import { OrderReview } from "./OrderReview";
 import { TurnstileWidget, useTurnstile } from "@/components/security/Turnstile";
 import { CouponField, type AppliedCoupon } from "./CouponField";
+import type { ShippingZone } from "@/lib/shipping/shared";
 
 const SHIPPING_FIELDS = [
   "name",
   "phone",
   "email",
   "governorate",
+  "shippingZoneId",
   "city",
   "street",
   "building",
@@ -48,10 +50,13 @@ const SHIPPING_FIELDS = [
 export function CheckoutFlow({
   locale,
   instapayEnabled,
+  zones,
   buyNow = false,
 }: {
   locale: Locale;
   instapayEnabled: boolean;
+  /** Active shipping areas with their courier price (server-read). */
+  zones: ShippingZone[];
   /** /checkout?buy=now — order only the "Order now" product, not the cart. */
   buyNow?: boolean;
 }) {
@@ -104,6 +109,7 @@ export function CheckoutFlow({
       phone: "",
       email: "",
       governorate: undefined,
+      shippingZoneId: "",
       city: "",
       street: "",
       building: "",
@@ -198,6 +204,12 @@ export function CheckoutFlow({
           setCoupon(null);
           setStep(3);
         }
+        // SHIPPING_ZONE_INVALID: the area was switched off (or never matched
+        // the governorate). Clear it and send the shopper back to pick again.
+        if (result.code === "SHIPPING_ZONE_INVALID") {
+          form.setValue("shippingZoneId", "");
+          setStep(1);
+        }
         // Localize every server error from its machine-readable H2 code; the
         // human-readable server `error` string is ignored here (fallback only).
         setServerError(checkoutErrorMessage(result.code, locale));
@@ -242,7 +254,13 @@ export function CheckoutFlow({
   }
 
   const values = form.watch();
-  const totals = calcTotals(items, values.paymentMethod ?? "card", coupon?.percentOff ?? 0);
+  const zone = zones.find((z) => z.id === values.shippingZoneId) ?? null;
+  const totals = calcTotals(
+    items,
+    values.paymentMethod ?? "cod",
+    coupon?.percentOff ?? 0,
+    zone?.fee ?? null,
+  );
 
   return (
     <form onSubmit={onSubmit} noValidate className="grid gap-8 lg:grid-cols-[1fr_360px]">
@@ -262,7 +280,12 @@ export function CheckoutFlow({
                     : "Tell us where to ship your order."}
                 </p>
               </header>
-              <ShippingForm form={form} locale={locale} />
+              <ShippingForm
+                form={form}
+                locale={locale}
+                zones={zones}
+                freeShipping={totals.freeShipping}
+              />
             </>
           )}
 
@@ -282,6 +305,9 @@ export function CheckoutFlow({
                 form={form}
                 locale={locale}
                 instapayEnabled={instapayEnabled}
+                codFee={
+                  calcTotals(items, "cod", coupon?.percentOff ?? 0, zone?.fee ?? null).codFee
+                }
               />
             </>
           )}
@@ -303,6 +329,7 @@ export function CheckoutFlow({
                 items={items}
                 locale={locale}
                 percentOff={coupon?.percentOff ?? 0}
+                zone={zone}
               />
               <CouponField
                 locale={locale}
@@ -445,17 +472,21 @@ export function CheckoutFlow({
                 {locale === "ar" ? "الشحن" : "Shipping"}
               </dt>
               <dd className="font-mono text-[var(--color-text)]">
-                {totals.shippingFee === 0
+                {totals.freeShipping
                   ? locale === "ar"
                     ? "مجاناً"
                     : "Free"
-                  : formatPriceEGP(totals.shippingFee, locale)}
+                  : totals.shippingPending
+                    ? <span className="font-sans text-xs text-[var(--color-text-secondary)]">
+                        {locale === "ar" ? "حسب منطقتك" : "Depends on your area"}
+                      </span>
+                    : formatPriceEGP(totals.shippingFee, locale)}
               </dd>
             </div>
             {totals.codFee > 0 && (
               <div className="flex justify-between">
                 <dt className="text-[var(--color-text-secondary)]">
-                  {locale === "ar" ? "رسوم الدفع" : "Payment fee"}
+                  {locale === "ar" ? "رسوم التحصيل (شركة الشحن)" : "Courier collection fee"}
                 </dt>
                 <dd className="font-mono text-[var(--color-text)]">
                   {formatPriceEGP(totals.codFee, locale)}

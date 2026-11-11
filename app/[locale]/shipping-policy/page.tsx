@@ -3,6 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/lib/i18n-config";
 import { localeAlternates } from "@/lib/seo/site";
+import { EG_GOVERNORATES } from "@/lib/checkout/governorates";
+import { getActiveShippingZones } from "@/lib/shipping/zones";
+import {
+  COD_FEE_BAND,
+  COD_FEE_BASE,
+  COD_FEE_STEP,
+  DELIVERY_HOURS_MAX,
+  DELIVERY_HOURS_MIN,
+  zoneName,
+} from "@/lib/shipping/shared";
+import { formatPriceEGP } from "@/lib/utils";
 import {
   Body,
   Bullet,
@@ -29,8 +40,8 @@ export async function generateMetadata({
       ? "سياسة الشحن والتوصيل | M.M Bags"
       : "Shipping & Delivery Policy | M.M Bags",
     description: isAr
-      ? "M.M Bags بتشحن لكل 27 محافظة في مصر خلال 2–5 أيام عمل: مواعيد التوصيل حسب المنطقة، الشحن 50 ج.م ومجاني فوق 4,000 ج.م، وتتبع الطلب."
-      : "M.M Bags ships to all 27 Egyptian governorates in 2–5 business days: delivery windows by region, LE 50 shipping (free over LE 4,000), and order tracking.",
+      ? "M.M Bags بتشحن لكل 27 محافظة في مصر: التوصيل خلال 28–36 ساعة من تسليم الطلب لشركة الشحن، أسعار الشحن لكل منطقة، ومجاني من 4,000 ج.م."
+      : "M.M Bags ships to all 27 Egyptian governorates: delivered 28–36 hours after courier pickup, shipping prices for every area, free from LE 4,000.",
     alternates: localeAlternates("/shipping-policy", locale),
   };
 }
@@ -41,6 +52,8 @@ export default async function ShippingPolicyPage({
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
   const isAr = locale === "ar";
+  const zones = await getActiveShippingZones();
+  const band = COD_FEE_BAND.toLocaleString("en-US");
 
   return (
     <article className="bg-[var(--color-bg)]">
@@ -52,7 +65,7 @@ export default async function ShippingPolicyPage({
             ? "بنوصل لكل 27 محافظة في مصر — هنا التفاصيل اللي محتاج تعرفها."
             : "We ship to every governorate in Egypt — here's what to expect."
         }
-        updated={isAr ? "آخر تحديث: يونيو 2026" : "Last updated: June 2026"}
+        updated={isAr ? "آخر تحديث: نوفمبر 2026" : "Last updated: November 2026"}
       />
 
       <div className="mx-auto max-w-3xl space-y-10 px-4 pb-20 md:px-6 md:pb-24">
@@ -65,13 +78,13 @@ export default async function ShippingPolicyPage({
             </Bullet>
             <Bullet isAr={isAr}>
               {isAr
-                ? "التوصيل عادةً بياخد من 2 لـ 5 أيام عمل حسب المحافظة."
-                : "Delivery typically takes 2–5 business days, depending on the governorate."}
+                ? `بعد ما نأكد طلبك معاك ونسلّمه لشركة الشحن، بيوصلك خلال ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} ساعة لأي محافظة.`
+                : `Once we've confirmed your order with you and handed it to the courier, it arrives within ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} hours, anywhere in Egypt.`}
             </Bullet>
             <Bullet isAr={isAr}>
               {isAr
-                ? "الشحن بـ 50 ج.م، ومجاني لأي طلب فوق 4,000 ج.م."
-                : "Shipping is LE 50, and free on every order over LE 4,000."}
+                ? "سعر الشحن حسب منطقتك (الجدول تحت)، ومجاني لأي طلب من 4,000 ج.م."
+                : "Shipping is priced by area (table below), and free on every order from LE 4,000."}
             </Bullet>
           </ul>
         </Section>
@@ -79,56 +92,74 @@ export default async function ShippingPolicyPage({
         <Section title={isAr ? "مواعيد تجهيز الطلب" : "Order processing"}>
           <Body isAr={isAr}>
             {isAr
-              ? "بنبدأ نجهز طلبك بمجرد ما يتأكد. أغلب الطلبات بتطلع من المخزن في خلال يوم عمل أو اتنين على الأكثر، وبتاخد رسالة WhatsApp أو SMS بمجرد ما الشحنة تخرج للمندوب."
-              : "We start processing your order the moment it's confirmed. Most orders leave our warehouse within one to two business days, and you'll receive a WhatsApp or SMS notification the moment your shipment is handed to the courier."}
+              ? "بنكلّمك نأكد الطلب خلال 24 ساعة من ما تطلبه، وبعدها بنجهزه ونسلّمه لشركة الشحن. أول ما المندوب يستلمه، التاريخ المتوقع للوصول بيظهرلك في صفحة تتبع الطلب."
+              : "We call you to confirm the order within 24 hours of placing it, then pack it and hand it to the courier. As soon as the courier has it, the expected arrival date shows on your order tracking page."}
           </Body>
           <Body isAr={isAr}>
             {isAr
-              ? "أيام الجمعة والأجازات الرسمية مش محسوبة من أيام العمل، لكن بنستقبل الطلبات على مدار الأسبوع."
-              : "Fridays and public holidays don't count as business days, but you can place orders any day of the week."}
+              ? "شركة الشحن بتستلم وبتوصّل كل يوم، حتى يوم الجمعة."
+              : "The courier picks up and delivers every day, Fridays included."}
           </Body>
         </Section>
 
-        <Section title={isAr ? "مدة التوصيل حسب المنطقة" : "Delivery windows by region"}>
+        <Section title={isAr ? "مدة التوصيل" : "Delivery time"}>
           <Body isAr={isAr}>
             {isAr
-              ? "المواعيد دي تقديرية وبتبدأ من ساعة ما الشحنة تخرج للمندوب — مش من ساعة تأكيد الطلب:"
-              : "These windows are estimates that start the moment the shipment is handed to the courier — not when you confirm the order:"}
+              ? `التوصيل خلال ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} ساعة لكل المحافظات، والمدة بتبدأ من ساعة ما شركة الشحن تستلم الطلب مننا، مش من ساعة ما تطلبه. شركة الشحن بتكلّمك قبل ما توصل عشان تنسّق معاك ميعاد الاستلام.`
+              : `Delivery takes ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} hours to every governorate, counted from when the courier picks the order up from us, not from when you place it. The courier calls you beforehand to arrange the handover.`}
           </Body>
-          <ul className="space-y-2">
-            <Bullet isAr={isAr}>
-              {isAr
-                ? "القاهرة الكبرى والجيزة: يوم لـ يومين عمل."
-                : "Greater Cairo & Giza: 1–2 business days."}
-            </Bullet>
-            <Bullet isAr={isAr}>
-              {isAr
-                ? "الإسكندرية ومدن الدلتا والقناة: يومين لـ 3 أيام عمل."
-                : "Alexandria, Delta, and Canal cities: 2–3 business days."}
-            </Bullet>
-            <Bullet isAr={isAr}>
-              {isAr
-                ? "محافظات الصعيد والساحل الشمالي والبحر الأحمر: 3 لـ 5 أيام عمل."
-                : "Upper Egypt, North Coast, and Red Sea governorates: 3–5 business days."}
-            </Bullet>
-            <Bullet isAr={isAr}>
-              {isAr
-                ? "المناطق النائية: ممكن توصل لـ 7 أيام عمل، وبنعلمك مسبقًا لو الأمر هياخد وقت أطول."
-                : "Remote areas: may reach 7 business days; we'll flag this up front if so."}
-            </Bullet>
-          </ul>
         </Section>
 
-        <Section title={isAr ? "تكلفة الشحن" : "Shipping fees"}>
+        <Section title={isAr ? "أسعار الشحن" : "Shipping prices"}>
           <Body isAr={isAr}>
             {isAr
-              ? "تكلفة الشحن ثابتة 50 ج.م لكل المحافظات. الطلبات اللي إجماليها يعدي 4,000 ج.م بتيجي بشحن مجاني تلقائياً عند الـ checkout."
-              : "Shipping is a flat LE 50 to every governorate. Orders that exceed LE 4,000 ship free automatically at checkout."}
+              ? "سعر الشحن ثابت لكل منطقة مهما كان وزن أو حجم الطلب، وبيظهرلك في صفحة الدفع أول ما تختار محافظتك. الطلبات اللي منتجاتها من 4,000 ج.م وأكتر شحنها مجاني."
+              : "Each area has one shipping price whatever the order's size or weight, shown at checkout as soon as you pick your governorate. Orders with products worth LE 4,000 or more ship free."}
           </Body>
+          {zones.length > 0 && (
+            <div className="overflow-x-auto rounded-xl border border-[var(--color-border)]">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--color-surface)] text-[var(--color-text-secondary)]">
+                  <tr>
+                    <th scope="col" className="px-3 py-2 text-start font-medium">
+                      {isAr ? "المنطقة" : "Area"}
+                    </th>
+                    <th scope="col" className="px-3 py-2 text-end font-medium">
+                      {isAr ? "الشحن" : "Shipping"}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {EG_GOVERNORATES.flatMap((g) =>
+                    zones
+                      .filter((z) => z.governorate_code === g.code)
+                      .sort((a, b) => a.sort_order - b.sort_order)
+                      .map((z) => {
+                        const govName = isAr ? g.name_ar : g.name_en;
+                        const name = zoneName(z, locale);
+                        return (
+                          <tr key={z.id} className="border-t border-[var(--color-border)]">
+                            <td className="px-3 py-2 text-[var(--color-text)]">
+                              {name}
+                              {!name.includes(govName) && (
+                                <span className="text-[var(--color-text-secondary)]"> · {govName}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-end font-mono text-[var(--color-text)]">
+                              {formatPriceEGP(z.fee, locale)}
+                            </td>
+                          </tr>
+                        );
+                      }),
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
           <Body isAr={isAr}>
             {isAr
-              ? "لو اخترت الدفع عند الاستلام، في رسوم تحصيل 25 ج.م على الطلب. ادفع بـ InstaPay ووفّرها."
-              : "Cash on delivery carries an LE 25 collection fee. Pay with InstaPay and save it."}
+              ? `لو اخترت الدفع عند الاستلام، شركة الشحن بتاخد رسوم تحصيل: ${COD_FEE_BASE} ج.م لحد ${band} ج.م، و${COD_FEE_STEP} ج.م لكل ${band} ج.م بعدها (مثلًا طلب بـ 1,500 ج.م رسومه 35 ج.م). الرسوم دي للشركة مش لينا، وتقدر توفّرها لو دفعت بـ InstaPay.`
+              : `With cash on delivery the courier charges a collection fee: LE ${COD_FEE_BASE} up to LE ${band}, plus LE ${COD_FEE_STEP} for every LE ${band} above that (an LE 1,500 order pays LE 35). It goes to the courier, not to us, and you save it by paying with InstaPay.`}
           </Body>
         </Section>
 

@@ -9,7 +9,7 @@ import type { TrackingResult } from "./schema";
 
 /** Columns both the /track lookup and the private order link read. */
 export const TRACKING_ORDER_COLUMNS =
-  "id, order_number, status, payment_method, payment_status, subtotal, discount_amount, coupon_code, shipping_fee, total, shipping_address, guest_phone, created_at, order_items (qty, unit_price, snapshot_name, snapshot_image), cod_tracking (courier_name, tracking_number, estimated_delivery, current_status)";
+  "id, order_number, status, payment_method, payment_status, subtotal, discount_amount, coupon_code, shipping_fee, cod_fee, total, shipping_address, guest_phone, created_at, order_items (qty, unit_price, snapshot_name, snapshot_image), cod_tracking (courier_name, tracking_number, estimated_delivery, current_status)";
 
 type CodRow = {
   courier_name: string | null;
@@ -26,6 +26,7 @@ export type TrackingOrderRow = {
   discount_amount: number | null;
   coupon_code: string | null;
   shipping_fee: number | null;
+  cod_fee?: number | null;
   total: number;
   shipping_address: unknown;
   guest_phone: string | null;
@@ -100,6 +101,7 @@ export function buildTrackingResult(
             discount: Number(order.discount_amount ?? 0),
             couponCode: order.coupon_code,
             shippingFee: Number(order.shipping_fee ?? 0),
+            codFee: Number(order.cod_fee ?? 0),
             paymentMethod: order.payment_method,
           },
         }

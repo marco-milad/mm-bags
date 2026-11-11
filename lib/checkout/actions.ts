@@ -17,6 +17,7 @@ import { verifyHuman } from "@/lib/security/turnstile";
 import { couponRejectionText, normalizeCouponCode } from "@/lib/coupons/code";
 import { claimCoupon, findUsableCoupon, releaseCoupon } from "@/lib/coupons/server";
 import { HUMAN_CHECK_FAILED } from "@/lib/security/turnstile-core";
+import { getActiveShippingZone } from "@/lib/shipping/zones";
 import { EG_GOVERNORATES } from "./governorates";
 import { validateCart, type ValidateCartResult } from "./validate-cart";
 import {
@@ -174,8 +175,26 @@ export async function placeOrder(
     coupon = found.coupon;
   }
 
+  // ─── Shipping area (0032) ─────────────────────────────────────────────
+  // The fee comes from the zone row, never from the browser. The zone must
+  // still be active and belong to the governorate on the address.
+  const zone = await getActiveShippingZone(checkout.shippingZoneId);
+  if (!zone || zone.governorate_code !== checkout.governorate) {
+    return {
+      ok: false,
+      code: "SHIPPING_ZONE_INVALID",
+      error:
+        "المنطقة اللي اخترتها مش متاحة. ارجع لبيانات الشحن واختارها تاني. / The selected area isn't available. Go back to shipping details and choose it again.",
+    };
+  }
+
   // Totals are computed from the authoritative DB prices, not the client's.
-  const totals = calcTotals(validation.lines, checkout.paymentMethod, coupon?.percentOff ?? 0);
+  const totals = calcTotals(
+    validation.lines,
+    checkout.paymentMethod,
+    coupon?.percentOff ?? 0,
+    zone.fee,
+  );
   // Fast lookup of the authoritative unit price per variant for order_items.
   const authoritativePrice = new Map(
     validation.lines.map((l) => [l.variantId, l.unitPrice]),
@@ -194,6 +213,7 @@ export async function placeOrder(
     email: checkout.email || null,
     governorate: governorate?.name_ar ?? checkout.governorate,
     governorate_code: checkout.governorate,
+    shipping_zone: zone.name_ar,
     city: checkout.city,
     street: checkout.street,
     building: checkout.building || null,
@@ -219,6 +239,8 @@ export async function placeOrder(
         payment_status: "pending",
         subtotal: totals.subtotal,
         shipping_fee: totals.shippingFee,
+        shipping_zone_id: zone.id,
+        cod_fee: totals.codFee,
         discount_amount: totals.discount,
         loyalty_discount: 0,
         total: totals.total,

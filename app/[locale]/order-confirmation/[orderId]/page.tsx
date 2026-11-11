@@ -110,7 +110,7 @@ export default async function OrderConfirmationPage({
   const { data: order } = await admin
     .from("orders")
     .select(
-      "id, order_number, user_id, guest_email, status, payment_method, payment_status, subtotal, discount_amount, shipping_fee, total, shipping_address, created_at, order_items (qty, unit_price, snapshot_name)",
+      "id, order_number, user_id, guest_email, status, payment_method, payment_status, subtotal, discount_amount, shipping_fee, cod_fee, total, shipping_address, created_at, order_items (qty, unit_price, snapshot_name)",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -334,6 +334,12 @@ export default async function OrderConfirmationPage({
                   : formatPriceEGP(order.shipping_fee, locale)
               }
             />
+            {Number(order.cod_fee ?? 0) > 0 && (
+              <Row
+                label={locale === "ar" ? "رسوم التحصيل (شركة الشحن)" : "Courier collection fee"}
+                value={formatPriceEGP(Number(order.cod_fee), locale)}
+              />
+            )}
             <Row
               label={locale === "ar" ? "طريقة الدفع" : "Payment"}
               value={

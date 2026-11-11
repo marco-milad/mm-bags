@@ -85,6 +85,8 @@ export type TrackingResult = {
     discount: number;
     couponCode: string | null;
     shippingFee: number;
+    /** Courier COD collection fee (0032); 0 for InstaPay / older orders. */
+    codFee: number;
     paymentMethod: string;
   };
 };
