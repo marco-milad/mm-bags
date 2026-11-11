@@ -3,7 +3,7 @@
 // shoppers racing for the last unit.
 import {
   DESKTOP, QA_PHONE, qaPhone, clickByText, createQaProduct, db, deleteOrder, deleteQaProduct, env,
-  newPage, overflowPx, placeOrderUI, reporter, sessionCookies, sleep, variantStock,
+  newPage, overflowPx, pickShippingArea, placeOrderUI, reporter, sessionCookies, sleep, variantStock,
 } from "./lib.mjs";
 
 const SLUG = "zz-qa-orders";
@@ -167,6 +167,7 @@ export async function run(browser, base) {
       await page.type("#shipping-phone", qaPhone());
       const gov = await page.$eval("#shipping-governorate", (s) => [...s.options].find((x) => x.value)?.value);
       await page.select("#shipping-governorate", gov);
+      await pickShippingArea(page);
       await page.type("#shipping-city", "QA City");
       await page.type("#shipping-street", "QA Street 1");
       await clickByText(page, "form button", "التالي"); await sleep(1500);
@@ -216,6 +217,8 @@ export async function run(browser, base) {
         await page.type("#shipping-phone", qaPhone());
         const gov = await page.$eval("#shipping-governorate", (s) => [...s.options].find((x) => x.value)?.value);
         await page.select("#shipping-governorate", gov);
+        await pickShippingArea(page);
+      await pickShippingArea(page);
         await page.type("#shipping-city", "QA City");
         await page.type("#shipping-street", "QA Street 1");
         await clickByText(page, "form button", "التالي"); await sleep(1500);

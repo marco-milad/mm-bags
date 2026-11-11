@@ -107,8 +107,8 @@ export function PaymentSelector({
           )}
           <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
             {isAr
-              ? `رسوم التحصيل دي بتاخدها شركة الشحن مش إحنا: ${COD_FEE_BASE} ج.م لحد ${COD_FEE_BAND.toLocaleString("en-US")} ج.م، و${COD_FEE_STEP} ج.م لكل ${COD_FEE_BAND.toLocaleString("en-US")} ج.م بعدها.`
-              : `This fee goes to the courier, not to us: LE ${COD_FEE_BASE} up to LE ${COD_FEE_BAND.toLocaleString("en-US")}, then LE ${COD_FEE_STEP} for every LE ${COD_FEE_BAND.toLocaleString("en-US")} above that.`}
+              ? `رسوم التحصيل دي بتاخدها شركة الشحن مش إحنا: ${formatPriceEGP(COD_FEE_BASE, locale)} لحد ${formatPriceEGP(COD_FEE_BAND, locale)}، و${formatPriceEGP(COD_FEE_STEP, locale)} لكل ${formatPriceEGP(COD_FEE_BAND, locale)} بعدها.`
+              : `This fee goes to the courier, not to us: ${formatPriceEGP(COD_FEE_BASE, locale)} up to ${formatPriceEGP(COD_FEE_BAND, locale)}, then ${formatPriceEGP(COD_FEE_STEP, locale)} for every ${formatPriceEGP(COD_FEE_BAND, locale)} above that.`}
           </p>
           {instapayEnabled && (
             <button

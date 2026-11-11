@@ -49,7 +49,7 @@ export async function GET() {
 - Online store ships to all 27 Egyptian governorates. Each order is confirmed with the customer (within 24 hours), then delivered ${DELIVERY_HOURS_MIN}–${DELIVERY_HOURS_MAX} hours after it is handed to the courier.
 - Shipping: ${shippingLine}; free on orders from EGP ${FREE_SHIPPING_THRESHOLD.toLocaleString("en-US")}.
 - Payment: cash on delivery (the courier's collection fee: EGP ${COD_FEE_BASE} up to EGP ${COD_FEE_BAND.toLocaleString("en-US")}, plus EGP ${COD_FEE_STEP} per further EGP ${COD_FEE_BAND.toLocaleString("en-US")}) or InstaPay transfer with no fee. No card payments or instalments.
-- Returns: 14 days from delivery, unused with invoice; the customer pays about EGP 50 return shipping on a change of mind, the store pays for manufacturing defects.
+- Returns: 14 days from delivery, unused with invoice; the customer pays return shipping (the same as the shipping price for their area) on a change of mind, the store pays for manufacturing defects.
 - Warranty: one year against manufacturing defects (wheels, handles, zippers, shell).
 - Contact: WhatsApp ${phone}. Instagram/Facebook/TikTok: @mmbags.eg.
 - Website languages: Arabic (default) and English.

@@ -78,15 +78,38 @@ export function shippingDetails(
     .map(([fee, regions]) => detail(fee, regions));
 }
 
-export const RETURN_POLICY: Record<string, unknown> = {
-  "@type": "MerchantReturnPolicy",
-  applicableCountry: "EG",
-  returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-  merchantReturnDays: 14,
-  returnMethod: "https://schema.org/ReturnByMail",
-  returnFees: "https://schema.org/ReturnShippingFees",
-  returnShippingFeesAmount: { "@type": "MonetaryAmount", value: 50, currency: "EGP" },
-};
+/** The price most areas pay (the typical return-shipping cost). */
+function typicalFee(zones: ReadonlyArray<Pick<ShippingZone, "fee">>): number | null {
+  const counts = new Map<number, number>();
+  for (const z of zones) counts.set(Number(z.fee), (counts.get(Number(z.fee)) ?? 0) + 1);
+  let best: number | null = null;
+  for (const [fee, n] of counts) {
+    if (best === null || n > counts.get(best)! || (n === counts.get(best)! && fee < best)) best = fee;
+  }
+  return best;
+}
+
+/**
+ * 14 days; on a change of mind the buyer pays the return leg, which costs
+ * the same as shipping to their area — the typical area price stands in
+ * for it here. Without zones, no amount is claimed.
+ */
+export function returnPolicy(
+  zones: ReadonlyArray<Pick<ShippingZone, "fee">>,
+): Record<string, unknown> {
+  const fee = typicalFee(zones);
+  return {
+    "@type": "MerchantReturnPolicy",
+    applicableCountry: "EG",
+    returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+    merchantReturnDays: 14,
+    returnMethod: "https://schema.org/ReturnByMail",
+    returnFees: "https://schema.org/ReturnShippingFees",
+    ...(fee !== null
+      ? { returnShippingFeesAmount: { "@type": "MonetaryAmount", value: fee, currency: "EGP" } }
+      : {}),
+  };
+}
 
 /**
  * One Offer when every size costs the same, otherwise an AggregateOffer with
@@ -112,7 +135,7 @@ export function buildOffers(opts: {
     itemCondition: "https://schema.org/NewCondition",
     seller: { "@type": "Organization", name: opts.sellerName },
     shippingDetails: shippingDetails(low, opts.zones),
-    hasMerchantReturnPolicy: RETURN_POLICY,
+    hasMerchantReturnPolicy: returnPolicy(opts.zones),
   };
   if (low === high) return { "@type": "Offer", price: money(low), ...common };
   return {

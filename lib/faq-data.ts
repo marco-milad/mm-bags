@@ -101,8 +101,8 @@ export const FAQ_ITEMS: ReadonlyArray<FAQItem> = [
     category: "returns",
     qAr: "مين بيدفع شحن الإرجاع؟",
     qEn: "Who pays for return shipping?",
-    aAr: "لو غيّرت رأيك أو عايز مقاس أو لون تاني، بتدفع شحن الإرجاع (في حدود 50 ج.م لمعظم المحافظات). لو فيه عيب تصنيع أو المنتج وصل تالف، M.M Bags بتتحمّل المصاريف كلها.",
-    aEn: "If you changed your mind or want another size or colour, you pay the return shipping (about LE 50 for most governorates). If there's a manufacturing defect or it arrived damaged, M.M Bags covers it in full.",
+    aAr: "لو غيّرت رأيك أو عايز مقاس أو لون تاني، بتدفع شحن الإرجاع (بنفس سعر الشحن لمنطقتك، وبنتفق عليه معاك قبل ما المندوب ييجي). لو فيه عيب تصنيع أو المنتج وصل تالف، M.M Bags بتتحمّل المصاريف كلها.",
+    aEn: "If you changed your mind or want another size or colour, you pay the return shipping (the same as the shipping price for your area; we agree it with you before the courier comes). If there's a manufacturing defect or it arrived damaged, M.M Bags covers it in full.",
   },
   {
     category: "returns",

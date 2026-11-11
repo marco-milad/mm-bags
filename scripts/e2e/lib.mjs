@@ -138,6 +138,14 @@ export async function deleteOrder(orderId, { restock = true } = {}) {
   }
 }
 
+/** Governorates with several shipping areas (0032) ask for one: take the first. */
+export async function pickShippingArea(page) {
+  await sleep(300);
+  if (!(await page.$("#shipping-zone"))) return;
+  const zone = await page.$eval("#shipping-zone", (s) => [...s.options].find((o) => o.value)?.value);
+  await page.select("#shipping-zone", zone);
+}
+
 /**
  * Guest checkout through the real UI. Leaves the page on the confirmation
  * page (the placing browser = owner). Returns { orderId, page, ctx }.
@@ -157,12 +165,7 @@ export async function placeOrderUI(browser, base, { slug, name, email = "", coup
   if (email) await page.type("#shipping-email", email);
   const gov = await page.$eval("#shipping-governorate", (s) => [...s.options].find((o) => o.value)?.value);
   await page.select("#shipping-governorate", gov);
-  await sleep(300);
-  // Governorates with several shipping areas (0032) ask for one.
-  if (await page.$("#shipping-zone")) {
-    const zone = await page.$eval("#shipping-zone", (s) => [...s.options].find((o) => o.value)?.value);
-    await page.select("#shipping-zone", zone);
-  }
+  await pickShippingArea(page);
   await page.type("#shipping-city", "QA City");
   await page.type("#shipping-street", "QA Street 1");
   await clickByText(page, "form button", "التالي"); await sleep(1500);

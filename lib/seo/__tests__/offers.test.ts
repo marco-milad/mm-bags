@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOffers, shippingDetails, variantPrices } from "../offers";
+import { buildOffers, returnPolicy, shippingDetails, variantPrices } from "../offers";
 
 const zones = [
   { governorate_code: "cairo", fee: 155 },
@@ -50,6 +50,17 @@ describe("buildOffers", () => {
     const o = buildOffers({ ...base, variants: [], base: 500, sale: null });
     expect(o.shippingDetails).toBeTruthy();
     expect((o.hasMerchantReturnPolicy as Record<string, unknown>).merchantReturnDays).toBe(14);
+  });
+});
+
+describe("returnPolicy", () => {
+  it("prices the return leg at the typical area fee", () => {
+    const amount = returnPolicy(zones).returnShippingFeesAmount as Record<string, unknown>;
+    expect(amount.value).toBe(155);
+  });
+
+  it("claims no amount without areas", () => {
+    expect(returnPolicy([]).returnShippingFeesAmount).toBeUndefined();
   });
 });
 

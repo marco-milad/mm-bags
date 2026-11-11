@@ -191,8 +191,8 @@ export default async function RefundPolicyPage({
         <Section title={isAr ? "مصاريف شحن الإرجاع" : "Return shipping costs"}>
           <Body isAr={isAr}>
             {isAr
-              ? "لو رجعت المنتج لأنك غيرت رأيك أو طلبت مقاس / لون مختلف، بتتحمل مصاريف شحن الإرجاع (في حدود 50 ج.م لمعظم المحافظات)."
-              : "If you're returning because you changed your mind or want a different size or colour, you cover the return shipping (typically LE 50 across most governorates)."}
+              ? "لو رجعت المنتج لأنك غيرت رأيك أو طلبت مقاس / لون مختلف، بتتحمل مصاريف شحن الإرجاع (بنفس سعر الشحن لمنطقتك، وبنتفق عليه معاك قبل ما المندوب ييجي)."
+              : "If you're returning because you changed your mind or want a different size or colour, you cover the return shipping (the same as the shipping price for your area; we agree it with you before the courier comes)."}
           </Body>
           <Body isAr={isAr}>
             {isAr
