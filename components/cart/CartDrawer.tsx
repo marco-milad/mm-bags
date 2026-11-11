@@ -22,7 +22,7 @@ import {
 } from "@/store/cart";
 import { CartItem } from "./CartItem";
 
-const FREE_SHIPPING_THRESHOLD = 1500;
+import { FREE_SHIPPING_THRESHOLD } from "@/lib/checkout/schema";
 
 export function CartDrawer({ locale }: { locale: Locale }) {
   const isOpen = useCartIsOpen();

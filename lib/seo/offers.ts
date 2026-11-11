@@ -8,7 +8,7 @@
  * used the product price and showed 1150 on a page selling at 1,999).
  *
  * Shipping/returns mirror lib/checkout/schema.ts and the refund policy page:
- * flat 50 EGP (free from 1,500), 2–5 days nationwide; 14-day returns, buyer
+ * flat 50 EGP (free from 4,000), 2–5 days nationwide; 14-day returns, buyer
  * pays ~50 EGP return shipping on change of mind (free for defects).
  */
 import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE } from "@/lib/checkout/schema";

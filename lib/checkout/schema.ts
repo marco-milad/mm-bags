@@ -3,7 +3,7 @@ import { GOVERNORATE_CODES } from "./governorates";
 import { effectiveWebPrice } from "@/lib/catalog-shared";
 import { COUPON_INPUT_MAX, couponDiscount } from "@/lib/coupons/code";
 
-export const FREE_SHIPPING_THRESHOLD = 1500;
+export const FREE_SHIPPING_THRESHOLD = 4000;
 export const SHIPPING_FEE = 50;
 export const COD_FEE = 25;
 

@@ -44,8 +44,9 @@ export function PaymentSelector({
   locale: Locale;
   instapayEnabled: boolean;
 }) {
-  const { register, watch } = form;
+  const { register, watch, setValue } = form;
   const selected = watch("paymentMethod");
+  const saving = formatPriceEGP(COD_FEE, locale);
 
   return (
     <div className="flex flex-col gap-4">
@@ -76,10 +77,11 @@ export function PaymentSelector({
             register={register("paymentMethod")}
             icon={<Smartphone className="h-5 w-5" />}
             title={locale === "ar" ? "InstaPay / تحويل بنكي" : "InstaPay / Bank transfer"}
+            badge={locale === "ar" ? `وفّر ${saving}` : `Save ${saving}`}
             subtitle={
               locale === "ar"
-                ? "تحويل مباشر بدون رسوم. هنبعتلك التفاصيل بعد التأكيد."
-                : "Direct transfer with zero fees. We'll send you the details after checkout."
+                ? "تحويل مباشر بدون رسوم تحصيل. هنبعتلك التفاصيل بعد التأكيد."
+                : "Direct transfer, no collection fee. We'll send you the details after checkout."
             }
           />
         )}
@@ -101,6 +103,17 @@ export function PaymentSelector({
                 Have the exact amount ready to keep things quick.
               </p>
             </>
+          )}
+          {instapayEnabled && (
+            <button
+              type="button"
+              onClick={() => setValue("paymentMethod", "instapay", { shouldDirty: true })}
+              className="mt-3 inline-flex min-h-11 items-center rounded-lg text-start text-xs font-semibold text-[var(--color-primary)] underline underline-offset-4"
+            >
+              {locale === "ar"
+                ? `ادفع بـ InstaPay ووفّر ${saving} رسوم التحصيل`
+                : `Pay with InstaPay and save the ${saving} collection fee`}
+            </button>
           )}
         </div>
       )}
@@ -140,6 +153,7 @@ function PaymentOption({
   icon,
   title,
   subtitle,
+  badge,
 }: {
   id: string;
   value: CheckoutPaymentMethod;
@@ -148,6 +162,8 @@ function PaymentOption({
   icon: React.ReactNode;
   title: string;
   subtitle: string;
+  /** Short highlight shown next to the title (e.g. the InstaPay saving). */
+  badge?: string;
 }) {
   return (
     <label
@@ -177,7 +193,14 @@ function PaymentOption({
         {icon}
       </span>
       <span className="flex flex-col gap-0.5">
-        <span className="text-sm font-semibold text-[var(--color-text)]">{title}</span>
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-[var(--color-text)]">{title}</span>
+          {badge && (
+            <span className="rounded-full bg-[var(--color-success)]/10 px-2 py-0.5 text-[11px] font-semibold text-[var(--color-success)]">
+              {badge}
+            </span>
+          )}
+        </span>
         <span className="text-xs text-[var(--color-text-secondary)]">{subtitle}</span>
       </span>
     </label>

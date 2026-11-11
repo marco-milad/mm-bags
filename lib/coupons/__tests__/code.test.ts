@@ -58,7 +58,7 @@ describe("couponExpiry", () => {
 });
 
 describe("calcTotals with a coupon", () => {
-  const items = [{ qty: 1, unitPrice: 1400 }, { qty: 2, unitPrice: 50 }]; // 1500
+  const items = [{ qty: 1, unitPrice: 3900 }, { qty: 2, unitPrice: 50 }]; // 4000
 
   it("takes 10% off the products only, keeps shipping/COD fees", () => {
     const t = calcTotals([{ qty: 1, unitPrice: 899 }], "cod", 10);
@@ -67,13 +67,13 @@ describe("calcTotals with a coupon", () => {
 
   it("keeps free shipping when the coupon takes the total under the threshold", () => {
     const t = calcTotals(items, "instapay", 10);
-    expect(t.subtotal).toBe(1500);
-    expect(t.discount).toBe(150);
+    expect(t.subtotal).toBe(4000);
+    expect(t.discount).toBe(400);
     expect(t.shippingFee).toBe(0);
-    expect(t.total).toBe(1350);
+    expect(t.total).toBe(3600);
   });
 
   it("is unchanged without a coupon", () => {
-    expect(calcTotals(items, "cod")).toEqual({ subtotal: 1500, discount: 0, shippingFee: 0, codFee: 25, total: 1525 });
+    expect(calcTotals(items, "cod")).toEqual({ subtotal: 4000, discount: 0, shippingFee: 0, codFee: 25, total: 4025 });
   });
 });

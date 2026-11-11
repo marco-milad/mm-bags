@@ -16,7 +16,7 @@ import {
 import { CartItem } from "./CartItem";
 import { CartSkeleton } from "./CartSkeleton";
 
-const FREE_SHIPPING_THRESHOLD = 1500;
+import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE } from "@/lib/checkout/schema";
 
 /**
  * Full-page cart view. Mirrors what CartDrawer renders but as a
@@ -73,7 +73,7 @@ export function CartPageContent({ locale }: { locale: Locale }) {
     );
   }
 
-  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 50;
+  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
   const total = subtotal + shippingFee;
   const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
 

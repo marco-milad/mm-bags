@@ -43,9 +43,9 @@ describe("buildOffers", () => {
 });
 
 describe("shippingDetails", () => {
-  it("matches checkout: 50 EGP, free from 1,500", () => {
+  it("matches checkout: 50 EGP, free from 4,000", () => {
     const rate = (p: number) => ((shippingDetails(p).shippingRate as Record<string, unknown>).value);
-    expect(rate(1499)).toBe(50);
-    expect(rate(1500)).toBe(0);
+    expect(rate(3999)).toBe(50);
+    expect(rate(4000)).toBe(0);
   });
 });

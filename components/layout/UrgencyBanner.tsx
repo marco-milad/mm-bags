@@ -60,8 +60,8 @@ export function UrgencyBanner({ locale }: { locale: Locale }) {
   // 12.5px centered, three trust devices separated by middots.
   const items =
     locale === "ar"
-      ? ["شحن مجاني على الطلبات فوق ١٬٥٠٠ ج.م.", "الدفع عند الاستلام", "بنشحن لكل ٢٧ محافظة"]
-      : ["Free shipping over LE 1,500", "Cash on delivery", "Ships to all 27 governorates"];
+      ? ["شحن مجاني على الطلبات فوق ٤٬٠٠٠ ج.م.", "الدفع عند الاستلام", "بنشحن لكل ٢٧ محافظة"]
+      : ["Free shipping over LE 4,000", "Cash on delivery", "Ships to all 27 governorates"];
 
   return (
     <div

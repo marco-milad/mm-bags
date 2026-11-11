@@ -52,8 +52,8 @@ export function ProductAccordion({
     {
       icon: Wallet,
       text: isAr
-        ? "الشحن مجاني للطلبات فوق 1,500 جنيه."
-        : "Free shipping on orders over EGP 1,500.",
+        ? "الشحن مجاني للطلبات فوق 4,000 جنيه."
+        : "Free shipping on orders over EGP 4,000.",
     },
     {
       icon: RefreshCcw,
@@ -64,8 +64,8 @@ export function ProductAccordion({
     {
       icon: ShieldCheck,
       text: isAr
-        ? "الدفع عند الاستلام متاح (+25 جنيه رسوم)."
-        : "Cash on delivery available (+EGP 25 fee).",
+        ? "الدفع عند الاستلام متاح (+25 جنيه رسوم)، أو ادفع InstaPay ووفّرها."
+        : "Cash on delivery available (+EGP 25 fee), or pay with InstaPay and save it.",
     },
   ];
   // Falls back to the other language's copy rather than "No description"

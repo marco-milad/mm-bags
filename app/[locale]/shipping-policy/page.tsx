@@ -29,8 +29,8 @@ export async function generateMetadata({
       ? "سياسة الشحن والتوصيل | M.M Bags"
       : "Shipping & Delivery Policy | M.M Bags",
     description: isAr
-      ? "M.M Bags بتشحن لكل 27 محافظة في مصر خلال 2–5 أيام عمل: مواعيد التوصيل حسب المنطقة، الشحن 50 ج.م ومجاني فوق 1,500 ج.م، وتتبع الطلب."
-      : "M.M Bags ships to all 27 Egyptian governorates in 2–5 business days: delivery windows by region, LE 50 shipping (free over LE 1,500), and order tracking.",
+      ? "M.M Bags بتشحن لكل 27 محافظة في مصر خلال 2–5 أيام عمل: مواعيد التوصيل حسب المنطقة، الشحن 50 ج.م ومجاني فوق 4,000 ج.م، وتتبع الطلب."
+      : "M.M Bags ships to all 27 Egyptian governorates in 2–5 business days: delivery windows by region, LE 50 shipping (free over LE 4,000), and order tracking.",
     alternates: localeAlternates("/shipping-policy", locale),
   };
 }
@@ -70,8 +70,8 @@ export default async function ShippingPolicyPage({
             </Bullet>
             <Bullet isAr={isAr}>
               {isAr
-                ? "الشحن بـ 50 ج.م، ومجاني لأي طلب فوق 1,500 ج.م."
-                : "Shipping is LE 50, and free on every order over LE 1,500."}
+                ? "الشحن بـ 50 ج.م، ومجاني لأي طلب فوق 4,000 ج.م."
+                : "Shipping is LE 50, and free on every order over LE 4,000."}
             </Bullet>
           </ul>
         </Section>
@@ -122,13 +122,13 @@ export default async function ShippingPolicyPage({
         <Section title={isAr ? "تكلفة الشحن" : "Shipping fees"}>
           <Body isAr={isAr}>
             {isAr
-              ? "تكلفة الشحن ثابتة 50 ج.م لكل المحافظات. الطلبات اللي إجماليها يعدي 1,500 ج.م بتيجي بشحن مجاني تلقائياً عند الـ checkout."
-              : "Shipping is a flat LE 50 to every governorate. Orders that exceed LE 1,500 ship free automatically at checkout."}
+              ? "تكلفة الشحن ثابتة 50 ج.م لكل المحافظات. الطلبات اللي إجماليها يعدي 4,000 ج.م بتيجي بشحن مجاني تلقائياً عند الـ checkout."
+              : "Shipping is a flat LE 50 to every governorate. Orders that exceed LE 4,000 ship free automatically at checkout."}
           </Body>
           <Body isAr={isAr}>
             {isAr
-              ? "لو اخترت الدفع عند الاستلام، في رسوم إضافية 25 ج.م على الطلب بيغطيها مزود الخدمة الخارجي."
-              : "If you choose cash on delivery, an additional LE 25 fee applies — charged by the third-party COD provider."}
+              ? "لو اخترت الدفع عند الاستلام، في رسوم تحصيل 25 ج.م على الطلب. ادفع بـ InstaPay ووفّرها."
+              : "Cash on delivery carries an LE 25 collection fee. Pay with InstaPay and save it."}
           </Body>
         </Section>
 

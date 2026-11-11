@@ -55,8 +55,8 @@ export const FAQ_ITEMS: ReadonlyArray<FAQItem> = [
     category: "shipping",
     qAr: "الشحن بكام؟",
     qEn: "How much is shipping?",
-    aAr: "الشحن بـ LE 50، ومجاني للطلبات اللي فوق LE 1,500.",
-    aEn: "Shipping is LE 50, and free on orders over LE 1,500.",
+    aAr: "الشحن بـ LE 50، ومجاني للطلبات اللي فوق LE 4,000.",
+    aEn: "Shipping is LE 50, and free on orders over LE 4,000.",
   },
   {
     category: "shipping",
@@ -78,8 +78,8 @@ export const FAQ_ITEMS: ReadonlyArray<FAQItem> = [
     category: "payment",
     qAr: "الدفع عند الاستلام بكام رسوم إضافية؟",
     qEn: "Are there extra fees for cash on delivery?",
-    aAr: "في رسوم إضافية LE 25 على طلبات الدفع عند الاستلام. التحويل بـ InstaPay ملوش رسوم.",
-    aEn: "An extra LE 25 fee applies to cash-on-delivery orders. InstaPay transfers have no fee.",
+    aAr: "في رسوم تحصيل LE 25 على طلبات الدفع عند الاستلام. ادفع بـ InstaPay ووفّرها، التحويل ملوش رسوم.",
+    aEn: "Cash on delivery carries an LE 25 collection fee. Pay with InstaPay and save it: transfers have no fee.",
   },
   {
     category: "payment",
